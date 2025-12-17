@@ -1,0 +1,17 @@
+ALTER TABLE listings
+ADD CONSTRAINT fk_host
+FOREIGN KEY (host_id)
+REFERENCES users(id)
+ON DELETE CASCADE;
+
+ALTER TABLE bookings
+ADD CONSTRAINT fk_listing
+FOREIGN KEY (listing_id)
+REFERENCES listings(id)
+ON DELETE CASCADE;
+
+ALTER TABLE bookings
+ADD CONSTRAINT fk_driver
+FOREIGN KEY (driver_id)
+REFERENCES users(id)
+ON DELETE CASCADE;

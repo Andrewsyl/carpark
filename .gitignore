@@ -1,0 +1,17 @@
+node_modules
+.next
+.env
+.env.local
+.env.development
+.env.production
+dist
+build
+coverage
+.cache
+.DS_Store
+*.log
+pnpm-lock.yaml
+yarn.lock
+npm-debug.log
+.idea
+.vscode

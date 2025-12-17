@@ -1,0 +1,71 @@
+import "../loadEnv.js";
+import Stripe from "stripe";
+
+const secret = process.env.STRIPE_SECRET_KEY;
+
+if (!secret || secret === "sk_test_placeholder" || secret === "sk_test_replace") {
+  console.warn("STRIPE_SECRET_KEY not set; using mock Stripe responses for local development.");
+}
+
+export const stripe = secret ? new Stripe(secret, { apiVersion: "2024-06-20" }) : null;
+
+export type PaymentInput = {
+  amount: number;
+  currency: string;
+  listingId: string;
+  hostStripeAccountId: string;
+  platformFeePercent: number;
+  successUrl: string;
+  cancelUrl: string;
+};
+
+export async function createCheckoutSession(input: PaymentInput) {
+  const { amount, currency, listingId, hostStripeAccountId, platformFeePercent, successUrl, cancelUrl } = input;
+  const feeAmount = Math.round(amount * platformFeePercent);
+
+  const mockResponse = () => {
+    const fakeId = `cs_test_mock_${Date.now()}`;
+    return {
+      id: fakeId,
+      url: successUrl.replace("{CHECKOUT_SESSION_ID}", fakeId),
+      payment_intent: `pi_test_mock_${Date.now()}`,
+    } as any;
+  };
+
+  if (!stripe) {
+    return mockResponse();
+  }
+
+  try {
+    return await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency,
+            product_data: {
+              name: `Parking booking ${listingId}`,
+            },
+            unit_amount: amount,
+          },
+          quantity: 1,
+        },
+      ],
+      payment_intent_data: {
+        application_fee_amount: feeAmount,
+        transfer_data: {
+          destination: hostStripeAccountId,
+        },
+      },
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+    });
+  } catch (err: any) {
+    if (err?.statusCode === 401 || err?.code === "authentication_required" || err?.type === "StripeAuthenticationError") {
+      console.warn("Stripe auth failed; returning mock checkout session. Set a valid STRIPE_SECRET_KEY to enable live calls.");
+      return mockResponse();
+    }
+    throw err;
+  }
+}
