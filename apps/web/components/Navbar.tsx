@@ -42,7 +42,7 @@ export function Navbar() {
           </button>
         </div>
       )}
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+      <div className="flex w-full items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link href="/" className="text-lg font-bold text-brand-700">
           ParkShare Dublin
         </Link>

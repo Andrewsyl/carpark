@@ -10,11 +10,13 @@ export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
       await signUp(email, password);
+      setNotice("Account created. Check your email to verify your address.");
       router.push("/dashboard");
     } catch {
       // errors handled in context
@@ -53,6 +55,7 @@ export default function SignupPage() {
           {loading ? "Creating..." : "Create account"}
         </button>
         {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+        {notice && <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{notice}</div>}
         <p className="text-center text-sm text-slate-600">
           Already registered?{" "}
           <Link href="/login" className="font-semibold text-brand-700">

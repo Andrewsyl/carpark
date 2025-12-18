@@ -16,5 +16,5 @@ export function ListingMap({
   center: { lat: number; lng: number };
   zoom?: number;
 }) {
-  return <MapView listings={[listing]} center={center} radiusKm={0.5} initialZoom={zoom} maxZoom={12} />;
+  return <MapView listings={[listing]} center={center} initialZoom={zoom} maxZoom={12} />;
 }

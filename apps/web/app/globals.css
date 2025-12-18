@@ -1,12 +1,25 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: light;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: "Poppins", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: #f7fafc;
   color: #0b1526;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 700;
+}
+
+label {
+  font-weight: 500;
 }
 
 body {
@@ -15,6 +28,24 @@ body {
   background: radial-gradient(circle at 10% 20%, rgba(56, 167, 255, 0.15), transparent 25%),
     radial-gradient(circle at 90% 30%, rgba(0, 126, 230, 0.15), transparent 22%),
     #f8fbff;
+}
+
+/* Google Places dropdown */
+.pac-container,
+.pac-item,
+.pac-item-query,
+.pac-matched {
+  font-family: "Poppins", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-weight: 500;
+}
+.pac-item {
+  padding: 8px 12px;
+}
+.pac-item:hover {
+  background: #f8fafc;
+}
+.pac-logo::after {
+  display: none !important;
 }
 
 a {
@@ -27,4 +58,26 @@ a {
 
 .card {
   @apply rounded-2xl bg-white p-6 shadow-card ring-1 ring-black/5;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }

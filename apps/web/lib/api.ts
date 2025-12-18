@@ -1,5 +1,6 @@
 import type { Listing } from "../components/ListingCard";
 import type { SearchFilters } from "../components/SearchForm";
+import type { PaymentMethod, PaymentHistoryItem } from "../types/payments";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
 
@@ -41,6 +42,62 @@ export async function searchSpaces(filters: SearchFilters): Promise<Listing[]> {
     rating: space.rating ?? 0,
     ratingCount: (space as any).ratingCount ?? (space as any).rating_count ?? 0,
   })) ?? [];
+}
+
+// Host availability
+export type AvailabilityEntry = {
+  id: string;
+  kind: "open" | "blocked";
+  startsAt: string;
+  endsAt: string;
+  repeatWeekdays?: number[];
+  repeatUntil?: string | null;
+  createdAt?: string;
+};
+
+export async function listAvailability(listingId: string, token?: string): Promise<AvailabilityEntry[]> {
+  if (!token) throw new Error("Authentication required");
+  const res = await fetch(`${API_BASE}/api/host/listings/${listingId}/availability`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  const { data, error } = await handleResponse<{ availability: any[] }>(res);
+  if (error) throw new Error(error);
+  return data?.availability ?? [];
+}
+
+export async function createAvailability(
+  listingId: string,
+  entry: Omit<AvailabilityEntry, "id" | "createdAt">,
+  token?: string
+) {
+  if (!token) throw new Error("Authentication required");
+  const res = await fetch(`${API_BASE}/api/host/listings/${listingId}/availability`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      kind: entry.kind,
+      startsAt: entry.startsAt,
+      endsAt: entry.endsAt,
+      repeatWeekdays: entry.repeatWeekdays,
+      repeatUntil: entry.repeatUntil,
+    }),
+  });
+  const { data, error } = await handleResponse<{ availability: AvailabilityEntry }>(res);
+  if (error) throw new Error(error);
+  return data!.availability;
+}
+
+export async function deleteAvailability(availabilityId: string, token?: string) {
+  if (!token) throw new Error("Authentication required");
+  const res = await fetch(`${API_BASE}/api/host/availability/${availabilityId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok && res.status !== 204) {
+    const { error } = await handleResponse(res);
+    throw new Error(error ?? "Failed to delete availability");
+  }
 }
 
 function authHeaders(token?: string): Record<string, string> {
@@ -213,7 +270,7 @@ export async function createHostPayoutAccount(token?: string) {
 
 export type AuthResponse = {
   token: string;
-  user: { id: string; email: string; role?: string };
+  user: { id: string; email: string; role?: string; emailVerified?: boolean };
 };
 
 export async function register(email: string, password: string) {
@@ -240,4 +297,93 @@ export async function login(email: string, password: string) {
     throw new Error(error);
   }
   return data!;
+}
+
+export async function requestVerification(email: string) {
+  const res = await fetch(`${API_BASE}/api/auth/request-verification`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const { error } = await handleResponse<{ ok: boolean }>(res);
+  if (error) {
+    throw new Error(error);
+  }
+  return true;
+}
+
+export async function verifyEmail(token: string) {
+  const res = await fetch(`${API_BASE}/api/auth/verify?token=${token}`);
+  const { error } = await handleResponse<{ ok: boolean }>(res);
+  if (error) throw new Error(error);
+  return true;
+}
+
+// Payments (driver)
+export async function listPaymentMethods(token?: string): Promise<PaymentMethod[]> {
+  if (!token) throw new Error("Authentication required");
+  const res = await fetch(`${API_BASE}/api/payment-methods`, {
+    headers: { ...authHeaders(token) },
+    cache: "no-store",
+  });
+  const { data, error } = await handleResponse<{ paymentMethods: PaymentMethod[] }>(res);
+  if (error) throw new Error(error);
+  return data?.paymentMethods ?? [];
+}
+
+export async function addPaymentMethod(input: Record<string, any>, token?: string): Promise<PaymentMethod> {
+  if (!token) throw new Error("Authentication required");
+  const res = await fetch(`${API_BASE}/api/payment-methods`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify(input),
+  });
+  const { data, error } = await handleResponse<{ paymentMethod: PaymentMethod }>(res);
+  if (error) throw new Error(error);
+  return data!.paymentMethod;
+}
+
+export async function setDefaultPaymentMethod(id: string, token?: string) {
+  if (!token) throw new Error("Authentication required");
+  const res = await fetch(`${API_BASE}/api/payment-methods/${id}`, {
+    method: "PUT",
+    headers: { ...authHeaders(token) },
+  });
+  const { error } = await handleResponse<{ ok: boolean }>(res);
+  if (error) throw new Error(error);
+  return true;
+}
+
+export async function deletePaymentMethod(id: string, token?: string) {
+  if (!token) throw new Error("Authentication required");
+  const res = await fetch(`${API_BASE}/api/payment-methods/${id}`, {
+    method: "DELETE",
+    headers: { ...authHeaders(token) },
+  });
+  if (res.status === 204) return true;
+  const { error } = await handleResponse<{ ok: boolean }>(res);
+  if (error) throw new Error(error);
+  return true;
+}
+
+export async function listPaymentHistory(token?: string): Promise<PaymentHistoryItem[]> {
+  if (!token) throw new Error("Authentication required");
+  const res = await fetch(`${API_BASE}/api/payments/history`, {
+    headers: { ...authHeaders(token) },
+    cache: "no-store",
+  });
+  const { data, error } = await handleResponse<{ payments: PaymentHistoryItem[] }>(res);
+  if (error) throw new Error(error);
+  return data?.payments ?? [];
+}
+
+export async function retryPayment(paymentId: string, token?: string) {
+  if (!token) throw new Error("Authentication required");
+  const res = await fetch(`${API_BASE}/api/payments/${paymentId}/retry`, {
+    method: "POST",
+    headers: { ...authHeaders(token) },
+  });
+  const { error } = await handleResponse<{ ok: boolean }>(res);
+  if (error) throw new Error(error);
+  return true;
 }

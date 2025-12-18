@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
+import { requestVerification } from "../../lib/api";
 
 export default function LoginPage() {
   const { signIn, loading, error } = useAuth();
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [debug, setDebug] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -55,6 +57,7 @@ export default function LoginPage() {
           {loading ? "Signing in..." : "Sign in"}
         </button>
         {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+        {notice && <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{notice}</div>}
         {debug && <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700">{debug}</div>}
         <p className="text-center text-sm text-slate-600">
           No account?{" "}
@@ -62,6 +65,20 @@ export default function LoginPage() {
             Sign up
           </Link>
         </p>
+        <button
+          type="button"
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+          onClick={async () => {
+            try {
+              await requestVerification(email);
+              setNotice("Verification email sent (if the account exists).");
+            } catch (err) {
+              setNotice(err instanceof Error ? err.message : "Could not send verification email");
+            }
+          }}
+        >
+          Resend verification email
+        </button>
       </form>
     </div>
   );

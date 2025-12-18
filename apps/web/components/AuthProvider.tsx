@@ -14,6 +14,9 @@ type AuthContextValue = {
   signOut: () => void;
   error: string | null;
   loading: boolean;
+  emailVerified: boolean;
+  setUser: (user: User | null) => void;
+  setToken: (token: string | null) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -41,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { setLoading, setError: setGlobalError } = useAppStatus();
   const [error, setError] = useState<string | null>(null);
   const [loading, setAuthLoading] = useState<boolean>(true);
+  const emailVerified = !!user?.emailVerified;
 
   useEffect(() => {
     const session = readSession();
@@ -105,8 +109,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const value = useMemo(
-    () => ({ user, token, signIn, signUp, signOut, error, loading: loading }),
-    [user, token, error, loading]
+    () => ({ user, token, signIn, signUp, signOut, error, loading: loading, emailVerified, setUser, setToken }),
+    [user, token, error, loading, emailVerified]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

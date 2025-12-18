@@ -18,7 +18,23 @@ export type Listing = {
   longitude?: number;
 };
 
-export function ListingCard({ listing }: { listing: Listing }) {
+export function ListingCard({
+  listing,
+  onSelect,
+  suppressNavigation = false,
+  selected = false,
+}: {
+  listing: Listing;
+  onSelect?: (listing: Listing) => void;
+  suppressNavigation?: boolean;
+  selected?: boolean;
+}) {
+  const handleSelect = (e: React.MouseEvent) => {
+    if (!onSelect) return;
+    e.preventDefault();
+    onSelect(listing);
+  };
+
   const streetViewKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? process.env.GOOGLE_MAPS_API_KEY;
   const streetViewImage =
     listing.latitude != null &&
@@ -33,64 +49,65 @@ export function ListingCard({ listing }: { listing: Listing }) {
     "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=800&q=80";
 
   return (
-    <article className="card flex flex-col gap-3">
-      <Link href={`/listing/${listing.id}`} className="group relative block overflow-hidden rounded-xl">
-        <div className="relative h-48">
-          <Image
-            src={imageSrc}
-            alt={listing.title}
-            fill
-            className="object-cover transition duration-500 group-hover:scale-105"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          />
-          <div className="absolute inset-x-3 top-3 flex items-center justify-between text-xs font-semibold text-white drop-shadow">
-            <span className="rounded-full bg-black/50 px-2 py-1">€{listing.pricePerDay}/day</span>
-            <span className="rounded-full bg-black/50 px-2 py-1">{listing.distanceKm} km</span>
-          </div>
+    <article
+      className={clsx(
+        "flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3 shadow-sm transition duration-150",
+        selected && "ring-2 ring-brand-500 ring-offset-1 ring-offset-white"
+      )}
+      style={{ animation: "slideUp 160ms ease-out" }}
+    >
+      <div className="relative h-20 w-28 overflow-hidden rounded-lg">
+        <Image
+          src={imageSrc}
+          alt={listing.title}
+          fill
+          className="object-cover"
+          sizes="112px"
+        />
+        <div className="absolute inset-x-1 bottom-1 flex items-center justify-between text-[10px] font-semibold text-white drop-shadow">
+          <span className="rounded-full bg-black/60 px-2 py-0.5">€{listing.pricePerDay}/d</span>
+          <span className="rounded-full bg-black/60 px-2 py-0.5">{listing.distanceKm} km</span>
         </div>
-      </Link>
-
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <Link href={`/listing/${listing.id}`} className="text-lg font-semibold text-slate-900 hover:text-brand-700">
-            {listing.title}
-          </Link>
-          <p className="flex items-center gap-2 text-sm text-slate-600">
-            <MapPinIcon className="h-4 w-4 text-brand-500" />
-            {listing.address}
-          </p>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{listing.availability}</p>
-        </div>
-        <div className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700">
-          <StarIcon className="h-4 w-4" /> {listing.rating.toFixed(1)}
-          {typeof listing.ratingCount === "number" && (
-            <span className="text-[10px] text-amber-800">({listing.ratingCount})</span>
-          )}
-        </div>
-      </header>
-
-      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-        {listing.tags?.slice(0, 3).map((tag) => (
-          <span key={tag} className="rounded-full bg-slate-100 px-3 py-1 font-medium">
-            {tag}
-          </span>
-        ))}
-        {listing.tags && listing.tags.length > 3 && (
-          <span className="rounded-full bg-slate-100 px-2 py-1 font-semibold text-slate-700">+{listing.tags.length - 3}</span>
-        )}
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="text-xl font-semibold text-slate-900">
-          €{listing.pricePerDay} <span className="text-sm text-slate-500">/ day</span>
+      <div className="flex flex-1 flex-col gap-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-1">
+            <Link
+              href={`/listing/${listing.id}`}
+              onClick={suppressNavigation ? (e) => e.preventDefault() : undefined}
+              className="line-clamp-1 text-sm font-semibold text-slate-900 hover:text-brand-700"
+            >
+              {listing.title}
+            </Link>
+            <p className="flex items-center gap-1.5 text-[11px] text-slate-600">
+              <MapPinIcon className="h-3.5 w-3.5 text-brand-500" />
+              <span className="line-clamp-1">{listing.address}</span>
+            </p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{listing.availability}</p>
+          </div>
+          <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+            <StarIcon className="h-3.5 w-3.5" /> {listing.rating.toFixed(1)}
+            {typeof listing.ratingCount === "number" && <span className="text-[10px] text-amber-800">({listing.ratingCount})</span>}
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Link href={`/listing/${listing.id}`} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">
-            View
-          </Link>
-          <Link href={`/checkout/${listing.id}`} className="btn-primary">
-            Book
-          </Link>
+
+        <div className="flex items-center justify-between">
+          <div className="text-base font-semibold text-slate-900">
+            €{listing.pricePerDay} <span className="text-xs text-slate-500">/ day</span>
+          </div>
+          <div className="flex gap-1.5">
+            <Link
+              href={`/listing/${listing.id}`}
+              onClick={suppressNavigation ? handleSelect : undefined}
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              View
+            </Link>
+            <Link href={`/checkout/${listing.id}`} className="btn-primary px-3 py-1.5 text-xs">
+              Book
+            </Link>
+          </div>
         </div>
       </div>
     </article>

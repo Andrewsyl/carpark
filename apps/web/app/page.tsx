@@ -36,70 +36,39 @@ const sampleListings: Listing[] = [
 
 export default function HomePage() {
   return (
-    <div className="space-y-12">
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-8 sm:p-12">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_25%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.05),transparent_25%),radial-gradient(circle_at_40%_80%,rgba(255,255,255,0.06),transparent_30%)]" />
-                          <div className="relative grid gap-8 lg:grid-cols-[1.1fr,0.9fr] lg:items-center">
-                            <div className="space-y-6 text-white">
-                              <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-sm font-semibold">
-                                Peer-to-peer parking, daily or monthly
-                              </span>
-                              <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
-                                Park like a local. Driveway spots across the city, on demand or monthly.
-                              </h1>
-                              <p className="text-lg text-slate-200/90">
-                                Book secure private parking near work, concerts, or home. Instant confirmation, no circling the block.
-                              </p>
-                              <div className="flex flex-wrap gap-3 text-sm">
-                                <span className="rounded-full bg-white/10 px-3 py-1 font-semibold">Instant confirmation</span>
-                                <span className="rounded-full bg-white/10 px-3 py-1 font-semibold">Monthly passes</span>
-                                <span className="rounded-full bg-white/10 px-3 py-1 font-semibold">Stripe payouts</span>
-                              </div>
-                            </div>
-                            <div className="relative">
-                              <div className="rounded-2xl bg-white p-4 shadow-2xl ring-1 ring-slate-200">
-                                <SearchForm redirectToSearch compact />
-                              </div>
-                              <div className="mt-3 text-xs text-slate-200/80 lg:absolute lg:-left-6 lg:mt-0 lg:translate-y-full">
-                                Daily and monthly parking • EV and covered spots • No double bookings
-                              </div>
-                            </div>
-                          </div>      </section>
-
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Featured spaces</p>
-            <h2 className="text-2xl font-bold text-slate-900">Top picks near you</h2>
+    <div className="space-y-8 sm:space-y-10">
+      <section className="relative overflow-visible rounded-3xl bg-white p-6 shadow-card ring-1 ring-slate-100 sm:p-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.10),transparent_26%),radial-gradient(circle_at_80%_10%,rgba(14,165,233,0.08),transparent_24%)]" />
+        <div className="relative flex flex-col gap-6">
+          <div className="space-y-3 sm:space-y-4 text-center">
+            <h1 className="text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">Find parking fast.</h1>
+            <p className="mx-auto max-w-3xl text-base text-slate-600 sm:text-lg">
+              Book a driveway or private car park in seconds. Daily or monthly, with instant confirmation.
+            </p>
           </div>
-          <a href="/search" className="text-sm font-semibold text-brand-700">
-            View all
-          </a>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sampleListings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
-          ))}
+          <div className="mx-auto w-full max-w-5xl">
+            <div className="rounded-3xl bg-white/95 p-3 shadow-2xl ring-1 ring-slate-200">
+              <SearchForm redirectToSearch />
+            </div>
+            <div className="mt-2 text-center text-xs text-slate-500">Pick a location, time, and radius. Real availability.</div>
+          </div>
         </div>
       </section>
 
-      <section className="grid gap-6 rounded-3xl bg-white/80 p-6 shadow-inner ring-1 ring-slate-200 lg:grid-cols-3">
-        <div className="space-y-2">
-          <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">Why hosts list</p>
-          <h3 className="text-xl font-bold text-slate-900">Hands-off payouts</h3>
-          <p className="text-sm text-slate-600">Stripe Connect handles funds, with instant booking and overlap protection.</p>
-        </div>
-        <div className="space-y-2">
-          <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">Drivers</p>
-          <h3 className="text-xl font-bold text-slate-900">Find spots in minutes</h3>
-          <p className="text-sm text-slate-600">Real availability, daily or monthly passes, EV and covered options.</p>
-        </div>
-        <div className="space-y-2">
-          <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">Trust & coverage</p>
-          <h3 className="text-xl font-bold text-slate-900">No double bookings</h3>
-          <p className="text-sm text-slate-600">We block overlapping times, notify hosts, and keep a clean record of every stay.</p>
-        </div>
+      <section className="grid gap-4 rounded-3xl bg-white p-6 shadow-card ring-1 ring-slate-100 lg:grid-cols-3">
+        <StatCard title="3 min to book" detail="Search, select, pay—no calls or approvals." />
+        <StatCard title="Protected calendars" detail="No double bookings once you pay." />
+        <StatCard title="Host payouts" detail="Stripe-powered payouts for hosts, automated." />
       </section>
+    </div>
+  );
+}
+
+function StatCard({ title, detail }: { title: string; detail: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 shadow-inner">
+      <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+      <p className="mt-1 text-sm text-slate-600">{detail}</p>
     </div>
   );
 }

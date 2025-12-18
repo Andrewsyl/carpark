@@ -17,6 +17,8 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? "";
+  const [confirm, setConfirm] = useState<{ id: string; action: "suspend" | "activate"; email: string } | null>(null);
+  const [confirmReason, setConfirmReason] = useState("");
 
   const loadUsers = async () => {
     if (!token) return;
@@ -61,6 +63,8 @@ export default function AdminUsersPage() {
       const data = text ? JSON.parse(text) : {};
       if (!res.ok) throw new Error(data.message ?? "Failed to update user");
       setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...data.user } : u)));
+      setConfirm(null);
+      setConfirmReason("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update user");
     }
@@ -122,14 +126,14 @@ export default function AdminUsersPage() {
                 <td className="px-4 py-3 text-right">
                   {user.status === "suspended" ? (
                     <button
-                      onClick={() => updateUser(user.id, { status: "active" })}
+                      onClick={() => setConfirm({ id: user.id, action: "activate", email: user.email })}
                       className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500"
                     >
                       Activate
                     </button>
                   ) : (
                     <button
-                      onClick={() => updateUser(user.id, { status: "suspended" })}
+                      onClick={() => setConfirm({ id: user.id, action: "suspend", email: user.email })}
                       className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-500"
                     >
                       Suspend
@@ -142,6 +146,49 @@ export default function AdminUsersPage() {
         </table>
         {loading && <div className="p-3 text-sm text-slate-600">Loading…</div>}
       </div>
+
+      {confirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+            <h2 className="text-lg font-bold text-slate-900">
+              {confirm.action === "suspend" ? "Suspend user" : "Activate user"}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">User: {confirm.email}</p>
+            {confirm.action === "suspend" && (
+              <textarea
+                className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                placeholder="Reason (optional)"
+                value={confirmReason}
+                onChange={(e) => setConfirmReason(e.target.value)}
+              />
+            )}
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setConfirm(null);
+                  setConfirmReason("");
+                }}
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() =>
+                  updateUser(confirm.id, {
+                    status: confirm.action === "suspend" ? "suspended" : "active",
+                    reason: confirmReason || undefined,
+                  })
+                }
+                className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${
+                  confirm.action === "suspend" ? "bg-rose-600 hover:bg-rose-500" : "bg-emerald-600 hover:bg-emerald-500"
+                }`}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

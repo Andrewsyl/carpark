@@ -27,7 +27,7 @@ export default function RootLayout({
         <AppStatusProvider>
           <AuthProvider>
             <Navbar />
-            <main className="mx-auto max-w-8xl px-4 py-6 sm:px-6 sm:py-8 lg:px-12 lg:py-8">{children}</main>
+            <main className="px-0 py-0 sm:px-0 sm:py-0 lg:px-0 lg:py-0">{children}</main>
           </AuthProvider>
         </AppStatusProvider>
       </body>

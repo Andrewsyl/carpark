@@ -11,6 +11,17 @@ export const pool = new Pool({ connectionString });
 
 type ReviewRole = "driver_review" | "host_review";
 
+export type UserRecord = {
+  id: string;
+  email: string;
+  password_hash: string;
+  role?: "driver" | "host" | "admin";
+  host_stripe_account_id?: string | null;
+  email_verified?: boolean;
+  verification_token?: string | null;
+  verification_expires?: Date | null;
+};
+
 export type SpaceSearchInput = {
   lat: number;
   lng: number;
@@ -264,24 +275,28 @@ export async function createUser({
   email,
   passwordHash,
   role = "driver",
+  verificationToken,
+  verificationExpires,
 }: {
   email: string;
   passwordHash: string;
   role?: UserRecord["role"];
+  verificationToken?: string | null;
+  verificationExpires?: Date | null;
 }) {
   const query = `
-    INSERT INTO users (email, password_hash, role)
-    VALUES ($1, $2, $3)
+    INSERT INTO users (email, password_hash, role, verification_token, verification_expires)
+    VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT (email) DO NOTHING
-    RETURNING id, email, role, password_hash, host_stripe_account_id;
+    RETURNING id, email, role, password_hash, host_stripe_account_id, email_verified, verification_token, verification_expires;
   `;
-  const result = await pool.query(query, [email.toLowerCase(), passwordHash, role]);
+  const result = await pool.query(query, [email.toLowerCase(), passwordHash, role, verificationToken ?? null, verificationExpires ?? null]);
   return result.rows[0] as UserRecord | undefined;
 }
 
 export async function findUserByEmail(email: string) {
   const result = await pool.query(
-    `SELECT id, email, password_hash, role, host_stripe_account_id FROM users WHERE email = $1 LIMIT 1`,
+    `SELECT id, email, password_hash, role, host_stripe_account_id, email_verified, verification_token, verification_expires FROM users WHERE email = $1 LIMIT 1`,
     [email.toLowerCase()]
   );
   return result.rows[0] as UserRecord | undefined;
@@ -289,10 +304,34 @@ export async function findUserByEmail(email: string) {
 
 export async function findUserById(userId: string) {
   const result = await pool.query(
-    `SELECT id, email, password_hash, role, host_stripe_account_id FROM users WHERE id = $1 LIMIT 1`,
+    `SELECT id, email, password_hash, role, host_stripe_account_id, email_verified, verification_token, verification_expires FROM users WHERE id = $1 LIMIT 1`,
     [userId]
   );
   return result.rows[0] as UserRecord | undefined;
+}
+
+export async function verifyUserEmail(token: string) {
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET email_verified = true, verification_token = null, verification_expires = null
+    WHERE verification_token = $1 AND (verification_expires IS NULL OR verification_expires > now())
+    RETURNING id, email, role, host_stripe_account_id;
+    `,
+    [token]
+  );
+  return result.rows[0] as Pick<UserRecord, "id" | "email" | "role" | "host_stripe_account_id"> | undefined;
+}
+
+export async function setVerificationToken(userId: string, token: string, expiresAt: Date) {
+  await pool.query(
+    `
+    UPDATE users
+    SET verification_token = $1, verification_expires = $2
+    WHERE id = $3
+    `,
+    [token, expiresAt, userId]
+  );
 }
 
 export async function listListingsByHost(hostId: string) {

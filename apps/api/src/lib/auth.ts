@@ -36,3 +36,7 @@ export function verifyToken(token: string) {
   }
   return jwt.verify(token, jwtSecret) as JwtPayload;
 }
+
+export function generateVerificationToken() {
+  return crypto.randomUUID();
+}
