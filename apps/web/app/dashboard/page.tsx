@@ -13,6 +13,11 @@ export default function DashboardPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Booking | null>(null);
+  const [stats, setStats] = useState<{ driverCount: number; hostCount: number; hostEarnings: number }>({
+    driverCount: 0,
+    hostCount: 0,
+    hostEarnings: 0,
+  });
 
   const formatDateRange = (start: string, end: string) => {
     const startDate = new Date(start);
@@ -61,6 +66,11 @@ export default function DashboardPage() {
             };
           })
         );
+        setStats({
+          driverCount: driverData.length,
+          hostCount: hostData.length,
+          hostEarnings: hostData.reduce((sum, b) => sum + (b.amountCents ?? 0), 0) / 100,
+        });
         setStatus("idle");
       } catch (err) {
         setStatus("error");
@@ -94,20 +104,51 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <header className="space-y-2">
-        <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">Dashboard</p>
-        <h1 className="text-3xl font-bold text-slate-900">Your bookings</h1>
-        <p className="text-slate-600">Upcoming trips and host earnings in one place.</p>
+      <header className="space-y-3 rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 py-6 text-white shadow-lg">
+        <div className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200">Dashboard</div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold leading-tight sm:text-4xl">Welcome back{user?.email ? `, ${user.email}` : ""}</h1>
+            <p className="text-sm text-emerald-100/85">Track bookings, payouts, and saved payment methods.</p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-100">
+            <Link href="/dashboard/payments" className="rounded-full bg-white/10 px-3 py-1.5 hover:bg-white/15">
+              Payments
+            </Link>
+            <Link href="/dashboard/earnings" className="rounded-full bg-white/10 px-3 py-1.5 hover:bg-white/15">
+              Earnings
+            </Link>
+            <Link href="/host" className="rounded-full bg-emerald-500 px-3 py-1.5 text-slate-900 hover:bg-emerald-400">
+              List a space
+            </Link>
+          </div>
+        </div>
       </header>
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard label="Driver bookings" value={stats.driverCount.toString()} hint="Completed + upcoming" />
+        <StatCard
+          label="Host earnings"
+          value={`€${stats.hostEarnings.toFixed(2)}`}
+          hint="Gross payouts (test mode)"
+          accent
+        />
+        <StatCard label="Host bookings" value={stats.hostCount.toString()} hint="Confirmed + pending" />
+      </section>
 
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
       {status === "loading" && <div className="text-sm text-slate-600">Loading bookings…</div>}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="space-y-4">
+        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-slate-900">Driver</h2>
-            <span className="text-sm font-semibold text-brand-700">History + upcoming</span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Driver</p>
+              <h2 className="text-xl font-semibold text-slate-900">Your trips</h2>
+            </div>
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+              {driverBookings.length} total
+            </span>
           </div>
           <div className="grid gap-3">
             {driverBookings.map((booking) => (
@@ -116,17 +157,22 @@ export default function DashboardPage() {
               </button>
             ))}
             {driverBookings.length === 0 && status === "idle" && (
-              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 No driver bookings yet. Head to search to book a space.
               </div>
             )}
           </div>
         </section>
 
-        <section className="space-y-4">
+        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-slate-900">Host earnings</h2>
-            <span className="text-sm font-semibold text-brand-700">Stripe payouts</span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Host</p>
+              <h2 className="text-xl font-semibold text-slate-900">Earnings</h2>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+              {hostBookings.length} payouts
+            </span>
           </div>
           <div className="grid gap-3">
             {hostBookings.map((booking) => (
@@ -135,13 +181,13 @@ export default function DashboardPage() {
               </button>
             ))}
             {hostBookings.length === 0 && status === "idle" && (
-              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 No host bookings yet. List a space to start earning.
               </div>
             )}
           </div>
-          <div className="card text-sm text-slate-700">
-            Payouts flow via Stripe Connect. Store each host's `stripe_account_id`, send application fees per booking, and confirm transfers via webhook.
+          <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Payouts flow via Stripe Connect. Store each host Stripe account and send application fees per booking.
           </div>
         </section>
       </div>
@@ -185,6 +231,24 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function StatCard({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
+  return (
+    <div
+      className={`rounded-2xl border px-4 py-3 shadow-sm ${
+        accent
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-slate-200 bg-white/80 text-slate-900 backdrop-blur"
+      }`}
+    >
+      <p className={`text-xs font-semibold uppercase tracking-wide ${accent ? "text-emerald-700" : "text-slate-500"}`}>
+        {label}
+      </p>
+      <div className="text-2xl font-bold">{value}</div>
+      {hint && <p className={`text-xs ${accent ? "text-emerald-800/80" : "text-slate-500"}`}>{hint}</p>}
     </div>
   );
 }

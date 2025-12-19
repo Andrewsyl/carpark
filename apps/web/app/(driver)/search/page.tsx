@@ -255,8 +255,8 @@ function SearchPageContent() {
   const lockViewport = preserveViewport || searchAsMove || mapDirty;
 
   return (
-    <div className="lg:grid lg:grid-cols-[540px,1fr] lg:gap-3 lg:px-2 lg:items-start">
-      <div className="card shadow-lg lg:col-span-2 lg:sticky lg:top-4 lg:z-10">
+    <div className="lg:grid lg:h-[calc(100vh-96px)] lg:min-w-0 lg:grid-rows-[auto,1fr] lg:grid-cols-[520px,1fr] lg:items-start lg:gap-3 lg:overflow-hidden lg:px-2">
+      <div className="card shadow-lg lg:col-span-2 lg:min-w-0">
         <SearchForm
           initialValues={filters}
           onSearch={(f) => handleSearch(f, true)}
@@ -270,7 +270,8 @@ function SearchPageContent() {
         />
       </div>
 
-      <div className="space-y-3 lg:flex lg:h-[calc(100vh-180px)] lg:flex-col lg:overflow-y-auto lg:pr-2">
+      <div className="flex flex-col gap-3 lg:row-start-2 lg:h-full lg:min-w-0 lg:overflow-hidden">
+        <div className="space-y-3 flex-1 lg:overflow-y-auto lg:pr-2">
         {showFilters ? (
           <FiltersPanel
             initialFilters={filters}
@@ -330,7 +331,7 @@ function SearchPageContent() {
             {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
             {status === "loading" && <div className="text-sm text-slate-600">Searching…</div>}
 
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 lg:flex-1 lg:overflow-y-auto lg:pb-1 lg:px-2">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 lg:pb-3 lg:px-2">
               {results.map((listing) => (
                 <div
                   key={listing.id}
@@ -351,8 +352,10 @@ function SearchPageContent() {
         )}
       </div>
 
-      <div className="hidden lg:col-start-2 lg:block">
-        <div className="relative h-[calc(100vh-170px)] rounded-2xl border border-slate-200 bg-white shadow-lg sticky top-4">
+      </div>
+
+      <div className="hidden lg:col-start-2 lg:row-start-2 lg:block lg:h-full lg:min-w-0">
+        <div className="relative h-full rounded-2xl border border-slate-200 bg-white shadow-lg">
           <MapView
             listings={results}
             center={center}

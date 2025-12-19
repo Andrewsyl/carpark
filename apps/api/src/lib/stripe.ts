@@ -13,7 +13,7 @@ export type PaymentInput = {
   amount: number;
   currency: string;
   listingId: string;
-  hostStripeAccountId: string;
+  hostStripeAccountId?: string | null;
   platformFeePercent: number;
   successUrl: string;
   cancelUrl: string;
@@ -37,7 +37,7 @@ export async function createCheckoutSession(input: PaymentInput) {
   }
 
   try {
-    return await stripe.checkout.sessions.create({
+    const base: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       payment_method_types: ["card"],
       line_items: [
@@ -52,15 +52,21 @@ export async function createCheckoutSession(input: PaymentInput) {
           quantity: 1,
         },
       ],
-      payment_intent_data: {
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+    };
+
+    // If host account is available, use Connect transfer + app fee; otherwise bill to platform.
+    if (hostStripeAccountId) {
+      base.payment_intent_data = {
         application_fee_amount: feeAmount,
         transfer_data: {
           destination: hostStripeAccountId,
         },
-      },
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-    });
+      };
+    }
+
+    return await stripe.checkout.sessions.create(base);
   } catch (err: any) {
     if (err?.statusCode === 401 || err?.code === "authentication_required" || err?.type === "StripeAuthenticationError") {
       console.warn("Stripe auth failed; returning mock checkout session. Set a valid STRIPE_SECRET_KEY to enable live calls.");

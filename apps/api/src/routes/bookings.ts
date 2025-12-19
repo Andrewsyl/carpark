@@ -33,15 +33,12 @@ router.post("/", requireAuth, async (req, res, next) => {
     }
 
     const listingWithHost = await getListingWithHostAccount(payload.listingId);
-    if (!listingWithHost?.hostStripeAccountId) {
-      return res.status(400).json({ message: "Host has not completed payouts setup." });
-    }
 
     const session = await createCheckoutSession({
       amount: payload.amountCents,
       currency: payload.currency,
       listingId: payload.listingId,
-      hostStripeAccountId: listingWithHost.hostStripeAccountId,
+      hostStripeAccountId: listingWithHost?.hostStripeAccountId ?? null,
       platformFeePercent: payload.platformFeePercent,
       successUrl: `${process.env.WEB_BASE_URL ?? "http://localhost:3000"}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${process.env.WEB_BASE_URL ?? "http://localhost:3000"}/booking/cancel?session_id={CHECKOUT_SESSION_ID}`,

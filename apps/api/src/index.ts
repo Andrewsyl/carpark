@@ -8,6 +8,7 @@ import reviewsRouter from "./routes/reviews.js";
 import { z } from "zod";
 import hostRouter from "./routes/host.js";
 import adminRouter from "./routes/admin.js";
+import paymentsRouter from "./routes/payments.js";
 
 const app = express();
 app.use(cors({ origin: process.env.WEB_BASE_URL ?? "*" }));
@@ -29,6 +30,7 @@ app.use("/api/bookings", bookingsRouter);
 app.use("/api/host", hostRouter);
 app.use("/api/reviews", reviewsRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api", paymentsRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

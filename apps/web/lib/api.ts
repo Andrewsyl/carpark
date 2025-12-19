@@ -1,6 +1,6 @@
 import type { Listing } from "../components/ListingCard";
 import type { SearchFilters } from "../components/SearchForm";
-import type { PaymentMethod, PaymentHistoryItem } from "../types/payments";
+import type { PaymentMethod, PaymentHistoryItem, PayoutBalance, PayoutHistoryItem } from "../types/payments";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
 
@@ -331,16 +331,16 @@ export async function listPaymentMethods(token?: string): Promise<PaymentMethod[
   return data?.paymentMethods ?? [];
 }
 
-export async function addPaymentMethod(input: Record<string, any>, token?: string): Promise<PaymentMethod> {
+export async function addPaymentMethod(input: Record<string, any>, token?: string): Promise<any> {
   if (!token) throw new Error("Authentication required");
   const res = await fetch(`${API_BASE}/api/payment-methods`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders(token) },
     body: JSON.stringify(input),
   });
-  const { data, error } = await handleResponse<{ paymentMethod: PaymentMethod }>(res);
+  const { data, error } = await handleResponse<any>(res);
   if (error) throw new Error(error);
-  return data!.paymentMethod;
+  return data;
 }
 
 export async function setDefaultPaymentMethod(id: string, token?: string) {
@@ -386,4 +386,50 @@ export async function retryPayment(paymentId: string, token?: string) {
   const { error } = await handleResponse<{ ok: boolean }>(res);
   if (error) throw new Error(error);
   return true;
+}
+
+// Payouts (host)
+export async function getPayoutConnectStatus(token?: string) {
+  if (!token) throw new Error("Authentication required");
+  // Reuse host payout status endpoint if present
+  const res = await fetch(`${API_BASE}/api/payouts/connect-status`, {
+    headers: { ...authHeaders(token) },
+    cache: "no-store",
+  });
+  const { data, error } = await handleResponse<{ connected: boolean; accountId?: string }>(res);
+  if (error) throw new Error(error);
+  return data ?? { connected: false };
+}
+
+export async function createPayoutOnboardingLink(token?: string) {
+  if (!token) throw new Error("Authentication required");
+  const res = await fetch(`${API_BASE}/api/payouts/connect-link`, {
+    method: "POST",
+    headers: { ...authHeaders(token) },
+  });
+  const { data, error } = await handleResponse<{ url: string }>(res);
+  if (error) throw new Error(error);
+  return data!.url;
+}
+
+export async function getPayoutBalance(token?: string): Promise<PayoutBalance> {
+  if (!token) throw new Error("Authentication required");
+  const res = await fetch(`${API_BASE}/api/payouts/balance`, {
+    headers: { ...authHeaders(token) },
+    cache: "no-store",
+  });
+  const { data, error } = await handleResponse<{ balance: PayoutBalance }>(res);
+  if (error) throw new Error(error);
+  return data?.balance ?? { available: 0, pending: 0, currency: "eur" };
+}
+
+export async function listPayoutHistory(token?: string): Promise<PayoutHistoryItem[]> {
+  if (!token) throw new Error("Authentication required");
+  const res = await fetch(`${API_BASE}/api/payouts/history`, {
+    headers: { ...authHeaders(token) },
+    cache: "no-store",
+  });
+  const { data, error } = await handleResponse<{ payouts: PayoutHistoryItem[] }>(res);
+  if (error) throw new Error(error);
+  return data?.payouts ?? [];
 }

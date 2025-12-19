@@ -6,12 +6,14 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { useAppStatus } from "./AppStatusProvider";
 
-const links: { href: Route; label: string }[] = [
+const links: { href: Route; label: string; roles?: string[] }[] = [
   { href: "/", label: "Home" },
   { href: "/search", label: "Find parking" },
   { href: "/host", label: "List a space" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/host/dashboard", label: "Host dashboard" },
+  { href: "/dashboard/payments", label: "Payments", roles: ["driver", "customer", "admin"] },
+  { href: "/dashboard/earnings", label: "Earnings", roles: ["host", "admin"] },
 ];
 
 export function Navbar() {
@@ -47,11 +49,18 @@ export function Navbar() {
           ParkShare Dublin
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-semibold text-slate-700 sm:flex">
-          {links.map((link) => (
-            <Link key={link.href} href={link.href} className="hover:text-brand-700">
-              {link.label}
-            </Link>
-          ))}
+          {links
+            .filter((link) => {
+              if (!link.roles) return true;
+              if (!user?.role) return true;
+              if (user.role === "host" && link.href === "/dashboard/payments") return true; // hosts can also be drivers
+              return link.roles.includes(user.role);
+            })
+            .map((link) => (
+              <Link key={link.href} href={link.href} className="hover:text-brand-700">
+                {link.label}
+              </Link>
+            ))}
         </nav>
         {user ? (
           <div className="relative text-sm" ref={menuRef}>

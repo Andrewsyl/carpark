@@ -84,42 +84,46 @@ export default function HostDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-2">
-        <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">Host dashboard</p>
-        <h1 className="text-3xl font-bold text-slate-900">Your listings</h1>
-        <p className="text-slate-600">Manage and delete your spaces.</p>
-        <div className="flex gap-2 text-sm">
-          <Link href="/host" className="btn-primary">
-            Add new listing
-          </Link>
-          <Link href="/dashboard" className="rounded-lg px-3 py-2 font-semibold text-slate-700 hover:bg-slate-100">
-            View bookings
-          </Link>
-        </div>
-        <div className="flex flex-wrap gap-2 text-sm">
-          {payoutAccount ? (
-            <span className="rounded-lg bg-emerald-100 px-3 py-2 font-semibold text-emerald-800">
-              Payouts ready • {payoutAccount}
-            </span>
-          ) : (
-            <button
-              onClick={async () => {
-                if (!token) return;
-                setPayoutStatus("loading");
-                try {
-                  const res = await createHostPayoutAccount(token);
-                  setPayoutAccount(res.accountId);
-                  setPayoutStatus("ready");
-                } catch (err) {
-                  setPayoutStatus("error");
-                }
-              }}
-              className="rounded-lg bg-amber-100 px-3 py-2 font-semibold text-amber-800 hover:bg-amber-200"
-              disabled={payoutStatus === "loading"}
-            >
-              {payoutStatus === "loading" ? "Enabling payouts…" : "Enable payouts"}
-            </button>
-          )}
+      <header className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 py-5 text-white shadow-lg">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200">Host dashboard</p>
+            <h1 className="text-3xl font-bold leading-tight">Your listings</h1>
+            <p className="text-sm text-emerald-100/80">Manage spaces, payouts, and visibility.</p>
+            <div className="flex flex-wrap gap-2 text-sm">
+              <Link href="/host" className="rounded-full bg-emerald-500 px-3 py-1.5 font-semibold text-slate-900 hover:bg-emerald-400">
+                Add new listing
+              </Link>
+              <Link href="/dashboard" className="rounded-full bg-white/10 px-3 py-1.5 font-semibold text-white hover:bg-white/15">
+                View bookings
+              </Link>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 text-sm font-semibold">
+            {payoutAccount ? (
+              <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800 ring-1 ring-emerald-200">
+                Payouts ready • {payoutAccount}
+              </span>
+            ) : (
+              <button
+                onClick={async () => {
+                  if (!token) return;
+                  setPayoutStatus("loading");
+                  try {
+                    const res = await createHostPayoutAccount(token);
+                    setPayoutAccount(res.accountId);
+                    setPayoutStatus("ready");
+                  } catch (err) {
+                    setPayoutStatus("error");
+                  }
+                }}
+                className="rounded-full bg-amber-100 px-3 py-2 text-amber-800 ring-1 ring-amber-200 hover:bg-amber-200"
+                disabled={payoutStatus === "loading"}
+              >
+                {payoutStatus === "loading" ? "Enabling payouts…" : "Enable payouts"}
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -136,15 +140,18 @@ export default function HostDashboardPage() {
 
       <div className="grid gap-4">
         {listings.map((listing) => (
-          <div key={listing.id} className="card flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <a href={`/listing/${listing.id}`} className="space-y-1 hover:text-brand-700">
-              <h3 className="text-lg font-semibold text-slate-900">{listing.title}</h3>
-              <p className="text-sm text-slate-600">{listing.address}</p>
-              <p className="text-sm text-slate-700">
-                €{listing.pricePerDay} / day • {listing.availability}
+          <div
+            key={listing.id}
+            className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between"
+          >
+            <a href={`/listing/${listing.id}`} className="space-y-1 hover:text-brand-700 sm:max-w-[70%]">
+              <h3 className="text-lg font-semibold text-slate-900 line-clamp-1">{listing.title}</h3>
+              <p className="text-sm text-slate-600 line-clamp-2">{listing.address}</p>
+              <p className="text-sm font-semibold text-slate-800">
+                €{listing.pricePerDay} / day • <span className="text-slate-600">{listing.availability}</span>
               </p>
             </a>
-            <div className="flex flex-col gap-2 sm:items-end">
+            <div className="flex flex-col items-start gap-2 sm:items-end">
               <button
                 onClick={() => handleDelete(listing.id)}
                 className="rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50"

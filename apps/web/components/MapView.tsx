@@ -21,23 +21,33 @@ type MapViewProps = {
 
 const markerIcon = (price: number, active: boolean) => {
   const key = `${price}-${active ? "a" : "i"}`;
+  const fillTop = active ? "#12b886" : "#f8fafc";
+  const fillBottom = active ? "#0f9d75" : "#ffffff";
+  const stroke = active ? "#0b7d55" : "#cbd5e1";
+  const text = active ? "#ffffff" : "#0f172a";
   return {
     url:
       "data:image/svg+xml;charset=UTF-8," +
       encodeURIComponent(
-        `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="40" viewBox="0 0 60 40" fill="none">
+        `<svg xmlns="http://www.w3.org/2000/svg" width="78" height="56" viewBox="0 0 78 56" fill="none">
           <defs>
-            <linearGradient id="grad-${key}" x1="0" y1="0" x2="60" y2="40">
-              <stop offset="0%" stop-color="${active ? "#4f8df8" : "#0F172A"}"/>
-              <stop offset="100%" stop-color="${active ? "#2563eb" : "#0b1225"}"/>
+            <linearGradient id="grad-${key}" x1="0" y1="0" x2="0" y2="42">
+              <stop offset="0%" stop-color="${fillTop}"/>
+              <stop offset="100%" stop-color="${fillBottom}"/>
             </linearGradient>
+            <filter id="shadow-${key}" x="-10" y="-10" width="98" height="86" color-interpolation-filters="sRGB">
+              <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="rgba(15,23,42,0.18)"/>
+            </filter>
           </defs>
-          <path d="M11 1.5H49C55.5 1.5 59.5 5.5 59.5 12V20C59.5 26.5 55.5 30.5 49 30.5H35L30 38.5L25 30.5H11C4.5 30.5 0.5 26.5 0.5 20V12C0.5 5.5 4.5 1.5 11 1.5Z" fill="url(#grad-${key})" stroke="white" stroke-width="2"/>
-          <text x="30" y="18" text-anchor="middle" fill="#FFFFFF" font-size="11" font-family="Arial" font-weight="700">€${price}</text>
+          <g filter="url(#shadow-${key})">
+            <path d="M11 9.5C11 6.462 13.462 4 16.5 4H61.5C64.538 4 67 6.462 67 9.5V34.5C67 38.09 64.09 41 60.5 41H44L39 50L34 41H17.5C13.91 41 11 38.09 11 34.5V17Z" fill="url(#grad-${key})" stroke="${stroke}" stroke-width="2"/>
+            <path d="M39 50L44 41H34L39 50Z" fill="url(#grad-${key})" stroke="${stroke}" stroke-width="2"/>
+            <text x="39" y="28" text-anchor="middle" fill="${text}" font-size="14" font-family="Inter,Arial,sans-serif" font-weight="700">€${price}</text>
+          </g>
         </svg>`
       ),
-    anchor: new google.maps.Point(30, 38),
-    labelOrigin: new google.maps.Point(30, 17),
+    anchor: new google.maps.Point(39, 50),
+    labelOrigin: new google.maps.Point(39, 26),
   } as any;
 };
 
@@ -65,6 +75,7 @@ export function MapView({
   const mapInstance = useRef<any>();
   const markersRef = useRef<Map<string, { marker: any; listing: Listing }>>(new Map());
   const centerMarkerRef = useRef<any>();
+  const markerSignatureRef = useRef<string>("");
   const [mapsReady, setMapsReady] = useState(false);
   const hasUserDraggedRef = useRef(false);
   const prevSelectedRef = useRef<string | null>(null);
@@ -100,8 +111,19 @@ export function MapView({
   useEffect(() => {
     if (!mapsReady || !mapInstance.current || !(window as any).google?.maps) return;
 
+    const signature = listings
+      .filter((l) => typeof l.latitude === "number" && typeof l.longitude === "number")
+      .map((l) => `${l.id}-${l.latitude}-${l.longitude}-${l.pricePerDay}`)
+      .join("|");
+
+    if (signature === markerSignatureRef.current) {
+      // No marker data change; skip rebuild to avoid flicker.
+      return;
+    }
+
     markersRef.current.forEach(({ marker }) => marker.setMap(null));
     markersRef.current.clear();
+    markerSignatureRef.current = signature;
 
     const infoWindow = new google.maps.InfoWindow();
 

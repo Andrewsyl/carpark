@@ -18,3 +18,21 @@ export type PaymentHistoryItem = {
   created_at: string;
   receipt_url?: string;
 };
+
+export type PayoutBalance = {
+  available: number; // cents
+  pending: number; // cents
+  currency: string;
+};
+
+export type PayoutHistoryItem = {
+  id: string;
+  amount: number; // net cents
+  gross_amount?: number;
+  platform_fee?: number;
+  status: "paid" | "pending" | "failed" | "cancelled";
+  arrival_date?: string;
+  created_at: string;
+  bookings_count?: number;
+  statement_url?: string;
+};
