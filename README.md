@@ -48,3 +48,10 @@ npm run dev:web   # Web on :3000
 - Tokens include role; admin middleware also DB-checks role for older tokens.
 - Hydration-safe date formatting uses fixed locale/timeZone where needed.
 - Map requires `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
+
+## Mobile app (React Native / Expo)
+- Location: `apps/mobile` (added as a workspace). Uses Expo + React Navigation with AsyncStorage-backed auth.
+- Features: login/signup, search list, listing detail with checkout link, bookings list (driver + host), host listings overview with sign-out.
+- Config: set `EXPO_PUBLIC_API_BASE` (falls back to `http://localhost:4000`). Shares the same API contract as web.
+- Run from repo root: `npm install` then `npm run dev:mobile` (or `cd apps/mobile && npm start`) and choose iOS/Android/web in Expo.
+- Notes: search form is simplified (manual date/time/radius inputs, no geocoding), checkout opens the returned `checkoutUrl` in the system browser. Replace placeholder icons under `apps/mobile/assets` as needed.

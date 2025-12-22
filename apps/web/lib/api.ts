@@ -170,6 +170,31 @@ export async function deleteListing(listingId: string, token?: string) {
   return data;
 }
 
+export async function deleteAccount(token?: string) {
+  if (!token) throw new Error("Authentication required");
+  const res = await fetch(`${API_BASE}/api/auth/me`, {
+    method: "DELETE",
+    headers: { ...authHeaders(token) },
+  });
+  if (res.status === 204) return;
+  const { error } = await handleResponse(res);
+  if (error) {
+    throw new Error(error);
+  }
+}
+
+export async function requestEmailVerification(email: string) {
+  const res = await fetch(`${API_BASE}/api/auth/request-verification`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const { error } = await handleResponse(res);
+  if (error) {
+    throw new Error(error);
+  }
+}
+
 export type ListingDetail = {
   id: string;
   title: string;

@@ -34,9 +34,18 @@ export default function AdminListingsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string | undefined>();
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? "";
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
   const [confirm, setConfirm] = useState<{ id: string; action: "approve" | "rejected" | "disabled"; title: string } | null>(null);
   const [confirmReason, setConfirmReason] = useState("");
+
+  const parseSafe = async (res: Response) => {
+    try {
+      return await res.clone().json();
+    } catch {
+      const text = await res.text();
+      return text && !text.startsWith("<!DOCTYPE") ? { message: text } : { message: "Admin API unavailable" };
+    }
+  };
 
   const formatDate = (value: string) => {
     try {
@@ -53,10 +62,9 @@ export default function AdminListingsPage() {
     try {
       const url = filter ? `${apiBase}/api/admin/listings?status=${filter}` : `${apiBase}/api/admin/listings`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      const text = await res.text();
-      const data = text ? JSON.parse(text) : {};
-      if (!res.ok) throw new Error(data.message ?? "Failed to load listings");
-      setListings(data.listings ?? []);
+      const data = await parseSafe(res);
+      if (!res.ok) throw new Error((data as any).message ?? "Failed to load listings");
+      setListings((data as any).listings ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load listings");
     } finally {
@@ -78,10 +86,9 @@ export default function AdminListingsPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
       });
-      const text = await res.text();
-      const data = text ? JSON.parse(text) : {};
-      if (!res.ok) throw new Error(data.message ?? "Failed to update listing");
-      setListings((prev) => prev.map((l) => (l.id === id ? { ...l, ...data.listing } : l)));
+      const data = await parseSafe(res);
+      if (!res.ok) throw new Error((data as any).message ?? "Failed to update listing");
+      setListings((prev) => prev.map((l) => (l.id === id ? { ...l, ...(data as any).listing } : l)));
       setConfirm(null);
       setConfirmReason("");
     } catch (err) {

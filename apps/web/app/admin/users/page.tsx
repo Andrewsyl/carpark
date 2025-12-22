@@ -16,9 +16,19 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? "";
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
   const [confirm, setConfirm] = useState<{ id: string; action: "suspend" | "activate"; email: string } | null>(null);
   const [confirmReason, setConfirmReason] = useState("");
+  const [deleteId, setDeleteId] = useState<{ id: string; email: string } | null>(null);
+
+  const parseSafe = async (res: Response) => {
+    try {
+      return await res.clone().json();
+    } catch {
+      const text = await res.text();
+      return text && !text.startsWith("<!DOCTYPE") ? { message: text } : { message: "Admin API unavailable" };
+    }
+  };
 
   const loadUsers = async () => {
     if (!token) return;
@@ -26,9 +36,8 @@ export default function AdminUsersPage() {
     setError(null);
     try {
       const res = await fetch(`${apiBase}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
-      const text = await res.text();
-      const data = text ? JSON.parse(text) : {};
-      if (!res.ok) throw new Error(data.message ?? "Failed to load users");
+      const data = await parseSafe(res);
+      if (!res.ok) throw new Error((data as any).message ?? "Failed to load users");
       setUsers(data.users ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load users");
@@ -59,14 +68,31 @@ export default function AdminUsersPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
       });
-      const text = await res.text();
-      const data = text ? JSON.parse(text) : {};
-      if (!res.ok) throw new Error(data.message ?? "Failed to update user");
-      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...data.user } : u)));
+      const data = await parseSafe(res);
+      if (!res.ok) throw new Error((data as any).message ?? "Failed to update user");
+      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...(data as any).user } : u)));
       setConfirm(null);
       setConfirmReason("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update user");
+    }
+  };
+
+  const deleteUser = async (id: string, reason?: string) => {
+    if (!token) return;
+    setError(null);
+    try {
+      const res = await fetch(`${apiBase}/api/admin/users/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: reason ? JSON.stringify({ reason }) : undefined,
+      });
+      const data = await parseSafe(res);
+      if (!res.ok) throw new Error((data as any).message ?? "Failed to delete user");
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      setDeleteId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete user");
     }
   };
 
@@ -139,6 +165,12 @@ export default function AdminUsersPage() {
                       Suspend
                     </button>
                   )}
+                  <button
+                    onClick={() => setDeleteId({ id: user.id, email: user.email })}
+                    className="ml-2 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}
@@ -184,6 +216,39 @@ export default function AdminUsersPage() {
                 }`}
               >
                 Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+            <h2 className="text-lg font-bold text-slate-900">Delete user</h2>
+            <p className="mt-1 text-sm text-slate-600">This removes the account, listings, and bookings.</p>
+            <p className="mt-2 text-sm font-semibold text-slate-900">{deleteId.email}</p>
+            <textarea
+              className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+              placeholder="Reason (optional)"
+              value={confirmReason}
+              onChange={(e) => setConfirmReason(e.target.value)}
+            />
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setDeleteId(null);
+                  setConfirmReason("");
+                }}
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteUser(deleteId.id, confirmReason || undefined)}
+                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500"
+              >
+                Delete
               </button>
             </div>
           </div>

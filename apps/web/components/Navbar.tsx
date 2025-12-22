@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
+import { deleteAccount } from "../lib/api";
 import { useAppStatus } from "./AppStatusProvider";
 
 const links: { href: Route; label: string; roles?: string[] }[] = [
@@ -17,7 +18,7 @@ const links: { href: Route; label: string; roles?: string[] }[] = [
 ];
 
 export function Navbar() {
-  const { user, signOut } = useAuth();
+  const { user, token, signOut } = useAuth();
   const { isLoading, error, setError } = useAppStatus();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -89,26 +90,26 @@ export function Navbar() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Signed in</p>
                   <p className="truncate text-sm font-semibold text-slate-900">{user.email}</p>
                 </div>
-                <div className="border-t border-slate-100">
-                  <Link
-                    href="/dashboard"
-                    className="block px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                    onClick={() => setOpen(false)}
-                  >
-                    Profile & trips
-                  </Link>
+              <div className="border-t border-slate-100">
+                <Link
+                  href="/dashboard/profile"
+                  className="block px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  onClick={() => setOpen(false)}
+                >
+                  Profile
+                </Link>
                   <Link
                     href="/host/dashboard"
-                    className="block px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                    onClick={() => setOpen(false)}
-                  >
-                    Host dashboard
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpen(false);
-                      signOut();
+                  className="block px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  onClick={() => setOpen(false)}
+                >
+                  Host dashboard
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    signOut();
                     }}
                     className="block w-full px-4 py-3 text-left text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
                   >

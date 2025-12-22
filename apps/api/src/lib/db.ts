@@ -695,6 +695,17 @@ export async function setHostStripeAccountId(userId: string, accountId: string) 
   return res.rowCount ? res.rows[0] : null;
 }
 
+export async function deleteUserAccount(userId: string) {
+  // Clean up related records; tables do not enforce FK constraints.
+  await pool.query(
+    `DELETE FROM bookings WHERE driver_id = $1 OR listing_id IN (SELECT id FROM listings WHERE host_id = $1)`,
+    [userId]
+  );
+  await pool.query(`DELETE FROM listings WHERE host_id = $1`, [userId]);
+  const res = await pool.query(`DELETE FROM users WHERE id = $1 RETURNING id`, [userId]);
+  return res.rowCount > 0;
+}
+
 // Admin utilities
 export async function listUsers({ limit = 50, offset = 0, search }: { limit?: number; offset?: number; search?: string }) {
   const params: any[] = [limit, offset];

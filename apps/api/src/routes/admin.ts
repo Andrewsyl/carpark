@@ -8,6 +8,7 @@ import {
   listListingsForAdmin,
   updateListingStatus,
   insertAuditLog,
+  deleteUserAccount,
 } from "../lib/db.js";
 
 const router = Router();
@@ -52,6 +53,25 @@ router.patch("/users/:id", requireAuth, requireAdmin, async (req, res, next) => 
       ua: req.headers["user-agent"] as string,
     });
     res.json({ user: updated });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/users/:id", requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const deleted = await deleteUserAccount(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "User not found" });
+    await insertAuditLog({
+      adminId: req.user!.userId,
+      action: "delete_user",
+      targetType: "user",
+      targetId: req.params.id,
+      reason: req.body?.reason,
+      ip: req.ip,
+      ua: req.headers["user-agent"] as string,
+    });
+    res.status(204).send();
   } catch (error) {
     next(error);
   }
