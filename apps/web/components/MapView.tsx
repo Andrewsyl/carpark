@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import type { Listing } from "./ListingCard";
+import { MapPopupCard } from "./MapPopupCard";
 
 declare const google: any;
 
@@ -12,6 +14,8 @@ type MapViewProps = {
   maxZoom?: number;
   minFitZoom?: number;
   selectedListingId?: string;
+  popupListing?: Listing | null;
+  onPopupBook?: (listing: Listing) => void;
   onSelectListing?: (listingId: string) => void;
   onMarkerClick?: (listing: Listing) => void;
   onBoundsChanged?: (bounds: google.maps.LatLngBoundsLiteral, center: { lat: number; lng: number }, zoom: number, userInteracted: boolean) => void;
@@ -65,6 +69,8 @@ export function MapView({
   maxZoom = 12,
   minFitZoom,
   selectedListingId,
+  popupListing,
+  onPopupBook,
   onSelectListing,
   onMarkerClick,
   onBoundsChanged,
@@ -79,6 +85,9 @@ export function MapView({
   const [mapsReady, setMapsReady] = useState(false);
   const hasUserDraggedRef = useRef(false);
   const prevSelectedRef = useRef<string | null>(null);
+  const popupOverlayRef = useRef<any | null>(null);
+  const popupRootRef = useRef<Root | null>(null);
+  const popupContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!(window as any).google?.maps) return;
@@ -96,6 +105,7 @@ export function MapView({
         zoom: initialZoom,
         mapTypeControl: false,
         streetViewControl: false,
+        styles: [],
       });
 
     const map = mapInstance.current;
@@ -199,6 +209,80 @@ export function MapView({
     });
     return () => idleListener?.remove();
   }, [mapsReady, onBoundsChanged]);
+
+  useEffect(() => {
+    if (!mapsReady || !mapInstance.current || !(window as any).google?.maps) return;
+
+    if (
+      !popupListing ||
+      typeof popupListing.latitude !== "number" ||
+      typeof popupListing.longitude !== "number"
+    ) {
+      popupOverlayRef.current?.setMap(null);
+      popupOverlayRef.current = null;
+      popupRootRef.current?.unmount();
+      popupRootRef.current = null;
+      popupContainerRef.current?.remove();
+      popupContainerRef.current = null;
+      return;
+    }
+
+    popupOverlayRef.current?.setMap(null);
+    popupOverlayRef.current = null;
+    popupRootRef.current?.unmount();
+    popupRootRef.current = null;
+    popupContainerRef.current?.remove();
+    popupContainerRef.current = null;
+
+    const container = document.createElement("div");
+    container.style.position = "absolute";
+    container.style.transform = "translate(-50%, calc(-100% - 12px))";
+    container.style.pointerEvents = "auto";
+    popupContainerRef.current = container;
+
+    const root = createRoot(container);
+    popupRootRef.current = root;
+    root.render(
+      <MapPopupCard
+        title={popupListing.title}
+        price={`€${popupListing.pricePerDay}`}
+        secondaryText="5 min walk · Available now"
+        onBook={() => onPopupBook?.(popupListing)}
+      />
+    );
+
+    const overlay = new google.maps.OverlayView();
+    overlay.onAdd = function onAdd() {
+      const panes = this.getPanes();
+      const target = panes?.overlayMouseTarget ?? panes?.overlayLayer;
+      target?.appendChild(container);
+    };
+    overlay.draw = function draw() {
+      const projection = this.getProjection();
+      if (!projection) return;
+      const position = projection.fromLatLngToDivPixel(
+        new google.maps.LatLng(popupListing.latitude!, popupListing.longitude!)
+      );
+      if (!position) return;
+      container.style.left = `${position.x}px`;
+      container.style.top = `${position.y}px`;
+    };
+    overlay.onRemove = function onRemove() {
+      container.remove();
+    };
+
+    overlay.setMap(mapInstance.current);
+    popupOverlayRef.current = overlay;
+
+    return () => {
+      overlay.setMap(null);
+      popupOverlayRef.current = null;
+      popupRootRef.current?.unmount();
+      popupRootRef.current = null;
+      popupContainerRef.current?.remove();
+      popupContainerRef.current = null;
+    };
+  }, [mapsReady, popupListing, onPopupBook]);
 
   useEffect(() => {
     if (!mapsReady || !mapInstance.current || !(window as any).google?.maps) return;

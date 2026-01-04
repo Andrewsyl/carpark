@@ -11,7 +11,23 @@ import adminRouter from "./routes/admin.js";
 import paymentsRouter from "./routes/payments.js";
 
 const app = express();
-app.use(cors({ origin: process.env.WEB_BASE_URL ?? "*" }));
+const allowedOrigins = new Set(
+  [
+    process.env.WEB_BASE_URL,
+    "http://localhost:3000",
+    "http://localhost:8081",
+    "http://localhost:19006",
+  ].filter(Boolean)
+);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.has(origin)) return callback(null, true);
+      return callback(new Error("CORS blocked"));
+    },
+  })
+);
 // Skip JSON parsing for Stripe webhook route so we can validate the raw payload.
 app.use((req, res, next) => {
   if (req.originalUrl === "/api/bookings/webhook") {

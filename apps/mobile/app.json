@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "CarParking",
+    "slug": "carparking",
+    "version": "0.1.0",
+    "userInterfaceStyle": "light",
+    "orientation": "portrait",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "plugins": [],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F8F1E7"
+    },
+    "android": {
+      "userInterfaceStyle": "light",
+      "package": "com.andrewsyl.carparking",
+      "compileSdkVersion": 35,
+      "targetSdkVersion": 35,
+      "buildToolsVersion": "35.0.0",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyC1h1NFLFz7SPauw85Udh0O1CBlN5bqOek"
+        }
+      }
+    },
+    "androidStatusBar": {
+      "translucent": true,
+      "backgroundColor": "#00000000",
+      "barStyle": "dark-content"
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#00000000",
+      "barStyle": "dark-content"
+    },
+    "ios": {
+      "bundleIdentifier": "com.andrewsyl.carparking"
+    }
+  }
+}

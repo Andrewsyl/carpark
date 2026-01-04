@@ -108,6 +108,7 @@ function SearchPageContent() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
   const [showListingOverlay, setShowListingOverlay] = useState(false);
+  const [popupListingId, setPopupListingId] = useState<string | null>(null);
   const [pendingCenter, setPendingCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [mapDirty, setMapDirty] = useState(false);
   const [pendingBounds, setPendingBounds] = useState<any | null>(null);
@@ -238,6 +239,7 @@ function SearchPageContent() {
       // Only the explicit View button should navigate; selecting a card just highlights.
       setSelectedListingId(listing.id);
       setShowListingOverlay(false);
+      setPopupListingId(null);
     },
     []
   );
@@ -249,9 +251,18 @@ function SearchPageContent() {
   const handleMarkerClick = useCallback((listing: Listing) => {
     setSelectedListingId(listing.id);
     setShowListingOverlay(true);
+    setPopupListingId(listing.id);
   }, []);
 
+  const handlePopupBook = useCallback(
+    (listing: Listing) => {
+      router.push(`/listing/${listing.id}`);
+    },
+    [router]
+  );
+
   const selectedListing = selectedListingId ? results.find((l) => l.id === selectedListingId) : null;
+  const popupListing = popupListingId ? results.find((l) => l.id === popupListingId) : null;
   const lockViewport = preserveViewport || searchAsMove || mapDirty;
 
   return (
@@ -364,6 +375,8 @@ function SearchPageContent() {
             minFitZoom={16}
             showCenterPin
             selectedListingId={selectedListingId ?? undefined}
+            popupListing={popupListing ?? undefined}
+            onPopupBook={handlePopupBook}
             onSelectListing={handleMarkerSelect}
             onMarkerClick={handleMarkerClick}
             disableAutoFit={lockViewport}
@@ -441,6 +454,8 @@ function SearchPageContent() {
                   minFitZoom={16}
                   showCenterPin
                   selectedListingId={selectedListingId ?? undefined}
+                  popupListing={popupListing ?? undefined}
+                  onPopupBook={handlePopupBook}
                   onSelectListing={handleMarkerSelect}
                   onMarkerClick={handleMarkerClick}
                   disableAutoFit={lockViewport}

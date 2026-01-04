@@ -373,6 +373,76 @@ export async function getListingHostId(listingId: string) {
   return res.rows[0]?.host_id as string | undefined;
 }
 
+export async function updateListingForHost({
+  listingId,
+  hostId,
+  title,
+  address,
+  pricePerDay,
+  availabilityText,
+  latitude,
+  longitude,
+  imageUrls,
+  amenities,
+}: {
+  listingId: string;
+  hostId: string;
+  title?: string;
+  address?: string;
+  pricePerDay?: number;
+  availabilityText?: string;
+  latitude?: number;
+  longitude?: number;
+  imageUrls?: string[];
+  amenities?: string[];
+}) {
+  const fields: string[] = [];
+  const values: any[] = [];
+  let idx = 1;
+
+  if (typeof title === "string") {
+    fields.push(`title = $${idx++}`);
+    values.push(title);
+  }
+  if (typeof address === "string") {
+    fields.push(`address = $${idx++}`);
+    values.push(address);
+  }
+  if (typeof pricePerDay === "number") {
+    fields.push(`price_per_day = $${idx++}`);
+    values.push(pricePerDay);
+  }
+  if (typeof availabilityText === "string") {
+    fields.push(`availability_text = $${idx++}`);
+    values.push(availabilityText);
+  }
+  if (Array.isArray(imageUrls)) {
+    fields.push(`image_urls = $${idx++}`);
+    values.push(imageUrls);
+  }
+  if (Array.isArray(amenities)) {
+    fields.push(`amenities = $${idx++}`);
+    values.push(amenities);
+  }
+  if (typeof latitude === "number" && typeof longitude === "number") {
+    fields.push(`geom = ST_SetSRID(ST_MakePoint($${idx++}, $${idx++}), 4326)`);
+    values.push(longitude, latitude);
+  }
+
+  if (!fields.length) return null;
+  values.push(listingId, hostId);
+  const result = await pool.query(
+    `
+    UPDATE listings
+    SET ${fields.join(", ")}
+    WHERE id = $${idx++} AND host_id = $${idx}
+    RETURNING id;
+    `,
+    values
+  );
+  return result.rowCount ? result.rows[0] : null;
+}
+
 export async function getListingById(listingId: string) {
   const result = await pool.query(
     `

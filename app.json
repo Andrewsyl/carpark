@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "carparking",
+    "slug": "carparking",
+    "version": "0.1.0",
+    "sdkVersion": "50.0.0",
+    "platforms": [
+      "web"
+    ],
+    "android": {
+      "package": "com.andrewsyl.carparking"
+    },
+    "ios": {
+      "bundleIdentifier": "com.andrewsyl.carparking"
+    }
+  }
+}

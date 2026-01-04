@@ -7,6 +7,8 @@ import {
   listListingsByHost,
   getListingById,
   findUserById,
+  updateListingForHost,
+  getListingHostId,
 } from "../lib/db.js";
 import { getPresignedUploadUrl } from "../lib/s3.js";
 import { geocodeAddress } from "../lib/geocode.js";
@@ -98,6 +100,43 @@ router.get("/:id", async (req, res, next) => {
     const listing = await getListingById(req.params.id);
     if (!listing) return res.status(404).json({ message: "Listing not found" });
     res.json({ listing });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const updateListingSchema = z.object({
+  title: z.string().min(3).optional(),
+  address: z.string().min(3).optional(),
+  pricePerDay: z.number().positive().optional(),
+  availabilityText: z.string().min(3).optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  imageUrls: z.array(z.string()).optional(),
+  amenities: z.array(z.string()).optional(),
+});
+
+router.patch("/:id", requireAuth, async (req, res, next) => {
+  try {
+    const hostId = req.user?.userId;
+    if (!hostId) return res.status(401).json({ message: "Unauthorized" });
+    const ownerId = await getListingHostId(req.params.id);
+    if (ownerId !== hostId) return res.status(403).json({ message: "Forbidden" });
+    const payload = updateListingSchema.parse(req.body);
+    const updated = await updateListingForHost({
+      listingId: req.params.id,
+      hostId,
+      title: payload.title,
+      address: payload.address,
+      pricePerDay: payload.pricePerDay,
+      availabilityText: payload.availabilityText,
+      latitude: payload.latitude,
+      longitude: payload.longitude,
+      imageUrls: payload.imageUrls,
+      amenities: payload.amenities,
+    });
+    if (!updated) return res.status(404).json({ message: "Listing not found" });
+    res.json({ listing: updated });
   } catch (error) {
     next(error);
   }
