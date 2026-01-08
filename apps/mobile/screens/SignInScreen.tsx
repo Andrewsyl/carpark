@@ -154,7 +154,7 @@ export function SignInScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f5f7fb",
   },
   content: {
     flexGrow: 1,
@@ -163,11 +163,11 @@ const styles = StyleSheet.create({
     paddingTop: 24,
   },
   header: {
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 18,
   },
   kicker: {
-    color: "#2563eb",
+    color: "#00d4aa",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1.2,
@@ -175,25 +175,24 @@ const styles = StyleSheet.create({
   },
   title: {
     color: "#0f172a",
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "800",
     marginTop: 6,
   },
   subtitle: {
-    color: "#64748b",
-    fontSize: 13,
+    color: "#6b7280",
+    fontSize: 14,
     marginTop: 6,
-    textAlign: "center",
   },
   card: {
     backgroundColor: "#ffffff",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 18,
     borderWidth: 1,
     padding: 18,
     shadowColor: "#0f172a",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 2,
   },
@@ -201,13 +200,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   label: {
-    color: "#475569",
+    color: "#475467",
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 6,
   },
   input: {
-    borderColor: "#e2e8f0",
+    backgroundColor: "#f9fafb",
+    borderColor: "#e5e7eb",
     borderRadius: 12,
     borderWidth: 1,
     color: "#0f172a",
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#2563eb",
+    backgroundColor: "#00d4aa",
     borderRadius: 12,
     marginTop: 6,
     paddingVertical: 12,
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     alignItems: "center",
-    borderColor: "#e2e8f0",
+    borderColor: "#d0d5dd",
     borderRadius: 12,
     borderWidth: 1,
     marginTop: 10,
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   notice: {
-    color: "#1d4ed8",
+    color: "#00a889",
     fontSize: 12,
     marginTop: 10,
     textAlign: "center",
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   linkButtonText: {
-    color: "#2563eb",
+    color: "#00a889",
     fontSize: 12,
     fontWeight: "600",
   },

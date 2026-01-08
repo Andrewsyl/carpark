@@ -5,11 +5,24 @@ export type RootStackParamList = {
     from: string;
     to: string;
   };
+  BookingSummary: {
+    id: string;
+    from: string;
+    to: string;
+  };
   SignIn: undefined;
   Profile: undefined;
-  History: undefined;
+  History: { showSuccess?: boolean } | undefined;
   Settings: undefined;
   Listings: undefined;
+  Payments: undefined;
+  Favorites: undefined;
+  BookingDetail: {
+    booking: import("./api").BookingSummary;
+  };
+  Review: {
+    booking: import("./api").BookingSummary;
+  };
   CreateListingFlow: {
     listingId?: string;
   } | undefined;

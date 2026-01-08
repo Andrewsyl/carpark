@@ -33,7 +33,7 @@ export function SettingsScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f5f7fb",
     flex: 1,
   },
   topBar: {
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#ffffff",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 16,
     borderWidth: 1,
     padding: 16,
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   cardBody: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 13,
     marginTop: 6,
   },

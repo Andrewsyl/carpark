@@ -1,9 +1,9 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { listHostListings } from "../api";
+import { deleteListing, listHostListings } from "../api";
 import { useAuth } from "../auth";
 import type { ListingSummary, RootStackParamList } from "../types";
 
@@ -14,6 +14,7 @@ export function ListingsScreen({ navigation }: Props) {
   const [listings, setListings] = useState<ListingSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadListings = useCallback(async () => {
     if (!token) return;
@@ -28,6 +29,34 @@ export function ListingsScreen({ navigation }: Props) {
       setLoading(false);
     }
   }, [token]);
+
+  const handleDelete = useCallback(
+    (listingId: string) => {
+      if (!token) {
+        setError("Sign in to delete listings.");
+        return;
+      }
+      Alert.alert("Delete listing", "This will permanently remove the listing.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingId(listingId);
+            try {
+              await deleteListing({ token, listingId });
+              setListings((prev) => prev.filter((item) => item.id !== listingId));
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Could not delete listing");
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ]);
+    },
+    [token]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -112,7 +141,18 @@ export function ListingsScreen({ navigation }: Props) {
                       <Text style={styles.listMeta} numberOfLines={1}>
                         {listing.address}
                       </Text>
-                      <Text style={styles.listMeta}>€{listing.price_per_day} / day</Text>
+                      <View style={styles.listFooter}>
+                        <Text style={styles.listMeta}>€{listing.price_per_day} / day</Text>
+                        <Pressable
+                          style={styles.deleteButton}
+                          onPress={() => handleDelete(listing.id)}
+                          disabled={deletingId === listing.id}
+                        >
+                          <Text style={styles.deleteButtonText}>
+                            {deletingId === listing.id ? "Deleting..." : "Delete"}
+                          </Text>
+                        </Pressable>
+                      </View>
                     </View>
                   </Pressable>
                 ))}
@@ -127,7 +167,7 @@ export function ListingsScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f5f7fb",
     flex: 1,
   },
   topBar: {
@@ -164,7 +204,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#ffffff",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 16,
     borderWidth: 1,
     padding: 16,
@@ -175,7 +215,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   cardBody: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 13,
     marginTop: 6,
   },
@@ -191,7 +231,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   muted: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 12,
     marginBottom: 10,
   },
@@ -200,7 +240,7 @@ const styles = StyleSheet.create({
   },
   listCard: {
     backgroundColor: "#ffffff",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 16,
     borderWidth: 1,
     flexDirection: "row",
@@ -229,18 +269,36 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  listFooter: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
   listTitle: {
     color: "#0f172a",
     fontSize: 14,
     fontWeight: "700",
   },
   listMeta: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 12,
+  },
+  deleteButton: {
+    backgroundColor: "#fef2f2",
+    borderColor: "#fecaca",
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  deleteButtonText: {
+    color: "#b42318",
+    fontSize: 11,
+    fontWeight: "700",
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#2fa84f",
+    backgroundColor: "#00d4aa",
     borderRadius: 12,
     marginTop: 14,
     paddingVertical: 10,

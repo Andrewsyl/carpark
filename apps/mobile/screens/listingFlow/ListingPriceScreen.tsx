@@ -91,8 +91,8 @@ export function ListingPriceScreen({ navigation }: Props) {
             minimumValue={presets[0]}
             maximumValue={presets[presets.length - 1]}
             step={1}
-            minimumTrackTintColor="#2fa84f"
-            maximumTrackTintColor="#e2e8f0"
+            minimumTrackTintColor="#00d4aa"
+            maximumTrackTintColor="#e5e7eb"
             thumbTintColor="#0f172a"
             value={priceValue}
             onValueChange={(value) => {
@@ -165,14 +165,14 @@ export function ListingPriceScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f5f7fb",
   },
   content: {
     padding: 18,
     paddingBottom: 140,
   },
   kicker: {
-    color: "#2563eb",
+    color: "#00d4aa",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1,
@@ -185,20 +185,20 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   subtitle: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 13,
     marginTop: 6,
   },
   priceCard: {
     backgroundColor: "#ffffff",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 16,
     borderWidth: 1,
     marginTop: 16,
     padding: 16,
   },
   priceLabel: {
-    color: "#475569",
+    color: "#475467",
     fontSize: 12,
     fontWeight: "700",
   },
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   pricePill: {
-    backgroundColor: "#f1f5f9",
+    backgroundColor: "#eef2f7",
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   tierCard: {
     alignItems: "center",
     backgroundColor: "#f8fafc",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 14,
     borderWidth: 1,
     flex: 1,
@@ -252,29 +252,29 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   tierValue: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 11,
     marginTop: 2,
   },
   suggested: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 12,
     marginTop: 10,
   },
   footer: {
-    backgroundColor: "#f8fafc",
-    borderTopColor: "#e2e8f0",
+    backgroundColor: "#ffffff",
+    borderTopColor: "#e5e7eb",
     borderTopWidth: 1,
     padding: 16,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#2fa84f",
+    backgroundColor: "#00d4aa",
     borderRadius: 14,
     paddingVertical: 14,
   },
   primaryButtonDisabled: {
-    backgroundColor: "#cbd5f5",
+    backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
     color: "#ffffff",

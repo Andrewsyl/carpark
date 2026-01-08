@@ -314,7 +314,7 @@ export default function PaymentsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           {stripePromise ? (
             <Elements stripe={stripePromise} options={{ appearance: { theme: "stripe" } } as StripeElementsOptions}>
-              <AddCardModal
+              <AddCardModalStripe
                 onClose={() => setShowAdd(false)}
                 onAdded={loadMethods}
                 onLocalAdd={(pm) => {
@@ -329,9 +329,8 @@ export default function PaymentsPage() {
               />
             </Elements>
           ) : (
-            <AddCardModal
+            <AddCardModalFallback
               onClose={() => setShowAdd(false)}
-              onAdded={loadMethods}
               onLocalAdd={(pm) => {
                 setMethods((prev) => {
                   const next = prev.length === 0 ? [pm] : [...prev, pm];
@@ -339,9 +338,6 @@ export default function PaymentsPage() {
                   return next;
                 });
               }}
-              setError={setError}
-              token={token}
-              disableStripe
             />
           )}
         </div>
@@ -364,20 +360,18 @@ function StatusChip({ status }: { status: PaymentHistoryItem["status"] }) {
   );
 }
 
-function AddCardModal({
+function AddCardModalStripe({
   onClose,
   onAdded,
   onLocalAdd,
   setError,
   token,
-  disableStripe,
 }: {
   onClose: () => void;
   onAdded: () => void;
   onLocalAdd: (pm: PaymentMethod) => void;
   setError: (msg: string | null) => void;
   token?: string;
-  disableStripe?: boolean;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -403,12 +397,6 @@ function AddCardModal({
     setSubmitting(true);
     setMessage(null);
     setError(null);
-
-    if (disableStripe || !stripe || !elements) {
-      addLocal();
-      setSubmitting(false);
-      return;
-    }
 
     try {
       const intentResp = await addPaymentMethod({ mode: "setup_intent" }, token);
@@ -480,6 +468,56 @@ function AddCardModal({
           onClick={handleSubmit}
         >
           {submitting ? "Saving…" : "Save card"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AddCardModalFallback({
+  onClose,
+  onLocalAdd,
+}: {
+  onClose: () => void;
+  onLocalAdd: (pm: PaymentMethod) => void;
+}) {
+  const addLocal = () => {
+    const mock: PaymentMethod = {
+      id: `local-${Date.now()}`,
+      brand: "visa",
+      last4: "4242",
+      exp_month: 12,
+      exp_year: new Date().getFullYear() + 2,
+      is_default: true,
+      created_at: new Date().toISOString(),
+    };
+    onLocalAdd(mock);
+    onClose();
+  };
+
+  return (
+    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Add card</p>
+          <p className="text-sm text-slate-600">Stripe is not configured for web.</p>
+        </div>
+        <button className="rounded-lg px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-100" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+        We can add a placeholder card for local testing.
+      </div>
+      <div className="mt-4 flex items-center justify-end gap-2">
+        <button className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100" onClick={onClose}>
+          Cancel
+        </button>
+        <button
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+          onClick={addLocal}
+        >
+          Add placeholder
         </button>
       </div>
     </div>

@@ -2,9 +2,10 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import MapView, { Marker, type Region } from "react-native-maps";
+import MapView, { Marker, PROVIDER_GOOGLE, type Region } from "react-native-maps";
 import * as Location from "expo-location";
 import { MapPin } from "../../components/MapPin";
+import { LIGHT_MAP_STYLE } from "../../components/mapStyles";
 import { useListingFlow } from "./context";
 import { StepProgress } from "./StepProgress";
 
@@ -263,7 +264,9 @@ export function ListingLocationScreen({ navigation }: Props) {
               ref={mapRef}
               style={styles.map}
               initialRegion={region}
+              provider={PROVIDER_GOOGLE}
               mapType="satellite"
+              customMapStyle={LIGHT_MAP_STYLE}
               onRegionChange={(nextRegion) => {
                 if (movePinMode) pendingCenterRef.current = nextRegion;
               }}
@@ -383,7 +386,7 @@ export function ListingLocationScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f5f7fb",
     flex: 1,
   },
   header: {
@@ -391,7 +394,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   kicker: {
-    color: "#2563eb",
+    color: "#00d4aa",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1,
@@ -404,7 +407,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   subtitle: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 13,
     marginTop: 6,
   },
@@ -414,7 +417,7 @@ const styles = StyleSheet.create({
   },
   searchField: {
     alignItems: "center",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 12,
     borderWidth: 1,
     flexDirection: "row",
@@ -429,7 +432,7 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     alignItems: "center",
-    backgroundColor: "#e2e8f0",
+    backgroundColor: "#eef2f7",
     borderRadius: 999,
     height: 24,
     justifyContent: "center",
@@ -443,7 +446,7 @@ const styles = StyleSheet.create({
   },
   suggestions: {
     backgroundColor: "#ffffff",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 12,
     borderWidth: 1,
     marginHorizontal: 18,
@@ -477,7 +480,7 @@ const styles = StyleSheet.create({
   mapPlaceholder: {
     alignItems: "center",
     backgroundColor: "#f8fafc",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 16,
     borderWidth: 1,
     flex: 1,
@@ -485,7 +488,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   mapPlaceholderText: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 13,
     textAlign: "center",
   },
@@ -509,7 +512,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   movePinToggleActive: {
-    backgroundColor: "#2fa84f",
+    backgroundColor: "#00d4aa",
   },
   movePinToggleText: {
     color: "#ffffff",
@@ -532,7 +535,7 @@ const styles = StyleSheet.create({
   },
   addressPrompt: {
     backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 16,
     borderWidth: 1,
     bottom: 14,
@@ -547,7 +550,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   addressPromptBody: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 12,
     marginTop: 6,
   },
@@ -563,7 +566,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   addressPromptGhost: {
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 12,
     borderWidth: 1,
     flex: 1,
@@ -576,7 +579,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   addressPromptPrimary: {
-    backgroundColor: "#0f172a",
+    backgroundColor: "#00d4aa",
     borderRadius: 12,
     flex: 1,
     paddingVertical: 10,
@@ -589,13 +592,13 @@ const styles = StyleSheet.create({
   },
   footer: {
     backgroundColor: "#ffffff",
-    borderTopColor: "#e2e8f0",
+    borderTopColor: "#e5e7eb",
     borderTopWidth: 1,
     padding: 16,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#2fa84f",
+    backgroundColor: "#00d4aa",
     borderRadius: 14,
     paddingVertical: 14,
   },

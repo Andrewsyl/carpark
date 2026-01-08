@@ -4,8 +4,6 @@ import { Navbar } from "../components/Navbar";
 import { AuthProvider } from "../components/AuthProvider";
 import { AppStatusProvider } from "../components/AppStatusProvider";
 import Script from "next/script";
-import "react-dates/initialize";
-import "react-dates/lib/css/_datepicker.css";
 
 export const metadata: Metadata = {
   title: "ParkShare Dublin",

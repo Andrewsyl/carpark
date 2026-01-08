@@ -10,7 +10,14 @@
       "android",
       "web"
     ],
-    "plugins": [],
+    "plugins": [
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.andrewsyl.carparking"
+        }
+      ]
+    ],
     "assetBundlePatterns": [
       "**/*"
     ],

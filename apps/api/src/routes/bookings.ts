@@ -1,6 +1,15 @@
 import express, { Router } from "express";
 import { z } from "zod";
-import { createBooking, pool, updateBookingStatus, listUserBookings, getListingWithHostAccount } from "../lib/db.js";
+import {
+  createBooking,
+  pool,
+  updateBookingStatus,
+  updateBookingStatusByPaymentIntent,
+  listUserBookings,
+  getListingWithHostAccount,
+  findUserById,
+  cancelBookingByDriver,
+} from "../lib/db.js";
 import { createCheckoutSession, stripe } from "../lib/stripe.js";
 import { sendBookingEmail } from "../lib/email.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -17,6 +26,23 @@ const bookingSchema = z.object({
   platformFeePercent: z.number().min(0).max(1).default(0.1),
 });
 
+const paymentIntentSchema = bookingSchema.pick({
+  listingId: true,
+  from: true,
+  to: true,
+  amountCents: true,
+  currency: true,
+  platformFeePercent: true,
+});
+
+async function getOrCreateCustomer(email: string) {
+  if (!stripe) throw new Error("Stripe not configured");
+  const existing = await stripe.customers.list({ email, limit: 1 });
+  if (existing.data.length > 0) return existing.data[0].id;
+  const customer = await stripe.customers.create({ email });
+  return customer.id;
+}
+
 router.post("/", requireAuth, async (req, res, next) => {
   try {
     const payload = bookingSchema.parse(req.body);
@@ -24,7 +50,11 @@ router.post("/", requireAuth, async (req, res, next) => {
     if (!driverId) return res.status(401).json({ message: "Unauthorized" });
 
     const overlapCheck = await pool.query(
-      `SELECT 1 FROM bookings WHERE listing_id = $1 AND tstzrange(start_time, end_time, '[)') && tstzrange($2::timestamptz, $3::timestamptz, '[)') LIMIT 1`,
+      `SELECT 1 FROM bookings
+       WHERE listing_id = $1
+         AND (status IS NULL OR status <> 'canceled')
+         AND tstzrange(start_time, end_time, '[)') && tstzrange($2::timestamptz, $3::timestamptz, '[)')
+       LIMIT 1`,
       [payload.listingId, payload.from, payload.to]
     );
 
@@ -63,6 +93,104 @@ router.post("/", requireAuth, async (req, res, next) => {
     });
 
     res.status(201).json({ checkoutUrl: session.url, sessionId: session.id });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/payment-intent", requireAuth, async (req, res, next) => {
+  try {
+    if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
+    const payload = paymentIntentSchema.parse(req.body);
+    const driverId = req.user?.userId;
+    if (!driverId) return res.status(401).json({ message: "Unauthorized" });
+
+    const overlapCheck = await pool.query(
+      `SELECT 1 FROM bookings
+       WHERE listing_id = $1
+         AND (status IS NULL OR status <> 'canceled')
+         AND tstzrange(start_time, end_time, '[)') && tstzrange($2::timestamptz, $3::timestamptz, '[)')
+       LIMIT 1`,
+      [payload.listingId, payload.from, payload.to]
+    );
+
+    if (overlapCheck.rowCount && overlapCheck.rowCount > 0) {
+      return res.status(409).json({ message: "Time slot already booked" });
+    }
+
+    const user = await findUserById(driverId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const listingWithHost = await getListingWithHostAccount(payload.listingId);
+    const customerId = await getOrCreateCustomer(user.email);
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+      { customer: customerId },
+      { apiVersion: "2024-06-20" }
+    );
+
+    const feeAmount = Math.round(payload.amountCents * payload.platformFeePercent);
+    const intentParams: any = {
+      amount: payload.amountCents,
+      currency: payload.currency,
+      customer: customerId,
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        listing_id: payload.listingId,
+        driver_id: driverId,
+      },
+    };
+
+    if (listingWithHost?.hostStripeAccountId) {
+      intentParams.application_fee_amount = feeAmount;
+      intentParams.transfer_data = {
+        destination: listingWithHost.hostStripeAccountId,
+      };
+    }
+
+    const intent = await stripe.paymentIntents.create(intentParams);
+
+    await createBooking({
+      listingId: payload.listingId,
+      driverId,
+      from: payload.from,
+      to: payload.to,
+      stripePaymentIntentId: intent.id,
+      checkoutSessionId: null,
+      amountCents: payload.amountCents,
+      currency: payload.currency,
+    });
+
+    res.json({
+      paymentIntentClientSecret: intent.client_secret,
+      paymentIntentId: intent.id,
+      customerId,
+      ephemeralKeySecret: ephemeralKey.secret,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/confirm", requireAuth, async (req, res, next) => {
+  try {
+    const schema = z.object({ paymentIntentId: z.string(), status: z.enum(["confirmed", "canceled"]).optional() });
+    const { paymentIntentId, status = "confirmed" } = schema.parse(req.body);
+    const ok = await updateBookingStatusByPaymentIntent({ paymentIntentId, status });
+    if (!ok) return res.status(404).json({ message: "Booking not found" });
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/:id/cancel", requireAuth, async (req, res, next) => {
+  try {
+    const bookingId = req.params.id;
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const ok = await cancelBookingByDriver({ bookingId, driverId: userId });
+    if (!ok) return res.status(400).json({ message: "Booking cannot be canceled" });
+    res.json({ ok: true });
   } catch (error) {
     next(error);
   }

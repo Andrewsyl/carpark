@@ -122,7 +122,7 @@ export function ListingFlowScreen({ route }: Props) {
       ) : (
         <Stack.Navigator
           screenOptions={{ headerShown: false }}
-          initialRouteName={listingId ? "ListingDetails" : "ListingLocation"}
+          initialRouteName={listingId ? "ListingReview" : "ListingLocation"}
         >
           <Stack.Screen name="ListingLocation" component={ListingLocationScreen} />
           <Stack.Screen name="ListingStreetView" component={ListingStreetViewScreen} />
@@ -140,7 +140,7 @@ export function ListingFlowScreen({ route }: Props) {
 const styles = StyleSheet.create({
   loading: {
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f5f7fb",
     flex: 1,
     justifyContent: "center",
     padding: 24,

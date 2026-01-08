@@ -138,7 +138,6 @@ export default function MapSection({
         });
     });
   }, [labelKeys, pinImages]);
-
   const getPinKey = (label: string, selected: boolean) =>
     `${label}|${selected ? "selected" : "default"}|${PIN_STYLE_VERSION}`;
   return (
@@ -159,7 +158,10 @@ export default function MapSection({
           const { latitude, longitude } = event.nativeEvent.coordinate;
           const target = { lat: latitude, lng: longitude };
           const regionRef = region ?? initialRegion;
-          const thresholdM = Math.max(30, regionRef.latitudeDelta * METERS_PER_DEGREE_LAT * 0.02);
+          const thresholdM = Math.max(
+            60,
+            regionRef.latitudeDelta * METERS_PER_DEGREE_LAT * 0.03
+          );
           let closest: { id: string; distance: number } | null = null;
           const list = freezeMarkers ? renderedResultsRef.current : nextResults;
           list.forEach((listing) => {
@@ -196,6 +198,7 @@ export default function MapSection({
               tracksViewChanges={false}
               anchor={{ x: 0.5, y: 1 }}
               centerOffset={{ x: 0, y: 0 }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               onPress={() => onSelect?.(listing.id)}
               zIndex={isSelected ? 2 : 1}
               image={{ uri: pinImage }}

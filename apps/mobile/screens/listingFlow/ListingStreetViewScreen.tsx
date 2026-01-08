@@ -135,7 +135,7 @@ export function ListingStreetViewScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f5f7fb",
     flex: 1,
   },
   header: {
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   kicker: {
-    color: "#2563eb",
+    color: "#00d4aa",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1,
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   subtitle: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 13,
     marginTop: 6,
   },
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 18,
     borderRadius: 18,
     overflow: "hidden",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderWidth: 1,
     height: 320,
   },
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   webFallbackText: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 13,
     textAlign: "center",
   },
@@ -196,21 +196,21 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   primaryButtonDisabled: {
-    backgroundColor: "#cbd5f5",
+    backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
-    color: "#0f172a",
+    color: "#ffffff",
     fontSize: 15,
     fontWeight: "700",
   },
   secondaryButton: {
     alignItems: "center",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: "#eef2f7",
     borderRadius: 14,
     paddingVertical: 14,
   },
   secondaryButtonText: {
-    color: "#475569",
+    color: "#6b7280",
     fontSize: 14,
     fontWeight: "600",
   },

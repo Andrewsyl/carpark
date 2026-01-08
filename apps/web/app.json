@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "web",
+    "slug": "web",
+    "version": "0.1.0",
+    "sdkVersion": "50.0.0",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ]
+  }
+}

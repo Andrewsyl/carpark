@@ -169,14 +169,14 @@ export function ListingReviewScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f5f7fb",
   },
   content: {
     padding: 18,
     paddingBottom: 160,
   },
   kicker: {
-    color: "#2563eb",
+    color: "#00d4aa",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1,
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   subtitle: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 13,
     marginTop: 6,
   },
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#ffffff",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 16,
     borderWidth: 1,
     marginTop: 16,
@@ -222,17 +222,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   mapPlaceholderText: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 13,
   },
   row: {
-    borderTopColor: "#e2e8f0",
+    borderTopColor: "#e5e7eb",
     borderTopWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   label: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -244,19 +244,19 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   footer: {
-    backgroundColor: "#f8fafc",
-    borderTopColor: "#e2e8f0",
+    backgroundColor: "#ffffff",
+    borderTopColor: "#e5e7eb",
     borderTopWidth: 1,
     padding: 16,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#2fa84f",
+    backgroundColor: "#00d4aa",
     borderRadius: 14,
     paddingVertical: 14,
   },
   primaryButtonDisabled: {
-    backgroundColor: "#cbd5f5",
+    backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
     color: "#ffffff",
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   secondaryButtonText: {
-    color: "#475569",
+    color: "#6b7280",
     fontSize: 13,
     fontWeight: "600",
   },

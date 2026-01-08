@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -16,13 +16,17 @@ import {
 import LottieView from "lottie-react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useFocusEffect } from "@react-navigation/native";
 import type MapView from "react-native-maps";
 import DatePicker from "react-native-date-picker";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../auth";
+import { useAppLaunch } from "../appLaunch";
+import { useFavorites } from "../favorites";
 import MapSection from "../components/MapSection";
 import { MapBottomCard } from "../components/MapBottomCard";
+import { LIGHT_MAP_STYLE } from "../components/mapStyles";
 import { searchListings } from "../api";
 import { logError, logInfo } from "../logger";
 import type {
@@ -95,22 +99,6 @@ const formatTimeLabel = (date: Date) => `${pad2(date.getHours())}:${pad2(date.ge
 
 const formatDateTimeLabel = (date: Date) => `${formatDateLabel(date)} · ${formatTimeLabel(date)}`;
 
-const LIGHT_MAP_STYLE = [
-  {
-    elementType: "geometry",
-    stylers: [{ lightness: 10 }, { saturation: 0 }],
-  },
-  {
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#2f3a45" }],
-  },
-  {
-    featureType: "poi",
-    elementType: "labels.icon",
-    stylers: [{ lightness: 60 }, { saturation: -30 }],
-  },
-];
-
 export function SearchScreen({ navigation }: Props) {
   const today = useMemo(() => {
     const now = new Date();
@@ -156,8 +144,16 @@ export function SearchScreen({ navigation }: Props) {
   const [searchSheetVisible, setSearchSheetVisible] = useState(false);
   const [searchSheetOpen, setSearchSheetOpen] = useState(false);
   const [activeSearchTab, setActiveSearchTab] = useState<"recents" | "favourites">("recents");
+  const [pendingSearch, setPendingSearch] = useState<{
+    lat: string;
+    lng: string;
+    radiusKm: string;
+  } | null>(null);
+  const [showSearchArea, setShowSearchArea] = useState(false);
   const { user } = useAuth();
-  const { height: windowHeight } = useWindowDimensions();
+  const { launchComplete } = useAppLaunch();
+  const { favorites, isFavorite, toggle } = useFavorites();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(0)).current;
   const searchAnim = useRef(new Animated.Value(0)).current;
@@ -183,7 +179,6 @@ export function SearchScreen({ navigation }: Props) {
     latitudeDelta: usingDefaultCenter ? 0.012 : 0.06,
     longitudeDelta: usingDefaultCenter ? 0.012 : 0.06,
   };
-  const regionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ignoreNextRegionChangeRef = useRef(false);
   const lastSearchCenterRef = useRef<{ lat: number; lng: number } | null>(null);
   const mapRef = useRef<MapView | null>(null);
@@ -263,11 +258,14 @@ export function SearchScreen({ navigation }: Props) {
     }
   };
 
+  const handleMapReady = () => {
+    setMapReady(true);
+  };
+
   useEffect(() => {
     setFrom(startAt.toISOString());
     setTo(endAt.toISOString());
   }, [startAt, endAt]);
-
 
   const applyPickedDate = (next: Date) => {
     if (pickerField === "start") {
@@ -458,6 +456,13 @@ export function SearchScreen({ navigation }: Props) {
     setSelectedId(id);
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      setSelectedId(null);
+      setSearchSheetOpen(false);
+    }, [])
+  );
+
   useEffect(() => {
     if (showFilters) {
       setFiltersVisible(true);
@@ -570,14 +575,11 @@ export function SearchScreen({ navigation }: Props) {
 
     const nextLat = nextRegion.latitude.toFixed(6);
     const nextLng = nextRegion.longitude.toFixed(6);
-    setLat(nextLat);
-    setLng(nextLng);
-    if (regionTimerRef.current) {
-      clearTimeout(regionTimerRef.current);
-    }
-    regionTimerRef.current = setTimeout(() => {
-      void runSearch({ lat: nextLat, lng: nextLng });
-    }, 350);
+    const maxDelta = Math.max(nextRegion.latitudeDelta, nextRegion.longitudeDelta);
+    const radiusKmValue = Math.max(0.5, (maxDelta * 111) / 2) * 1.2;
+    const nextRadius = radiusKmValue.toFixed(2);
+    setPendingSearch({ lat: nextLat, lng: nextLng, radiusKm: nextRadius });
+    setShowSearchArea(true);
   };
 
   const clearFilters = () => {
@@ -593,22 +595,26 @@ export function SearchScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container} edges={[]}>
       <View style={styles.mapShell}>
-        <MapSection
-          initialRegion={mapRegion}
-          results={results}
-          style={styles.map}
-          mapPadding={{ bottom: 180 + insets.bottom + 16 }}
-          provider={Platform.OS === "android" ? "google" : undefined}
-          customMapStyle={LIGHT_MAP_STYLE}
-          onSelect={handleSelectListing}
-          onRegionChangeComplete={handleRegionChange}
-          selectedId={selectedId}
-          mapRef={mapRef}
-          freezeMarkers={loading}
-          onMapLoaded={() => setMapReady(true)}
-          onMapReady={() => setMapReady(true)}
-        />
-        {!mapReady ? (
+        {launchComplete ? (
+          <MapSection
+            initialRegion={mapRegion}
+            results={results}
+            style={styles.map}
+            mapPadding={{ bottom: 180 + insets.bottom + 16 }}
+            provider={Platform.OS === "android" ? "google" : undefined}
+            customMapStyle={LIGHT_MAP_STYLE}
+            onSelect={handleSelectListing}
+            onRegionChangeComplete={handleRegionChange}
+            selectedId={selectedId}
+            mapRef={mapRef}
+            freezeMarkers={loading}
+            onMapLoaded={handleMapReady}
+            onMapReady={handleMapReady}
+          />
+        ) : (
+          <View style={styles.mapPlaceholder} />
+        )}
+        {launchComplete && !mapReady ? (
           <View style={styles.mapLoadingOverlay} pointerEvents="none">
             <View style={styles.mapLoadingBubble}>
               <LottieView
@@ -667,6 +673,27 @@ export function SearchScreen({ navigation }: Props) {
             </Pressable>
           </View>
           </View>
+          {showSearchArea && pendingSearch ? (
+            <View style={styles.searchAreaWrap} pointerEvents="box-none">
+              <Pressable
+                style={styles.searchAreaButton}
+                onPress={() => {
+                setLat(pendingSearch.lat);
+                setLng(pendingSearch.lng);
+                setRadiusKm(pendingSearch.radiusKm);
+                setShowSearchArea(false);
+                setPendingSearch(null);
+                void runSearch({
+                  lat: pendingSearch.lat,
+                  lng: pendingSearch.lng,
+                  radiusKm: pendingSearch.radiusKm,
+                });
+              }}
+            >
+                <Text style={styles.searchAreaText}>Search this area</Text>
+              </Pressable>
+            </View>
+          ) : null}
           {loading ? (
             <View style={styles.searchLoadingBubble}>
               <LottieView
@@ -701,11 +728,12 @@ export function SearchScreen({ navigation }: Props) {
           <MapBottomCard
             title={selectedListing.title}
             imageUrl={selectedListingImage ?? undefined}
-            rating={selectedListing.rating ?? 4.5}
-            reviewCount={selectedListing.rating_count ?? 92}
-            bookingCount="1000+"
+            rating={selectedListing.rating ?? 0}
+            reviewCount={selectedListing.rating_count ?? 0}
             walkTime="14 min"
             price={`€${selectedListing.price_per_day}`}
+            isFavorite={isFavorite(selectedListing.id)}
+            onToggleFavorite={() => toggle(selectedListing)}
             onPress={() => navigation.navigate("Listing", { id: selectedListing.id, from, to })}
             bottomOffset={insets.bottom + 16}
             horizontalInset={16}
@@ -725,71 +753,81 @@ export function SearchScreen({ navigation }: Props) {
                 </Pressable>
               </View>
               <Text style={styles.filtersSubtitle}>Refine results</Text>
-              <View style={styles.row}>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Min € / day</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={priceMin}
-                    onChangeText={setPriceMin}
-                    keyboardType="numeric"
-                    placeholder="10"
-                    placeholderTextColor="#98a2b3"
-                  />
-                </View>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Max € / day</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={priceMax}
-                    onChangeText={setPriceMax}
-                    keyboardType="numeric"
-                    placeholder="40"
-                    placeholderTextColor="#98a2b3"
-                  />
+              <View style={styles.filtersSection}>
+                <Text style={styles.sectionLabel}>Price</Text>
+                <View style={styles.row}>
+                  <View style={styles.field}>
+                    <Text style={styles.label}>Min € / day</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={priceMin}
+                      onChangeText={setPriceMin}
+                      keyboardType="numeric"
+                      placeholder="10"
+                      placeholderTextColor="#98a2b3"
+                    />
+                  </View>
+                  <View style={styles.field}>
+                    <Text style={styles.label}>Max € / day</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={priceMax}
+                      onChangeText={setPriceMax}
+                      keyboardType="numeric"
+                      placeholder="40"
+                      placeholderTextColor="#98a2b3"
+                    />
+                  </View>
                 </View>
               </View>
-              <Text style={styles.label}>Vehicle size</Text>
-              <View style={styles.chipRow}>
-                {(["motorcycle", "car", "van"] as const).map((size) => (
-                  <Pressable
-                    key={size}
-                    style={[styles.chip, vehicleSize === size && styles.chipActive]}
-                    onPress={() => setVehicleSize(vehicleSize === size ? "" : size)}
-                  >
-                    <Text style={[styles.chipText, vehicleSize === size && styles.chipTextActive]}>
-                      {size}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-              <Text style={styles.label}>Security level</Text>
-              <View style={styles.chipRow}>
-                {(["basic", "gated", "cctv"] as const).map((level) => (
-                  <Pressable
-                    key={level}
-                    style={[styles.chip, securityLevel === level && styles.chipActive]}
-                    onPress={() => setSecurityLevel(securityLevel === level ? "" : level)}
-                  >
-                    <Text
-                      style={[styles.chipText, securityLevel === level && styles.chipTextActive]}
+              <View style={styles.filtersSection}>
+                <Text style={styles.sectionLabel}>Vehicle size</Text>
+                <View style={styles.chipRow}>
+                  {(["motorcycle", "car", "van"] as const).map((size) => (
+                    <Pressable
+                      key={size}
+                      style={[styles.chip, vehicleSize === size && styles.chipActive]}
+                      onPress={() => setVehicleSize(vehicleSize === size ? "" : size)}
                     >
-                      {level}
-                    </Text>
-                  </Pressable>
-                ))}
+                      <Text style={[styles.chipText, vehicleSize === size && styles.chipTextActive]}>
+                        {size}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Instant book only</Text>
-                <Switch value={instantBook} onValueChange={setInstantBook} />
+              <View style={styles.filtersSection}>
+                <Text style={styles.sectionLabel}>Security level</Text>
+                <View style={styles.chipRow}>
+                  {(["basic", "gated", "cctv"] as const).map((level) => (
+                    <Pressable
+                      key={level}
+                      style={[styles.chip, securityLevel === level && styles.chipActive]}
+                      onPress={() => setSecurityLevel(securityLevel === level ? "" : level)}
+                    >
+                      <Text
+                        style={[styles.chipText, securityLevel === level && styles.chipTextActive]}
+                      >
+                        {level}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Covered parking</Text>
-                <Switch value={coveredParking} onValueChange={setCoveredParking} />
-              </View>
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>EV charging</Text>
-                <Switch value={evCharging} onValueChange={setEvCharging} />
+              <View style={styles.filtersSection}>
+                <Text style={styles.sectionLabel}>Preferences</Text>
+                <View style={styles.switchRow}>
+                  <Text style={styles.switchLabel}>Instant book only</Text>
+                  <Switch value={instantBook} onValueChange={setInstantBook} />
+                </View>
+                <View style={styles.switchRow}>
+                  <Text style={styles.switchLabel}>Covered parking</Text>
+                  <Switch value={coveredParking} onValueChange={setCoveredParking} />
+                </View>
+                <View style={styles.switchRow}>
+                  <Text style={styles.switchLabel}>EV charging</Text>
+                  <Switch value={evCharging} onValueChange={setEvCharging} />
+                </View>
               </View>
               <Pressable
                 style={styles.applyButton}
@@ -891,87 +929,109 @@ export function SearchScreen({ navigation }: Props) {
                   </Pressable>
                 </View>
                 <View style={styles.searchResults}>
-                  <Pressable
-                    style={[styles.resultRow, styles.currentLocationRow]}
-                    onPress={handleUseCurrentLocation}
-                    disabled={locating}
-                  >
-                    <View style={styles.resultIcon}>
-                      <View style={styles.resultIconDot} />
-                    </View>
-                    <View style={styles.resultCopy}>
-                      <Text style={styles.resultTitle}>
-                        {locating ? "Finding your location..." : "Use current location"}
-                      </Text>
-                      {locationError ? (
-                        <Text style={styles.resultSubtitle}>{locationError}</Text>
-                      ) : (
-                        <Text style={styles.resultSubtitle}>Use GPS to center the map</Text>
-                      )}
-                    </View>
-                  </Pressable>
                   {addressQuery.trim() ? (
-                    <View style={styles.resultsGroup}>
-                      {addressLoading ? (
-                        <Text style={styles.emptyText}>Searching...</Text>
-                      ) : addressSuggestions.length > 0 ? (
-                        addressSuggestions.slice(0, 6).map((suggestion) => (
-                          <Pressable
-                            key={suggestion.place_id}
-                            style={styles.resultRow}
-                            onPress={() => {
-                              setSearchSheetOpen(false);
-                              void handleSelectSuggestion(suggestion);
-                            }}
-                          >
-                            <View style={styles.resultIcon}>
-                              <View style={styles.resultIconDot} />
-                            </View>
-                            <View style={styles.resultCopy}>
-                              <Text style={styles.resultTitle}>{suggestion.description}</Text>
-                              <Text style={styles.resultSubtitle}>Suggested location</Text>
-                            </View>
-                          </Pressable>
-                        ))
-                      ) : (
-                        <Text style={styles.emptyText}>No results found.</Text>
-                      )}
-                    </View>
-                  ) : activeSearchTab === "recents" ? (
-                    <View style={styles.resultsGroup}>
-                      <Text style={styles.sectionLabel}>RECENT SEARCHES</Text>
-                      {searchHistory.length ? (
-                        searchHistory.map((item) => (
-                          <View key={`${item.label}-${item.lat}-${item.lng}`} style={styles.resultRow}>
-                            <Pressable
-                              style={styles.resultRowPress}
-                              onPress={() => handleSelectHistoryItem(item)}
-                            >
-                              <View style={styles.resultIcon}>
-                                <View style={styles.resultIconDot} />
-                              </View>
-                              <View style={styles.resultCopy}>
-                                <Text style={styles.resultTitle}>{item.label}</Text>
-                                <Text style={styles.resultSubtitle}>Recent search</Text>
-                              </View>
-                            </Pressable>
-                            <Pressable
-                              style={styles.resultRemove}
-                              onPress={() => removeFromHistory(item)}
-                            >
-                              <Text style={styles.resultRemoveText}>×</Text>
-                            </Pressable>
+                    addressLoading ? (
+                      <Text style={styles.emptyText}>Searching...</Text>
+                    ) : addressSuggestions.length > 0 ? (
+                      addressSuggestions.slice(0, 6).map((suggestion) => (
+                        <Pressable
+                          key={suggestion.place_id}
+                          style={styles.resultRow}
+                          onPress={() => {
+                            setSearchSheetOpen(false);
+                            void handleSelectSuggestion(suggestion);
+                          }}
+                        >
+                          <View style={styles.resultIcon}>
+                            <View style={styles.resultIconDot} />
                           </View>
-                        ))
-                      ) : (
-                        <Text style={styles.emptyText}>No recent searches yet.</Text>
-                      )}
-                    </View>
+                          <View style={styles.resultCopy}>
+                            <Text style={styles.resultTitle}>{suggestion.description}</Text>
+                            <Text style={styles.resultSubtitle}>Suggested location</Text>
+                          </View>
+                        </Pressable>
+                      ))
+                    ) : (
+                      <Text style={styles.emptyText}>No results found.</Text>
+                    )
                   ) : (
-                    <View style={styles.resultsGroup}>
-                      <Text style={styles.sectionLabel}>FAVOURITES</Text>
-                      <Text style={styles.emptyText}>No favourites yet.</Text>
-                    </View>
+                    <>
+                      <Pressable
+                        style={[styles.resultRow, styles.currentLocationRow]}
+                        onPress={handleUseCurrentLocation}
+                        disabled={locating}
+                      >
+                        <View style={styles.resultIcon}>
+                          <View style={styles.resultIconDot} />
+                        </View>
+                        <View style={styles.resultCopy}>
+                          <Text style={styles.resultTitle}>
+                            {locating ? "Finding your location..." : "Use current location"}
+                          </Text>
+                          {locationError ? (
+                            <Text style={styles.resultSubtitle}>{locationError}</Text>
+                          ) : (
+                            <Text style={styles.resultSubtitle}>Use GPS to center the map</Text>
+                          )}
+                        </View>
+                      </Pressable>
+                      {activeSearchTab === "recents" ? (
+                        <View style={styles.resultsGroup}>
+                          <Text style={styles.sectionLabel}>RECENT SEARCHES</Text>
+                          {searchHistory.length ? (
+                            searchHistory.map((item) => (
+                              <View key={`${item.label}-${item.lat}-${item.lng}`} style={styles.resultRow}>
+                                <Pressable
+                                  style={styles.resultRowPress}
+                                  onPress={() => handleSelectHistoryItem(item)}
+                                >
+                                  <View style={styles.resultIcon}>
+                                    <View style={styles.resultIconDot} />
+                                  </View>
+                                  <View style={styles.resultCopy}>
+                                    <Text style={styles.resultTitle}>{item.label}</Text>
+                                    <Text style={styles.resultSubtitle}>Recent search</Text>
+                                  </View>
+                                </Pressable>
+                                <Pressable
+                                  style={styles.resultRemove}
+                                  onPress={() => removeFromHistory(item)}
+                                >
+                                  <Text style={styles.resultRemoveText}>×</Text>
+                                </Pressable>
+                              </View>
+                            ))
+                          ) : (
+                            <Text style={styles.emptyText}>No recent searches yet.</Text>
+                          )}
+                        </View>
+                      ) : (
+                        <View style={styles.resultsGroup}>
+                          <Text style={styles.sectionLabel}>FAVOURITES</Text>
+                          {favorites.length ? (
+                            favorites.map((item) => (
+                              <Pressable
+                                key={`fav-${item.id}`}
+                                style={styles.resultRow}
+                                onPress={() =>
+                                  navigation.navigate("Listing", { id: item.id, from, to })
+                                }
+                              >
+                                <View style={styles.resultIcon}>
+                                  <View style={styles.resultIconDot} />
+                                </View>
+                                <View style={styles.resultCopy}>
+                                  <Text style={styles.resultTitle}>{item.title}</Text>
+                                  <Text style={styles.resultSubtitle}>{item.address}</Text>
+                                </View>
+                              </Pressable>
+                            ))
+                          ) : (
+                            <Text style={styles.emptyText}>No favourites yet.</Text>
+                          )}
+                        </View>
+                      )}
+                    </>
                   )}
                 </View>
               </View>
@@ -1078,6 +1138,10 @@ const styles = StyleSheet.create({
   },
   map: {
     ...StyleSheet.absoluteFillObject,
+  },
+  mapPlaceholder: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#f8fafc",
   },
   mapLoadingOverlay: {
     alignItems: "center",
@@ -1233,14 +1297,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   clearFiltersText: {
-    color: "#667085",
+    color: "#6b7280",
     fontSize: 12,
     fontWeight: "600",
   },
   filtersPanel: {
     backgroundColor: "#ffffff",
-    padding: 18,
-    paddingTop: 20,
+    padding: 20,
+    paddingTop: 24,
     height: "100%",
   },
   filtersOverlay: {
@@ -1263,28 +1327,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   filtersClose: {
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
   filtersCloseText: {
-    color: "#667085",
+    color: "#6b7280",
     fontSize: 12,
     fontWeight: "600",
   },
   filtersTitle: {
-    color: "#101828",
-    fontSize: 14,
+    color: "#111827",
+    fontSize: 20,
     fontWeight: "700",
-    marginBottom: 10,
   },
   filtersSubtitle: {
-    color: "#667085",
-    fontSize: 12,
+    color: "#6b7280",
+    fontSize: 13,
     fontWeight: "500",
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  filtersSection: {
+    backgroundColor: "#f8fafc",
+    borderColor: "#e5e7eb",
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   row: {
     flexDirection: "row",
@@ -1295,18 +1367,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    color: "#475467",
+    color: "#6b7280",
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 6,
   },
   input: {
-    borderColor: "#d0d5dd",
-    borderRadius: 10,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
     borderWidth: 1,
-    color: "#101828",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    color: "#111827",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   chipRow: {
     flexDirection: "row",
@@ -1315,16 +1387,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   chip: {
-    backgroundColor: "#f2f4f7",
+    backgroundColor: "#f8fafc",
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   chipActive: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#10b981",
   },
   chipText: {
-    color: "#344054",
+    color: "#475569",
     fontSize: 12,
     fontWeight: "600",
     textTransform: "capitalize",
@@ -1339,14 +1411,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   switchLabel: {
-    color: "#101828",
+    color: "#111827",
     fontSize: 13,
     fontWeight: "600",
   },
   applyButton: {
     alignItems: "center",
-    backgroundColor: "#2563eb",
+    backgroundColor: "#10b981",
     borderRadius: 12,
+    minHeight: 44,
     paddingVertical: 10,
   },
   applyButtonText: {
@@ -1531,10 +1604,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   sectionLabel: {
-    color: "#9ca3af",
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.6,
+    color: "#111827",
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.4,
     marginBottom: 10,
   },
   emptyText: {
@@ -1572,6 +1645,30 @@ const styles = StyleSheet.create({
   dateArrowText: {
     color: "#94a3b8",
     fontSize: 14,
+    fontWeight: "700",
+  },
+  searchAreaButton: {
+    alignItems: "center",
+    alignSelf: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 14,
+    height: 34,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    justifyContent: "center",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  searchAreaWrap: {
+    alignItems: "center",
+    marginTop: 10,
+  },
+  searchAreaText: {
+    color: "#475467",
+    fontSize: 13,
     fontWeight: "700",
   },
   durationRow: {

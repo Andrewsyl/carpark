@@ -14,9 +14,10 @@ type MapBottomCardProps = {
   imageUrl?: string | null;
   rating: number;
   reviewCount: number;
-  bookingCount: string;
   walkTime: string;
   price: string;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
   onReserve: () => void;
   onPress?: () => void;
   bottomOffset?: number;
@@ -28,9 +29,10 @@ export function MapBottomCard({
   imageUrl,
   rating,
   reviewCount,
-  bookingCount,
   walkTime,
   price,
+  isFavorite,
+  onToggleFavorite,
   onReserve,
   onPress,
   bottomOffset = 0,
@@ -81,15 +83,30 @@ export function MapBottomCard({
             )}
           </View>
             <View style={styles.textStack}>
+              {onToggleFavorite ? (
+                <Pressable
+                  style={styles.favButton}
+                  onPress={onToggleFavorite}
+                  hitSlop={8}
+                >
+                  <Text style={[styles.favText, isFavorite && styles.favTextActive]}>
+                    {isFavorite ? "♥︎" : "♡"}
+                  </Text>
+                </Pressable>
+              ) : null}
               <Text style={styles.title} numberOfLines={2}>
                 {title}
               </Text>
               <View style={styles.metaRow}>
-                <Text style={styles.iconStar}>*</Text>
-                <Text style={styles.metaText}>{rating.toFixed(1)}</Text>
-                <Text style={styles.metaText}>({reviewCount})</Text>
-                <Text style={styles.metaSeparator}>•</Text>
-                <Text style={styles.metaText}>{bookingCount} bookings</Text>
+                {reviewCount > 0 ? (
+                  <>
+                    <Text style={styles.iconStar}>★</Text>
+                    <Text style={styles.metaText}>{rating.toFixed(1)}</Text>
+                    <Text style={styles.metaText}>({reviewCount})</Text>
+                  </>
+                ) : (
+                  <Text style={styles.metaText}>New listing</Text>
+                )}
               </View>
               <View style={styles.metaRow}>
                 <View style={[styles.iconBlock, styles.iconShield]} />
@@ -135,6 +152,24 @@ const styles = StyleSheet.create({
   bodyPress: {
     flex: 1,
   },
+  favButton: {
+    alignItems: "center",
+    borderRadius: 999,
+    height: 30,
+    justifyContent: "center",
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: 30,
+  },
+  favText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  favTextActive: {
+    color: "#00d4aa",
+  },
   topRow: {
     alignItems: "stretch",
     flexDirection: "row",
@@ -164,6 +199,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "space-between",
     paddingVertical: 4,
+    position: "relative",
   },
   title: {
     color: "#111827",
@@ -202,7 +238,7 @@ const styles = StyleSheet.create({
   },
   cta: {
     alignItems: "center",
-    backgroundColor: "#2fa84f",
+    backgroundColor: "#00d4aa",
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
     height: 40,

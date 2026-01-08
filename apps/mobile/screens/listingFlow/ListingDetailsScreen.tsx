@@ -16,8 +16,8 @@ const spaceTypes = ["Driveway", "Garage", "Car park", "Private road"];
 const accessOptions = ["Gated", "Permit required", "EV charging"];
 
 const SpaceTypeIcon = ({ type, active }: { type: string; active: boolean }) => {
-  const stroke = active ? "#2fa84f" : "#94a3b8";
-  const fill = active ? "#dff5e5" : "#f1f5f9";
+  const stroke = active ? "#00d4aa" : "#94a3b8";
+  const fill = active ? "#e6f9f5" : "#f1f5f9";
   switch (type) {
     case "Driveway":
       return (
@@ -127,14 +127,14 @@ export function ListingDetailsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f5f7fb",
   },
   content: {
     padding: 18,
     paddingBottom: 140,
   },
   kicker: {
-    color: "#2563eb",
+    color: "#00d4aa",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1,
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   subtitle: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 13,
     marginTop: 6,
   },
@@ -159,14 +159,14 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#ffffff",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 16,
     borderWidth: 2,
     flexBasis: "48%",
     padding: 16,
   },
   cardActive: {
-    borderColor: "#2fa84f",
+    borderColor: "#00d4aa",
   },
   cardRow: {
     alignItems: "center",
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     width: 36,
   },
   cardIconActive: {
-    backgroundColor: "#e8f5ec",
+    backgroundColor: "#e6f9f5",
   },
   cardTitle: {
     color: "#0f172a",
@@ -198,19 +198,19 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   footer: {
-    backgroundColor: "#f8fafc",
-    borderTopColor: "#e2e8f0",
+    backgroundColor: "#ffffff",
+    borderTopColor: "#e5e7eb",
     borderTopWidth: 1,
     padding: 16,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#2fa84f",
+    backgroundColor: "#00d4aa",
     borderRadius: 14,
     paddingVertical: 14,
   },
   primaryButtonDisabled: {
-    backgroundColor: "#cbd5f5",
+    backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
     color: "#ffffff",

@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   label: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.6,
@@ -45,14 +45,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   bar: {
-    backgroundColor: "#e2e8f0",
+    backgroundColor: "#e5e7eb",
     borderRadius: 999,
     height: 6,
     marginTop: 8,
     overflow: "hidden",
   },
   barFill: {
-    backgroundColor: "#2fa84f",
+    backgroundColor: "#00d4aa",
     borderRadius: 999,
     height: "100%",
   },

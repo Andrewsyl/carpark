@@ -1,9 +1,10 @@
+import { CommonActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  Linking,
+  InteractionManager,
   Modal,
   Pressable,
   ScrollView,
@@ -16,8 +17,18 @@ import {
 import ImageViewer from "react-native-image-zoom-viewer";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
-import { createBooking, getListing } from "../api";
+import LottieView from "lottie-react-native";
+import { useStripe } from "@stripe/stripe-react-native";
+import * as Notifications from "expo-notifications";
+import {
+  confirmBookingPayment,
+  createBookingPaymentIntent,
+  getListing,
+  listListingReviews,
+  type ListingReview,
+} from "../api";
 import { useAuth } from "../auth";
+import { useFavorites } from "../favorites";
 import { logError, logInfo } from "../logger";
 import type { ListingDetail, RootStackParamList } from "../types";
 
@@ -94,6 +105,8 @@ const FeatureIcon = ({ type }: { type: string }) => {
 export function ListingScreen({ navigation, route }: Props) {
   const { id, from, to } = route.params;
   const { token, login, register, loading: authLoading, user } = useAuth();
+  const { isFavorite, toggle } = useFavorites();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const [listing, setListing] = useState<ListingDetail | null>(null);
@@ -102,12 +115,14 @@ export function ListingScreen({ navigation, route }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
-  const [bookingBusy, setBookingBusy] = useState(false);
   const mapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showFullAbout, setShowFullAbout] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [showFavAnim, setShowFavAnim] = useState(false);
+  const [reviews, setReviews] = useState<ListingReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const streetViewLocation =
     listing?.latitude && listing?.longitude
       ? `${listing.latitude},${listing.longitude}`
@@ -128,6 +143,28 @@ export function ListingScreen({ navigation, route }: Props) {
       }
     };
     void load();
+  }, [id]);
+
+  useEffect(() => {
+    let active = true;
+    const loadReviews = async () => {
+      if (!id) return;
+      setReviewsLoading(true);
+      try {
+        const data = await listListingReviews(id);
+        if (!active) return;
+        setReviews(data);
+      } catch {
+        if (!active) return;
+        setReviews([]);
+      } finally {
+        if (active) setReviewsLoading(false);
+      }
+    };
+    void loadReviews();
+    return () => {
+      active = false;
+    };
   }, [id]);
 
   const priceSummary = useMemo(() => {
@@ -163,6 +200,15 @@ export function ListingScreen({ navigation, route }: Props) {
   const aboutText = listing?.availability_text ?? "No description yet.";
   const aboutPreview =
     aboutText.length > 140 ? `${aboutText.slice(0, 140).trim()}...` : aboutText;
+  const hostName = "Andrew";
+  const hostInitials = hostName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+  const hostRating = listing?.rating ? listing.rating.toFixed(1) : "4.9";
+  const hostReviews = listing?.rating_count ?? 120;
   const heroHeight = Math.round(width * 0.75);
   const distanceLabel = listing?.distance_m
     ? `${(listing.distance_m / 1000).toFixed(1)} km`
@@ -186,31 +232,24 @@ export function ListingScreen({ navigation, route }: Props) {
     }
   };
 
-  const handleBooking = async () => {
-    if (!listing || !priceSummary || !token) return;
-    setBookingBusy(true);
-    setError(null);
-    try {
-      logInfo("Booking started", { listingId: listing.id, from, to });
-      const checkoutUrl = await createBooking({
-        listingId: listing.id,
-        from,
-        to,
-        amountCents: priceSummary.totalCents,
-        token,
-      });
-      await Linking.openURL(checkoutUrl);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Booking failed";
-      logError("Booking error", { message });
-      setError(message);
-    } finally {
-      setBookingBusy(false);
+  // Booking now happens on the summary screen.
+
+  const handleToggleFavorite = async () => {
+    if (!listing) return;
+    if (!user) {
+      navigation.navigate("SignIn");
+      return;
+    }
+    const wasFavorite = isFavorite(id);
+    await toggle(listing);
+    if (!wasFavorite) {
+      setShowFavAnim(true);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <>
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.topBar}>
         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backLabel}>Back</Text>
@@ -264,8 +303,20 @@ export function ListingScreen({ navigation, route }: Props) {
                 <View style={styles.heroPillDark}>
                   <Text style={styles.heroPillText}>€{listing.price_per_day} / day</Text>
                 </View>
-                <Pressable style={styles.heroFav}>
-                  <Text style={styles.heroFavText}>♡</Text>
+                <Pressable style={styles.heroFav} onPress={handleToggleFavorite}>
+                  <Text style={[styles.heroFavText, isFavorite(id) && styles.heroFavTextActive]}>
+                    {isFavorite(id) ? "♥︎" : "♡"}
+                  </Text>
+                  {showFavAnim ? (
+                    <LottieView
+                      source={require("../assets/Heart fav.json")}
+                      autoPlay
+                      loop={false}
+                      onAnimationFinish={() => setShowFavAnim(false)}
+                      style={styles.heroFavLottie}
+                      pointerEvents="none"
+                    />
+                  ) : null}
                 </Pressable>
               </View>
               {imageUrls.length > 1 ? (
@@ -292,7 +343,7 @@ export function ListingScreen({ navigation, route }: Props) {
                     <Text style={styles.metricText}>{distanceLabel} away</Text>
                   </View>
                   <View style={styles.metricPill}>
-                    <View style={styles.metricIconStar} />
+                    <Text style={styles.metricStar}>★</Text>
                     <Text style={styles.metricText}>
                       {listing.rating ? listing.rating.toFixed(1) : "4.8"} (
                       {listing.rating_count ?? 120})
@@ -320,6 +371,28 @@ export function ListingScreen({ navigation, route }: Props) {
                     </Text>
                   </Pressable>
                 ) : null}
+              </View>
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Host</Text>
+                <View style={styles.hostRow}>
+                  <View style={styles.hostAvatar}>
+                    <Text style={styles.hostInitials}>{hostInitials}</Text>
+                  </View>
+                  <View style={styles.hostMeta}>
+                    <Text style={styles.hostName}>{hostName}</Text>
+                    <Text style={styles.hostSub}>
+                      Superhost • {hostRating} rating • {hostReviews} reviews
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.hostDetailRow}>
+                  <Text style={styles.hostDetailLabel}>Response time</Text>
+                  <Text style={styles.hostDetailValue}>Within an hour</Text>
+                </View>
+                <View style={styles.hostDetailRow}>
+                  <Text style={styles.hostDetailLabel}>Verified</Text>
+                  <Text style={styles.hostDetailValue}>Identity + phone</Text>
+                </View>
               </View>
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionTitle}>Features</Text>
@@ -350,10 +423,30 @@ export function ListingScreen({ navigation, route }: Props) {
               ) : null}
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionTitle}>Reviews</Text>
-                <Text style={styles.sectionBody}>Reviews are coming soon.</Text>
+                {reviewsLoading ? (
+                  <Text style={styles.sectionBody}>Loading reviews…</Text>
+                ) : reviews.length === 0 ? (
+                  <Text style={styles.sectionBody}>No reviews yet.</Text>
+                ) : (
+                  <View style={styles.reviewList}>
+                    {reviews.map((review) => (
+                      <View key={review.id} style={styles.reviewItem}>
+                        <View style={styles.reviewRow}>
+                          <Text style={styles.reviewRating}>★ {review.rating.toFixed(1)}</Text>
+                          <Text style={styles.reviewDate}>
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </Text>
+                        </View>
+                        {review.comment ? (
+                          <Text style={styles.reviewBody}>{review.comment}</Text>
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
-              {!user ? (
-                <View style={styles.ctaCard}>
+      {!user ? (
+        <View style={styles.ctaCard}>
                   <Text style={styles.ctaTitle}>Sign in to book</Text>
                   <TextInput
                     style={styles.input}
@@ -401,12 +494,10 @@ export function ListingScreen({ navigation, route }: Props) {
               </View>
               <Pressable
                 style={styles.bottomButton}
-                onPress={handleBooking}
-                disabled={bookingBusy || authLoading}
+                onPress={() => navigation.navigate("BookingSummary", { id, from, to })}
+                disabled={authLoading}
               >
-                <Text style={styles.bottomButtonText}>
-                  {bookingBusy ? "Opening..." : "Reserve"}
-                </Text>
+                <Text style={styles.bottomButtonText}>Reserve</Text>
               </Pressable>
             </View>
           ) : null}
@@ -435,6 +526,7 @@ export function ListingScreen({ navigation, route }: Props) {
         </>
       ) : null}
     </SafeAreaView>
+    </>
   );
 }
 
@@ -507,11 +599,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     width: 34,
+    position: "relative",
   },
   heroFavText: {
     color: "#ffffff",
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "600",
+    lineHeight: 18,
+  },
+  heroFavTextActive: {
+    color: "#00d4aa",
+  },
+  heroFavLottie: {
+    position: "absolute",
+    width: 62,
+    height: 62,
   },
   dotsRow: {
     bottom: 12,
@@ -617,11 +719,10 @@ const styles = StyleSheet.create({
     height: 8,
     width: 8,
   },
-  metricIconStar: {
-    backgroundColor: "#fbbf24",
-    borderRadius: 999,
-    height: 8,
-    width: 8,
+  metricStar: {
+    color: "#f59e0b",
+    fontSize: 12,
+    fontWeight: "700",
   },
   metricIconBadge: {
     backgroundColor: "#22c55e",
@@ -748,6 +849,86 @@ const styles = StyleSheet.create({
     color: "#101828",
     fontSize: 13,
     fontWeight: "700",
+  },
+  hostRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 10,
+  },
+  hostAvatar: {
+    alignItems: "center",
+    backgroundColor: "#e9fbf6",
+    borderColor: "#b8efe3",
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 52,
+    justifyContent: "center",
+    width: 52,
+  },
+  hostInitials: {
+    color: "#0f172a",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  hostMeta: {
+    flex: 1,
+    gap: 4,
+  },
+  hostName: {
+    color: "#0f172a",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  hostSub: {
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  hostDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
+  },
+  hostDetailLabel: {
+    color: "#94a3b8",
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  hostDetailValue: {
+    color: "#0f172a",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  reviewList: {
+    gap: 12,
+    marginTop: 8,
+  },
+  reviewItem: {
+    borderTopColor: "#e2e8f0",
+    borderTopWidth: 1,
+    paddingTop: 10,
+  },
+  reviewRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  reviewRating: {
+    color: "#0f172a",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  reviewDate: {
+    color: "#94a3b8",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  reviewBody: {
+    color: "#475467",
+    fontSize: 12,
+    marginTop: 6,
   },
   sectionBody: {
     color: "#475467",

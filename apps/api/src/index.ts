@@ -4,6 +4,7 @@ import express from "express";
 import authRouter from "./routes/auth.js";
 import bookingsRouter from "./routes/bookings.js";
 import listingsRouter from "./routes/listings.js";
+import favoritesRouter from "./routes/favorites.js";
 import reviewsRouter from "./routes/reviews.js";
 import { z } from "zod";
 import hostRouter from "./routes/host.js";
@@ -42,6 +43,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/listings", listingsRouter);
+app.use("/api/favorites", favoritesRouter);
 app.use("/api/bookings", bookingsRouter);
 app.use("/api/host", hostRouter);
 app.use("/api/reviews", reviewsRouter);

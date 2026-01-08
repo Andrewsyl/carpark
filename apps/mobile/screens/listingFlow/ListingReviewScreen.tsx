@@ -3,17 +3,24 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import LottieView from "lottie-react-native";
 import { createListing, updateListing } from "../../api";
 import { useAuth } from "../../auth";
 import { MapPin } from "../../components/MapPin";
+import { LIGHT_MAP_STYLE } from "../../components/mapStyles";
 import type { RootStackParamList } from "../../types";
 import { useListingFlow } from "./context";
 import { StepProgress } from "./StepProgress";
 
 type FlowStackParamList = {
   ListingReview: undefined;
+  ListingLocation: undefined;
+  ListingStreetView: undefined;
+  ListingDetails: undefined;
+  ListingAvailability: undefined;
+  ListingPrice: undefined;
+  ListingPhotos: undefined;
 };
 
 type Props = NativeStackScreenProps<FlowStackParamList, "ListingReview">;
@@ -131,6 +138,8 @@ export function ListingReviewScreen({ navigation }: Props) {
           <View style={styles.mapPreview}>
             <MapView
               style={styles.map}
+              provider={PROVIDER_GOOGLE}
+              customMapStyle={LIGHT_MAP_STYLE}
               initialRegion={{
                 latitude: draft.location.latitude,
                 longitude: draft.location.longitude,
@@ -162,6 +171,48 @@ export function ListingReviewScreen({ navigation }: Props) {
             <Text style={styles.label}>Price</Text>
             <Text style={styles.value}>€{draft.pricePerDay || "0"}</Text>
           </View>
+        </View>
+        <View style={styles.editCard}>
+          <Text style={styles.editTitle}>Edit a section</Text>
+          <Pressable
+            style={styles.editRow}
+            onPress={() => navigation.navigate("ListingLocation")}
+          >
+            <Text style={styles.editLabel}>Location</Text>
+            <Text style={styles.editChevron}>›</Text>
+          </Pressable>
+          <Pressable
+            style={styles.editRow}
+            onPress={() => navigation.navigate("ListingStreetView")}
+          >
+            <Text style={styles.editLabel}>Street view</Text>
+            <Text style={styles.editChevron}>›</Text>
+          </Pressable>
+          <Pressable
+            style={styles.editRow}
+            onPress={() => navigation.navigate("ListingDetails")}
+          >
+            <Text style={styles.editLabel}>Space details</Text>
+            <Text style={styles.editChevron}>›</Text>
+          </Pressable>
+          <Pressable
+            style={styles.editRow}
+            onPress={() => navigation.navigate("ListingAvailability")}
+          >
+            <Text style={styles.editLabel}>Availability</Text>
+            <Text style={styles.editChevron}>›</Text>
+          </Pressable>
+          <Pressable style={styles.editRow} onPress={() => navigation.navigate("ListingPrice")}>
+            <Text style={styles.editLabel}>Price</Text>
+            <Text style={styles.editChevron}>›</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.editRow, styles.editRowLast]}
+            onPress={() => navigation.navigate("ListingPhotos")}
+          >
+            <Text style={styles.editLabel}>Photos</Text>
+            <Text style={styles.editChevron}>›</Text>
+          </Pressable>
         </View>
       </ScrollView>
       <View style={styles.footer}>
@@ -206,14 +257,14 @@ export function ListingReviewScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f5f7fb",
   },
   content: {
     padding: 18,
     paddingBottom: 160,
   },
   kicker: {
-    color: "#2563eb",
+    color: "#00d4aa",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1,
@@ -226,7 +277,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   subtitle: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 13,
     marginTop: 6,
   },
@@ -243,11 +294,49 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#ffffff",
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 16,
     borderWidth: 1,
     marginTop: 16,
     overflow: "hidden",
+  },
+  editCard: {
+    backgroundColor: "#ffffff",
+    borderColor: "#e5e7eb",
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 16,
+    overflow: "hidden",
+  },
+  editTitle: {
+    color: "#0f172a",
+    fontSize: 14,
+    fontWeight: "700",
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 8,
+  },
+  editRow: {
+    alignItems: "center",
+    borderTopColor: "#e5e7eb",
+    borderTopWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  editRowLast: {
+    borderBottomWidth: 0,
+  },
+  editLabel: {
+    color: "#0f172a",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  editChevron: {
+    color: "#94a3b8",
+    fontSize: 18,
+    fontWeight: "700",
   },
   mapPreview: {
     height: 160,
@@ -256,13 +345,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   row: {
-    borderTopColor: "#e2e8f0",
+    borderTopColor: "#e5e7eb",
     borderTopWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   label: {
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -274,8 +363,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   footer: {
-    backgroundColor: "#f8fafc",
-    borderTopColor: "#e2e8f0",
+    backgroundColor: "#ffffff",
+    borderTopColor: "#e5e7eb",
     borderTopWidth: 1,
     padding: 16,
   },
@@ -313,19 +402,19 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   successBody: {
-    color: "#475569",
+    color: "#6b7280",
     fontSize: 13,
     marginTop: 4,
     textAlign: "center",
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#2fa84f",
+    backgroundColor: "#00d4aa",
     borderRadius: 14,
     paddingVertical: 14,
   },
   primaryButtonDisabled: {
-    backgroundColor: "#cbd5f5",
+    backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
     color: "#ffffff",
@@ -339,7 +428,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   secondaryButtonText: {
-    color: "#475569",
+    color: "#6b7280",
     fontSize: 13,
     fontWeight: "600",
   },

@@ -53,9 +53,11 @@ export async function findAvailableSpaces(input: SpaceSearchInput) {
       ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
       $3
     )
+    AND status <> 'archived'
     AND NOT EXISTS (
       SELECT 1 FROM bookings b
       WHERE b.listing_id = listings.id
+      AND (b.status IS NULL OR b.status <> 'canceled')
       AND tstzrange(b.start_time, b.end_time, '[)') && tstzrange($4::timestamptz, $5::timestamptz, '[)')
     )
     AND NOT EXISTS (
@@ -122,6 +124,7 @@ export async function findAvailableSpaces(input: SpaceSearchInput) {
       ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
       $3
     )
+    AND status <> 'archived'
     AND NOT EXISTS (
       SELECT 1 FROM bookings b
       WHERE b.listing_id = listings.id
@@ -226,7 +229,7 @@ export async function createBooking({
   from: string;
   to: string;
   stripePaymentIntentId: string;
-  checkoutSessionId: string;
+  checkoutSessionId?: string | null;
   amountCents: number;
   currency: string;
 }) {
@@ -242,7 +245,7 @@ export async function createBooking({
       from,
       to,
       stripePaymentIntentId,
-      checkoutSessionId,
+      checkoutSessionId ?? null,
       amountCents,
       currency,
     ]);
@@ -340,7 +343,8 @@ export async function listListingsByHost(hostId: string) {
     SELECT id, title, address, price_per_day, availability_text, image_urls, ST_X(geom) AS longitude, ST_Y(geom) AS latitude
     FROM listings
     WHERE host_id = $1
-    ORDER BY id DESC
+      AND status <> 'archived'
+    ORDER BY created_at DESC
     `,
     [hostId]
   );
@@ -357,6 +361,27 @@ export async function listListingsByHost(hostId: string) {
 }
 
 export async function deleteListing({ listingId, hostId }: { listingId: string; hostId: string }) {
+  const bookingCheck = await pool.query(
+    `
+    SELECT 1
+    FROM bookings
+    WHERE listing_id = $1
+    LIMIT 1
+    `,
+    [listingId]
+  );
+  if (bookingCheck.rowCount > 0) {
+    const result = await pool.query(
+      `
+      UPDATE listings
+      SET status = 'archived'
+      WHERE id = $1 AND host_id = $2
+      RETURNING id;
+      `,
+      [listingId, hostId]
+    );
+    return result.rowCount && result.rowCount > 0;
+  }
   const result = await pool.query(
     `
     DELETE FROM listings
@@ -460,6 +485,7 @@ export async function getListingById(listingId: string) {
       ST_Y(geom) AS latitude
     FROM listings
     WHERE id = $1
+      AND status <> 'archived'
     LIMIT 1
     `,
     [listingId]
@@ -483,6 +509,68 @@ export async function getListingById(listingId: string) {
   };
 }
 
+export async function addFavorite(userId: string, listingId: string) {
+  const result = await pool.query(
+    `
+    INSERT INTO favorites (user_id, listing_id)
+    VALUES ($1, $2)
+    ON CONFLICT DO NOTHING
+    RETURNING listing_id;
+    `,
+    [userId, listingId]
+  );
+  return result.rowCount ? result.rows[0].listing_id : null;
+}
+
+export async function removeFavorite(userId: string, listingId: string) {
+  const result = await pool.query(
+    `
+    DELETE FROM favorites
+    WHERE user_id = $1 AND listing_id = $2
+    `,
+    [userId, listingId]
+  );
+  return result.rowCount ? true : false;
+}
+
+export async function listFavoritesByUser(userId: string) {
+  const result = await pool.query(
+    `
+    SELECT
+      l.id,
+      l.title,
+      l.address,
+      l.price_per_day,
+      l.availability_text,
+      l.amenities,
+      l.rating,
+      l.rating_count,
+      l.image_urls,
+      ST_X(l.geom) AS longitude,
+      ST_Y(l.geom) AS latitude
+    FROM favorites f
+    JOIN listings l ON l.id = f.listing_id
+    WHERE f.user_id = $1
+      AND l.status <> 'archived'
+    ORDER BY f.created_at DESC
+    `,
+    [userId]
+  );
+  return result.rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    address: row.address,
+    pricePerDay: row.price_per_day,
+    availability: row.availability_text,
+    amenities: row.amenities ?? [],
+    imageUrls: row.image_urls ?? [],
+    rating: row.rating,
+    ratingCount: row.rating_count,
+    longitude: row.longitude,
+    latitude: row.latitude,
+  }));
+}
+
 export async function getListingWithHostAccount(listingId: string) {
   const result = await pool.query(
     `
@@ -503,6 +591,7 @@ export async function getListingWithHostAccount(listingId: string) {
     FROM listings l
     JOIN users u ON u.id = l.host_id
     WHERE l.id = $1
+      AND l.status <> 'archived'
     LIMIT 1
     `,
     [listingId]
@@ -695,6 +784,54 @@ export async function updateBookingStatus({
     }
     throw err;
   }
+}
+
+export async function updateBookingStatusByPaymentIntent({
+  paymentIntentId,
+  status,
+}: {
+  paymentIntentId: string;
+  status: "confirmed" | "canceled";
+}) {
+  try {
+    const result = await pool.query(
+      `
+      UPDATE bookings
+      SET status = $1
+      WHERE payment_intent_id = $2
+      RETURNING id;
+      `,
+      [status, paymentIntentId]
+    );
+    return result.rowCount && result.rowCount > 0;
+  } catch (err: any) {
+    if (err?.code === "42703") {
+      console.warn("bookings table missing status/payment_intent_id columns; status update skipped. Run migration 002_booking_status.sql.");
+      return false;
+    }
+    throw err;
+  }
+}
+
+export async function cancelBookingByDriver({
+  bookingId,
+  driverId,
+}: {
+  bookingId: string;
+  driverId: string;
+}) {
+  const result = await pool.query(
+    `
+    UPDATE bookings
+    SET status = 'canceled'
+    WHERE id = $1
+      AND driver_id = $2
+      AND end_time > now()
+    RETURNING id;
+    `,
+    [bookingId, driverId]
+  );
+  return result.rowCount && result.rowCount > 0;
 }
 
 export async function listUserBookings(userId: string) {

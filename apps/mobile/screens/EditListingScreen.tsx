@@ -180,7 +180,7 @@ export function EditListingScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f5f7fb",
     flex: 1,
   },
   topBar: {
@@ -220,13 +220,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   label: {
-    color: "#475569",
+    color: "#475467",
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 6,
   },
   input: {
-    borderColor: "#e2e8f0",
+    borderColor: "#e5e7eb",
     borderRadius: 12,
     borderWidth: 1,
     color: "#0f172a",
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#2fa84f",
+    backgroundColor: "#00d4aa",
     borderRadius: 14,
     marginTop: 20,
     paddingVertical: 14,
