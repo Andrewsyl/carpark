@@ -123,6 +123,7 @@ export function ListingScreen({ navigation, route }: Props) {
   const [showFavAnim, setShowFavAnim] = useState(false);
   const [reviews, setReviews] = useState<ListingReview[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [navigatingToBooking, setNavigatingToBooking] = useState(false);
   const streetViewLocation =
     listing?.latitude && listing?.longitude
       ? `${listing.latitude},${listing.longitude}`
@@ -207,8 +208,9 @@ export function ListingScreen({ navigation, route }: Props) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("");
-  const hostRating = listing?.rating ? listing.rating.toFixed(1) : "4.9";
-  const hostReviews = listing?.rating_count ?? 120;
+  const hasReviews = (listing?.rating_count ?? 0) > 0 && typeof listing?.rating === "number";
+  const hostRating = hasReviews && listing?.rating ? listing.rating.toFixed(1) : null;
+  const hostReviews = hasReviews ? listing?.rating_count ?? 0 : 0;
   const heroHeight = Math.round(width * 0.75);
   const distanceLabel = listing?.distance_m
     ? `${(listing.distance_m / 1000).toFixed(1)} km`
@@ -226,7 +228,10 @@ export function ListingScreen({ navigation, route }: Props) {
   const handleRegister = async () => {
     setAuthError(null);
     try {
-      await register(email.trim(), password);
+      await register(email.trim(), password, {
+        termsVersion: "2026-01-10",
+        privacyVersion: "2026-01-10",
+      });
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : "Sign up failed");
     }
@@ -293,7 +298,8 @@ export function ListingScreen({ navigation, route }: Props) {
                       />
                     </Pressable>
                   ))}
-                </ScrollView>
+      </ScrollView>
+
               ) : (
                 <View style={[styles.heroPlaceholder, { height: heroHeight }]}>
                   <Text style={styles.heroPlaceholderText}>No image</Text>
@@ -343,11 +349,16 @@ export function ListingScreen({ navigation, route }: Props) {
                     <Text style={styles.metricText}>{distanceLabel} away</Text>
                   </View>
                   <View style={styles.metricPill}>
-                    <Text style={styles.metricStar}>★</Text>
-                    <Text style={styles.metricText}>
-                      {listing.rating ? listing.rating.toFixed(1) : "4.8"} (
-                      {listing.rating_count ?? 120})
-                    </Text>
+                    {hasReviews ? (
+                      <>
+                        <Text style={styles.metricStar}>★</Text>
+                        <Text style={styles.metricText}>
+                          {listing.rating?.toFixed(1)} ({listing.rating_count})
+                        </Text>
+                      </>
+                    ) : (
+                      <Text style={styles.metricText}>New listing</Text>
+                    )}
                   </View>
                   <View style={styles.metricPill}>
                     <View style={styles.metricIconBadge} />
@@ -381,7 +392,9 @@ export function ListingScreen({ navigation, route }: Props) {
                   <View style={styles.hostMeta}>
                     <Text style={styles.hostName}>{hostName}</Text>
                     <Text style={styles.hostSub}>
-                      Superhost • {hostRating} rating • {hostReviews} reviews
+                      {hasReviews
+                        ? `Superhost • ${hostRating} rating • ${hostReviews} reviews`
+                        : "New host • No reviews yet"}
                     </Text>
                   </View>
                 </View>
@@ -494,10 +507,17 @@ export function ListingScreen({ navigation, route }: Props) {
               </View>
               <Pressable
                 style={styles.bottomButton}
-                onPress={() => navigation.navigate("BookingSummary", { id, from, to })}
+                onPress={() => {
+                  if (navigatingToBooking) return;
+                  setNavigatingToBooking(true);
+                  navigation.navigate("BookingSummary", { id, from, to });
+                  setTimeout(() => setNavigatingToBooking(false), 800);
+                }}
                 disabled={authLoading}
               >
-                <Text style={styles.bottomButtonText}>Reserve</Text>
+                <Text style={styles.bottomButtonText}>
+                  {navigatingToBooking ? "Opening..." : "Reserve"}
+                </Text>
               </Pressable>
             </View>
           ) : null}

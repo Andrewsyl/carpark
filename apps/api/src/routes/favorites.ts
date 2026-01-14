@@ -2,14 +2,22 @@ import { Router } from "express";
 import { z } from "zod";
 import { addFavorite, getListingById, listFavoritesByUser, removeFavorite } from "../lib/db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { createRateLimiter } from "../middleware/rateLimit.js";
 
 const router = Router();
+
+const favoritesLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 60,
+  keyPrefix: "favorites",
+  keyGenerator: (req) => req.user?.userId ?? req.ip ?? "unknown",
+});
 
 const favoriteSchema = z.object({
   listingId: z.string().uuid(),
 });
 
-router.get("/", requireAuth, async (req, res, next) => {
+router.get("/", requireAuth, favoritesLimiter, async (req, res, next) => {
   try {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
@@ -20,7 +28,7 @@ router.get("/", requireAuth, async (req, res, next) => {
   }
 });
 
-router.post("/", requireAuth, async (req, res, next) => {
+router.post("/", requireAuth, favoritesLimiter, async (req, res, next) => {
   try {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
@@ -34,11 +42,11 @@ router.post("/", requireAuth, async (req, res, next) => {
   }
 });
 
-router.delete("/:listingId", requireAuth, async (req, res, next) => {
+router.delete("/:listingId", requireAuth, favoritesLimiter, async (req, res, next) => {
   try {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
-    const listingId = req.params.listingId;
+    const listingId = z.string().uuid().parse(req.params.listingId);
     await removeFavorite(userId, listingId);
     res.status(204).end();
   } catch (error) {

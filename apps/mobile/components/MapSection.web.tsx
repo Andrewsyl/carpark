@@ -35,6 +35,11 @@ export default function MapSection({
   };
   mapRef?: unknown;
   freezeMarkers?: boolean;
+  onMapLoaded?: () => void;
+  onMapReady?: () => void;
+  googleMapId?: string;
+  customMapStyle?: Array<Record<string, unknown>>;
+  searchCircle?: { lat: number; lng: number; radiusM: number } | null;
 }) {
   return (
     <View style={[styles.fallback, style]}>

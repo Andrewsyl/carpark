@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { MaterialIcons } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
 import { deleteAccount, requestEmailVerification } from "../api";
 import { useAuth } from "../auth";
 import type { RootStackParamList } from "../types";
@@ -11,10 +12,19 @@ type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
 
 export function ProfileScreen({ navigation }: Props) {
   const { user, token, logout } = useAuth();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   const resendVerification = async () => {
     if (!user?.email) return;
@@ -22,14 +32,66 @@ export function ProfileScreen({ navigation }: Props) {
     setMessage(null);
     setError(null);
     try {
-      await requestEmailVerification(user.email);
-      setMessage("Verification email sent. Check your inbox.");
+      const url = await requestEmailVerification(user.email);
+      setPreviewUrl(url);
+      setMessage(
+        url
+          ? "Verification link ready. Open it to confirm your email."
+          : "Verification email sent. Check your inbox."
+      );
+      setResendCooldown(30);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send verification email");
     } finally {
       setSending(false);
     }
   };
+
+  const syncNotificationStatus = async () => {
+    const settings = await Notifications.getPermissionsAsync();
+    setNotificationsEnabled(settings.granted);
+  };
+
+  const handleToggleNotifications = async () => {
+    if (notificationsEnabled) {
+      Alert.alert(
+        "Turn off notifications",
+        "Notifications are managed in your device settings.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Open settings",
+            onPress: () => {
+              void Linking.openSettings();
+            },
+          },
+        ]
+      );
+      return;
+    }
+    const result = await Notifications.requestPermissionsAsync();
+    if (!result.granted) {
+      Alert.alert(
+        "Enable notifications",
+        "Notifications are off. Open system settings to enable them.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Open settings",
+            onPress: () => {
+              void Linking.openSettings();
+            },
+          },
+        ]
+      );
+      return;
+    }
+    await syncNotificationStatus();
+  };
+
+  useEffect(() => {
+    void syncNotificationStatus();
+  }, []);
 
   const confirmDelete = () => {
     if (!token) {
@@ -94,6 +156,11 @@ export function ProfileScreen({ navigation }: Props) {
 
         {message ? <Text style={styles.notice}>{message}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
+        {previewUrl ? (
+          <Pressable style={styles.linkButton} onPress={() => Linking.openURL(previewUrl)}>
+            <Text style={styles.linkButtonText}>Open verification link</Text>
+          </Pressable>
+        ) : null}
 
         <View style={styles.section}>
           <Pressable
@@ -157,14 +224,26 @@ export function ProfileScreen({ navigation }: Props) {
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-            onPress={() => showPlaceholder("Notifications")}
+            onPress={handleToggleNotifications}
           >
             <MaterialIcons name="notifications-none" size={24} color="#111827" />
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Notifications</Text>
               <Text style={styles.rowSubtitle}>Trips, reminders, updates</Text>
             </View>
-            <MaterialIcons name="chevron-right" size={22} color="#9ca3af" />
+            <View
+              style={[
+                styles.toggleTrack,
+                notificationsEnabled && styles.toggleTrackActive,
+              ]}
+            >
+              <View
+                style={[
+                  styles.toggleKnob,
+                  notificationsEnabled && styles.toggleKnobActive,
+                ]}
+              />
+            </View>
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
@@ -206,10 +285,14 @@ export function ProfileScreen({ navigation }: Props) {
               <Pressable
                 style={styles.inlineButton}
                 onPress={resendVerification}
-                disabled={sending}
+                disabled={sending || resendCooldown > 0}
               >
                 <Text style={styles.inlineButtonText}>
-                  {sending ? "Sending..." : "Resend"}
+                  {sending
+                    ? "Sending..."
+                    : resendCooldown > 0
+                      ? `Retry in ${resendCooldown}s`
+                      : "Resend"}
                 </Text>
               </Pressable>
             ) : (
@@ -270,18 +353,18 @@ export function ProfileScreen({ navigation }: Props) {
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-            onPress={() => showPlaceholder("Contact support")}
+            onPress={() => navigation.navigate("Support")}
           >
             <MaterialIcons name="support-agent" size={24} color="#111827" />
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Contact support</Text>
-              <Text style={styles.rowSubtitle}>We are here to help</Text>
+              <Text style={styles.rowSubtitle}>Send a message to our team</Text>
             </View>
             <MaterialIcons name="chevron-right" size={22} color="#9ca3af" />
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-            onPress={() => showPlaceholder("Terms & privacy")}
+            onPress={() => navigation.navigate("Legal")}
           >
             <MaterialIcons name="info-outline" size={24} color="#111827" />
             <View style={styles.rowText}>
@@ -294,6 +377,19 @@ export function ProfileScreen({ navigation }: Props) {
 
         <Text style={styles.sectionHeader}>Account</Text>
         <View style={styles.section}>
+          {user?.role === "admin" ? (
+            <Pressable
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+              onPress={() => navigation.navigate("Admin")}
+            >
+              <MaterialIcons name="admin-panel-settings" size={24} color="#111827" />
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>Admin panel</Text>
+                <Text style={styles.rowSubtitle}>Moderate users and listings</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color="#9ca3af" />
+            </Pressable>
+          ) : null}
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
             onPress={confirmDelete}
@@ -414,6 +510,25 @@ const styles = StyleSheet.create({
   rowPressed: {
     backgroundColor: "#f8fafc",
   },
+  toggleTrack: {
+    backgroundColor: "#e2e8f0",
+    borderRadius: 999,
+    height: 26,
+    padding: 3,
+    width: 48,
+  },
+  toggleTrackActive: {
+    backgroundColor: "#00d4aa",
+  },
+  toggleKnob: {
+    backgroundColor: "#ffffff",
+    borderRadius: 999,
+    height: 20,
+    width: 20,
+  },
+  toggleKnobActive: {
+    marginLeft: 22,
+  },
   rowText: {
     flex: 1,
   },
@@ -438,6 +553,15 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   inlineButtonText: {
+    color: "#0f766e",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  linkButton: {
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  linkButtonText: {
     color: "#0f766e",
     fontSize: 12,
     fontWeight: "700",

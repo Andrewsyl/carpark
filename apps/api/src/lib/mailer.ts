@@ -16,6 +16,8 @@ const transport =
       })
     : null;
 
+export const isMailerConfigured = Boolean(transport);
+
 export async function sendMail({ to, subject, text, html }: { to: string; subject: string; text: string; html?: string }) {
   if (!transport) {
     console.warn("SMTP not configured. Email would be sent to:", to, subject, text);

@@ -3,6 +3,7 @@ const {
   withGradleProperties,
   withDangerousMod,
   withAndroidManifest,
+  withInfoPlist,
 } = require("@expo/config-plugins");
 const fs = require("fs");
 const os = require("os");
@@ -177,6 +178,18 @@ const withForceDarkAllowedInManifest = (config) =>
     return configMod;
   });
 
+const withIosGoogleMapsKey = (config) =>
+  withInfoPlist(config, (configMod) => {
+    const key =
+      appJson.expo?.ios?.config?.googleMapsApiKey ||
+      process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+      "";
+    if (key) {
+      configMod.modResults.GMSApiKey = key;
+    }
+    return configMod;
+  });
+
 module.exports = ({ config }) => {
   const base = { ...(appJson.expo ?? {}), ...(config ?? {}) };
   const plugins = base.plugins ?? [];
@@ -192,20 +205,22 @@ module.exports = ({ config }) => {
     },
   ];
 
-  return withForceDarkDisabled(
-    withForceDarkAllowedInManifest(
-      withGradleWrapperVersion(
-        withAapt2Override(
-          withCoreKtxFix({
-            ...base,
-            android: {
-              ...base.android,
-              compileSdkVersion: 35,
-              targetSdkVersion: 35,
-              buildToolsVersion: "35.0.0",
-            },
-            plugins: [...plugins, buildProps],
-          })
+  return withIosGoogleMapsKey(
+    withForceDarkDisabled(
+      withForceDarkAllowedInManifest(
+        withGradleWrapperVersion(
+          withAapt2Override(
+            withCoreKtxFix({
+              ...base,
+              android: {
+                ...base.android,
+                compileSdkVersion: 35,
+                targetSdkVersion: 35,
+                buildToolsVersion: "35.0.0",
+              },
+              plugins: [...plugins, buildProps],
+            })
+          )
         )
       )
     )

@@ -1,9 +1,18 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { deleteListing, listHostListings } from "../api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  createHostPayoutLink,
+  deleteListing,
+  getHostEarningsSummary,
+  getHostPayoutStatus,
+  listHostListings,
+  runHostPayouts,
+  type HostPayoutStatus,
+} from "../api";
 import { useAuth } from "../auth";
 import type { ListingSummary, RootStackParamList } from "../types";
 
@@ -11,24 +20,61 @@ type Props = NativeStackScreenProps<RootStackParamList, "Listings">;
 
 export function ListingsScreen({ navigation }: Props) {
   const { token, user } = useAuth();
+  const platformFeePercent = 10;
   const [listings, setListings] = useState<ListingSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [earnings, setEarnings] = useState<{ totalCents: number; feeCents: number; netCents: number } | null>(null);
+  const [payoutStatus, setPayoutStatus] = useState<HostPayoutStatus | null>(null);
+  const [payoutBusy, setPayoutBusy] = useState(false);
 
   const loadListings = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await listHostListings(token);
+      const [data, summary, payout] = await Promise.all([
+        listHostListings(token),
+        getHostEarningsSummary(token),
+        getHostPayoutStatus(token),
+      ]);
       setListings(data);
+      setEarnings(summary);
+      setPayoutStatus(payout);
+      if (payout.payoutsEnabled) {
+        void runHostPayouts(token);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load listings");
     } finally {
       setLoading(false);
     }
   }, [token]);
+
+  const formatAmount = (cents?: number) => {
+    const value = typeof cents === "number" ? cents : 0;
+    return `€${(value / 100).toFixed(2)}`;
+  };
+
+  const handlePayoutSetup = useCallback(async () => {
+    if (!token) return;
+    setPayoutBusy(true);
+    setError(null);
+    try {
+      const link = await createHostPayoutLink({
+        token,
+        accountId: payoutStatus?.accountId ?? undefined,
+      });
+      if (link.onboardingUrl) {
+        await Linking.openURL(link.onboardingUrl);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start payout setup");
+    } finally {
+      setPayoutBusy(false);
+    }
+  }, [payoutStatus?.accountId, token]);
 
   const handleDelete = useCallback(
     (listingId: string) => {
@@ -46,6 +92,7 @@ export function ListingsScreen({ navigation }: Props) {
             try {
               await deleteListing({ token, listingId });
               setListings((prev) => prev.filter((item) => item.id !== listingId));
+              await AsyncStorage.setItem("searchRefreshToken", Date.now().toString());
             } catch (err) {
               setError(err instanceof Error ? err.message : "Could not delete listing");
             } finally {
@@ -103,6 +150,47 @@ export function ListingsScreen({ navigation }: Props) {
             {error ? <Text style={styles.error}>{error}</Text> : null}
             {loading && listings.length === 0 ? (
               <Text style={styles.muted}>Loading listings…</Text>
+            ) : null}
+            {earnings ? (
+              <View style={styles.earningsCard}>
+                <Text style={styles.earningsTitle}>Earnings summary</Text>
+                <View style={styles.earningsRow}>
+                  <Text style={styles.earningsLabel}>Total earned</Text>
+                  <Text style={styles.earningsValue}>{formatAmount(earnings.totalCents)}</Text>
+                </View>
+                <View style={styles.earningsRow}>
+                  <Text style={styles.earningsLabel}>Platform fee</Text>
+                  <Text style={styles.earningsValue}>{formatAmount(earnings.feeCents)}</Text>
+                </View>
+                <Text style={styles.earningsHint}>
+                  {platformFeePercent}% platform fee applied per booking.
+                </Text>
+                <View style={[styles.earningsRow, styles.earningsRowStrong]}>
+                  <Text style={styles.earningsLabelStrong}>Net payout</Text>
+                  <Text style={styles.earningsValueStrong}>{formatAmount(earnings.netCents)}</Text>
+                </View>
+              </View>
+            ) : null}
+            {payoutStatus ? (
+              <View style={styles.payoutCard}>
+                <Text style={styles.payoutTitle}>Payouts</Text>
+                <Text style={styles.payoutBody}>
+                  {payoutStatus.payoutsEnabled
+                    ? "Payouts are active. Transfers will arrive automatically."
+                    : "Finish payout setup to receive earnings."}
+                </Text>
+                {!payoutStatus.payoutsEnabled ? (
+                  <Pressable
+                    style={[styles.primaryButton, payoutBusy && styles.primaryButtonDisabled]}
+                    onPress={handlePayoutSetup}
+                    disabled={payoutBusy}
+                  >
+                    <Text style={styles.primaryButtonText}>
+                      {payoutBusy ? "Opening..." : "Complete payout setup"}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
             ) : null}
             {listings.length === 0 && !loading ? (
               <View style={styles.card}>
@@ -235,6 +323,85 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 10,
   },
+  earningsCard: {
+    backgroundColor: "#ffffff",
+    borderColor: "#e5e7eb",
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+    padding: 18,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  earningsTitle: {
+    color: "#111827",
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+  earningsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  earningsRowStrong: {
+    borderTopColor: "#e5e7eb",
+    borderTopWidth: 1,
+    marginTop: 12,
+    paddingTop: 12,
+  },
+  earningsHint: {
+    color: "#6b7280",
+    fontSize: 12,
+    marginTop: 6,
+  },
+  earningsLabel: {
+    color: "#6b7280",
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  earningsValue: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  earningsLabelStrong: {
+    color: "#111827",
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  earningsValueStrong: {
+    color: "#047857",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  payoutCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    marginTop: 16,
+    padding: 16,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  payoutTitle: {
+    color: "#0f172a",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  payoutBody: {
+    color: "#6b7280",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 6,
+  },
   list: {
     gap: 12,
   },
@@ -302,6 +469,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 14,
     paddingVertical: 10,
+  },
+  primaryButtonDisabled: {
+    backgroundColor: "#a7f3d0",
   },
   primaryButtonText: {
     color: "#ffffff",

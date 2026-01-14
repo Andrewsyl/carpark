@@ -140,25 +140,32 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 18,
-    paddingTop: 12,
+    paddingTop: 0,
   },
   kicker: {
     color: "#00d4aa",
     fontSize: 12,
     fontWeight: "700",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     textTransform: "uppercase",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   title: {
     color: "#0f172a",
     fontSize: 22,
     fontWeight: "700",
     marginTop: 6,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   subtitle: {
     color: "#6b7280",
     fontSize: 13,
     marginTop: 6,
+    lineHeight: 20,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   viewer: {
     marginTop: 16,
@@ -183,6 +190,9 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     fontSize: 13,
     textAlign: "center",
+    lineHeight: 20,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   footer: {
     marginTop: "auto",
@@ -202,6 +212,8 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 15,
     fontWeight: "700",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   secondaryButton: {
     alignItems: "center",
@@ -213,5 +225,7 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     fontSize: 14,
     fontWeight: "600",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
 });

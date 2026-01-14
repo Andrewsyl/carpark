@@ -6,6 +6,7 @@ import { useAuth } from "./auth";
 type FavoritesContextValue = {
   favorites: ListingSummary[];
   loading: boolean;
+  error: string | null;
   refresh: () => Promise<void>;
   isFavorite: (listingId: string) => boolean;
   add: (listing: ListingSummary) => Promise<void>;
@@ -33,16 +34,21 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const { token } = useAuth();
   const [favorites, setFavorites] = useState<ListingSummary[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!token) {
       setFavorites([]);
+      setError(null);
       return;
     }
     setLoading(true);
+    setError(null);
     try {
       const next = await listFavorites(token);
       setFavorites(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load favourites");
     } finally {
       setLoading(false);
     }
@@ -63,11 +69,19 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     async (listing: ListingSummary) => {
       if (!token) return;
       const normalized = normalizeListing(listing);
+      let added = false;
       setFavorites((prev) => {
         if (prev.some((item) => item.id === normalized.id)) return prev;
+        added = true;
         return [normalized, ...prev];
       });
-      await apiAddFavorite(token, listing.id);
+      if (!added) return;
+      try {
+        await apiAddFavorite(token, listing.id);
+      } catch (err) {
+        setFavorites((prev) => prev.filter((item) => item.id !== normalized.id));
+        setError(err instanceof Error ? err.message : "Could not save favourite");
+      }
     },
     [token]
   );
@@ -75,8 +89,22 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const remove = useCallback(
     async (listingId: string) => {
       if (!token) return;
-      setFavorites((prev) => prev.filter((item) => item.id !== listingId));
-      await removeFavorite(token, listingId);
+      let removed: ListingSummary | undefined;
+      setFavorites((prev) => {
+        const next = prev.filter((item) => {
+          if (item.id === listingId) removed = item;
+          return item.id !== listingId;
+        });
+        return next;
+      });
+      try {
+        await removeFavorite(token, listingId);
+      } catch (err) {
+        if (removed) {
+          setFavorites((prev) => [removed!, ...prev]);
+        }
+        setError(err instanceof Error ? err.message : "Could not remove favourite");
+      }
     },
     [token]
   );
@@ -97,13 +125,14 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     () => ({
       favorites,
       loading,
+      error,
       refresh,
       isFavorite,
       add,
       remove,
       toggle,
     }),
-    [favorites, loading, refresh, isFavorite, add, remove, toggle]
+    [favorites, loading, error, refresh, isFavorite, add, remove, toggle]
   );
 
   return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>;

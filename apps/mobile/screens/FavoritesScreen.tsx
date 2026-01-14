@@ -9,7 +9,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "Favorites">;
 
 export function FavoritesScreen({ navigation }: Props) {
   const { user } = useAuth();
-  const { favorites } = useFavorites();
+  const { favorites, loading, error } = useFavorites();
 
   if (!user) {
     return (
@@ -35,6 +35,8 @@ export function FavoritesScreen({ navigation }: Props) {
         <View style={styles.backButton} />
       </View>
       <ScrollView contentContainerStyle={styles.content}>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {loading ? <Text style={styles.muted}>Loading favourites…</Text> : null}
         {favorites.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.subtitle}>No favourites yet.</Text>
@@ -141,6 +143,23 @@ const styles = StyleSheet.create({
     color: "#94a3b8",
     fontSize: 12,
     marginTop: 6,
+  },
+  error: {
+    backgroundColor: "#fef2f2",
+    borderColor: "#fecaca",
+    borderRadius: 12,
+    borderWidth: 1,
+    color: "#b42318",
+    fontSize: 12,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    textAlign: "center",
+  },
+  muted: {
+    color: "#94a3b8",
+    fontSize: 12,
+    textAlign: "center",
   },
   primaryButton: {
     backgroundColor: "#00d4aa",

@@ -10,9 +10,16 @@ export type ListingDraft = {
   coverPitch?: number | null;
   spaceType: string;
   accessOptions: string[];
+  accessCode: string;
+  permissionDeclared: boolean;
   availability: {
     mode: "daily" | "dates" | "recurring";
     detail: string;
+    timeStart: string;
+    timeEnd: string;
+    dateStart: string;
+    dateEnd: string;
+    weekdays: string[];
   };
   pricePerDay: string;
   photos: string[];

@@ -9,21 +9,42 @@ import {
   getListingWithHostAccount,
   findUserById,
   cancelBookingByDriver,
+  cancelBookingWithRefund,
+  getBookingForRefund,
+  getBookingForExtension,
+  updateBookingExtension,
+  checkInBooking,
+  updateBookingWindow,
 } from "../lib/db.js";
 import { createCheckoutSession, stripe } from "../lib/stripe.js";
 import { sendBookingEmail } from "../lib/email.js";
 import { requireAuth } from "../middleware/auth.js";
+import { createRateLimiter } from "../middleware/rateLimit.js";
 import "../loadEnv.js";
 
 const router = Router();
+const bookingLimiter = createRateLimiter({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  keyPrefix: "booking",
+  keyGenerator: (req) => req.user?.userId ?? req.ip ?? "unknown",
+});
 
 const bookingSchema = z.object({
-  listingId: z.string(),
-  from: z.string(),
-  to: z.string(),
-  amountCents: z.number().positive(),
-  currency: z.string().default("eur"),
-  platformFeePercent: z.number().min(0).max(1).default(0.1),
+  listingId: z.string().uuid(),
+  from: z.string().datetime(),
+  to: z.string().datetime(),
+  amountCents: z.number().int().positive().max(10000000),
+  currency: z.string().trim().length(3).default("eur"),
+  platformFeePercent: z.number().min(0).max(0.3).default(0.1),
+  vehiclePlate: z
+    .string()
+    .trim()
+    .min(2)
+    .max(12)
+    .regex(/^[A-Za-z0-9 ]+$/, "Only letters, numbers, and spaces")
+    .optional()
+    .nullable(),
 });
 
 const paymentIntentSchema = bookingSchema.pick({
@@ -33,6 +54,7 @@ const paymentIntentSchema = bookingSchema.pick({
   amountCents: true,
   currency: true,
   platformFeePercent: true,
+  vehiclePlate: true,
 });
 
 async function getOrCreateCustomer(email: string) {
@@ -43,7 +65,7 @@ async function getOrCreateCustomer(email: string) {
   return customer.id;
 }
 
-router.post("/", requireAuth, async (req, res, next) => {
+router.post("/", requireAuth, bookingLimiter, async (req, res, next) => {
   try {
     const payload = bookingSchema.parse(req.body);
     const driverId = req.user?.userId;
@@ -63,7 +85,11 @@ router.post("/", requireAuth, async (req, res, next) => {
     }
 
     const listingWithHost = await getListingWithHostAccount(payload.listingId);
+    const payoutAvailableAt = new Date(
+      new Date(payload.from).getTime() + 24 * 60 * 60 * 1000
+    );
 
+    const platformFeeCents = Math.round(payload.amountCents * payload.platformFeePercent);
     const session = await createCheckoutSession({
       amount: payload.amountCents,
       currency: payload.currency,
@@ -90,15 +116,21 @@ router.post("/", requireAuth, async (req, res, next) => {
       checkoutSessionId: session.id,
       amountCents: payload.amountCents,
       currency: payload.currency,
+      platformFeeCents,
+      payoutAvailableAt,
+      vehiclePlate: payload.vehiclePlate ? payload.vehiclePlate.toUpperCase() : null,
     });
 
     res.status(201).json({ checkoutUrl: session.url, sessionId: session.id });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === "23P01") {
+      return res.status(409).json({ message: "Time slot already booked" });
+    }
     next(error);
   }
 });
 
-router.post("/payment-intent", requireAuth, async (req, res, next) => {
+router.post("/payment-intent", requireAuth, bookingLimiter, async (req, res, next) => {
   try {
     if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
     const payload = paymentIntentSchema.parse(req.body);
@@ -122,13 +154,16 @@ router.post("/payment-intent", requireAuth, async (req, res, next) => {
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
     const listingWithHost = await getListingWithHostAccount(payload.listingId);
+    const payoutAvailableAt = new Date(
+      new Date(payload.from).getTime() + 24 * 60 * 60 * 1000
+    );
     const customerId = await getOrCreateCustomer(user.email);
     const ephemeralKey = await stripe.ephemeralKeys.create(
       { customer: customerId },
       { apiVersion: "2024-06-20" }
     );
 
-    const feeAmount = Math.round(payload.amountCents * payload.platformFeePercent);
+    const platformFeeCents = Math.round(payload.amountCents * payload.platformFeePercent);
     const intentParams: any = {
       amount: payload.amountCents,
       currency: payload.currency,
@@ -137,15 +172,10 @@ router.post("/payment-intent", requireAuth, async (req, res, next) => {
       metadata: {
         listing_id: payload.listingId,
         driver_id: driverId,
+        platform_fee_cents: String(platformFeeCents),
+        host_account_id: listingWithHost?.hostStripeAccountId ?? "",
       },
     };
-
-    if (listingWithHost?.hostStripeAccountId) {
-      intentParams.application_fee_amount = feeAmount;
-      intentParams.transfer_data = {
-        destination: listingWithHost.hostStripeAccountId,
-      };
-    }
 
     const intent = await stripe.paymentIntents.create(intentParams);
 
@@ -158,6 +188,9 @@ router.post("/payment-intent", requireAuth, async (req, res, next) => {
       checkoutSessionId: null,
       amountCents: payload.amountCents,
       currency: payload.currency,
+      platformFeeCents,
+      payoutAvailableAt,
+      vehiclePlate: payload.vehiclePlate ? payload.vehiclePlate.toUpperCase() : null,
     });
 
     res.json({
@@ -166,16 +199,390 @@ router.post("/payment-intent", requireAuth, async (req, res, next) => {
       customerId,
       ephemeralKeySecret: ephemeralKey.secret,
     });
+  } catch (error: any) {
+    if (error?.code === "23P01") {
+      return res.status(409).json({ message: "Time slot already booked" });
+    }
+    next(error);
+  }
+});
+
+router.post("/:id/extend-intent", requireAuth, bookingLimiter, async (req, res, next) => {
+  try {
+    if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
+    const bookingId = z.string().uuid().parse(req.params.id);
+    const schema = z.object({
+      newEndTime: z.string().datetime(),
+    });
+    const { newEndTime } = schema.parse(req.body);
+    const driverId = req.user?.userId;
+    if (!driverId) return res.status(401).json({ message: "Unauthorized" });
+
+    const booking = await getBookingForExtension({ bookingId, driverId });
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    if (booking.status !== "confirmed") {
+      return res.status(400).json({ message: "Only confirmed bookings can be extended" });
+    }
+
+    const currentEnd = new Date(booking.end_time);
+    const startTime = new Date(booking.start_time);
+    const requestedEnd = new Date(newEndTime);
+    if (Number.isNaN(requestedEnd.getTime())) {
+      return res.status(400).json({ message: "Invalid end time" });
+    }
+    if (requestedEnd.getTime() <= currentEnd.getTime()) {
+      return res.status(400).json({ message: "New end time must be after current end time" });
+    }
+
+    const overlapCheck = await pool.query(
+      `SELECT 1 FROM bookings
+       WHERE listing_id = $1
+         AND id <> $2
+         AND (status IS NULL OR status <> 'canceled')
+         AND tstzrange(start_time, end_time, '[)') && tstzrange($3::timestamptz, $4::timestamptz, '[)')
+       LIMIT 1`,
+      [booking.listing_id, booking.id, booking.start_time, requestedEnd.toISOString()]
+    );
+    if (overlapCheck.rowCount && overlapCheck.rowCount > 0) {
+      return res.status(409).json({ message: "Time slot already booked" });
+    }
+
+    const durationHours = Math.max(
+      1,
+      Math.ceil((requestedEnd.getTime() - startTime.getTime()) / (1000 * 60 * 60))
+    );
+    const currentHours = Math.max(
+      1,
+      Math.ceil((currentEnd.getTime() - startTime.getTime()) / (1000 * 60 * 60))
+    );
+    const newDays = Math.max(1, Math.ceil(durationHours / 24));
+    const currentDays = Math.max(1, Math.ceil(currentHours / 24));
+    const newTotalCents = booking.price_per_day * newDays * 100;
+    const currentTotalCents =
+      booking.amount_cents ?? booking.price_per_day * currentDays * 100;
+    const additionalAmountCents = newTotalCents - currentTotalCents;
+
+    if (additionalAmountCents <= 0) {
+      try {
+        const updated = await updateBookingExtension({
+          bookingId,
+          driverId,
+          newEndTime: requestedEnd.toISOString(),
+          newAmountCents: newTotalCents,
+        });
+        if (!updated) {
+          return res.status(400).json({ message: "Booking cannot be extended" });
+        }
+        return res.json({
+          noCharge: true,
+          newEndTime: requestedEnd.toISOString(),
+          newTotalCents,
+        });
+      } catch (error: any) {
+        if (error?.code === "23P01") {
+          return res.status(409).json({ message: "Time slot already booked" });
+        }
+        throw error;
+      }
+    }
+
+    const user = await findUserById(driverId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const customerId = await getOrCreateCustomer(user.email);
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+      { customer: customerId },
+      { apiVersion: "2024-06-20" }
+    );
+
+    const intent = await stripe.paymentIntents.create({
+      amount: additionalAmountCents,
+      currency: booking.currency ?? "eur",
+      customer: customerId,
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        booking_id: bookingId,
+        type: "extension",
+      },
+    });
+
+    res.json({
+      paymentIntentClientSecret: intent.client_secret,
+      paymentIntentId: intent.id,
+      customerId,
+      ephemeralKeySecret: ephemeralKey.secret,
+      additionalAmountCents,
+      newTotalCents,
+      newEndTime: requestedEnd.toISOString(),
+    });
   } catch (error) {
     next(error);
   }
 });
 
-router.post("/confirm", requireAuth, async (req, res, next) => {
+router.post("/:id/extend-confirm", requireAuth, bookingLimiter, async (req, res, next) => {
   try {
-    const schema = z.object({ paymentIntentId: z.string(), status: z.enum(["confirmed", "canceled"]).optional() });
+    if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
+    const bookingId = z.string().uuid().parse(req.params.id);
+    const schema = z.object({
+      paymentIntentId: z.string().trim().min(5).max(200),
+      newEndTime: z.string().datetime(),
+      newTotalCents: z.number().int().positive().max(10000000),
+    });
+    const { paymentIntentId, newEndTime, newTotalCents } = schema.parse(req.body);
+    const driverId = req.user?.userId;
+    if (!driverId) return res.status(401).json({ message: "Unauthorized" });
+
+    const booking = await getBookingForExtension({ bookingId, driverId });
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    if (booking.status !== "confirmed") {
+      return res.status(400).json({ message: "Only confirmed bookings can be extended" });
+    }
+
+    const currentEnd = new Date(booking.end_time);
+    const requestedEnd = new Date(newEndTime);
+    if (requestedEnd.getTime() <= currentEnd.getTime()) {
+      return res.status(400).json({ message: "New end time must be after current end time" });
+    }
+
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["charges.data.balance_transaction"],
+    });
+    if (intent.status !== "succeeded") {
+      return res.status(400).json({ message: `Payment not completed (${intent.status})` });
+    }
+
+    try {
+      const updated = await updateBookingExtension({
+        bookingId,
+        driverId,
+        newEndTime: requestedEnd.toISOString(),
+        newAmountCents: newTotalCents,
+        paymentIntentId,
+        receiptUrl: intent.charges?.data?.[0]?.receipt_url ?? null,
+      });
+      if (!updated) {
+        return res.status(400).json({ message: "Booking cannot be extended" });
+      }
+      res.json({
+        ok: true,
+        newEndTime: updated.end_time.toISOString(),
+        newTotalCents: updated.amount_cents,
+      });
+    } catch (error: any) {
+      if (error?.code === "23P01") {
+        return res.status(409).json({ message: "Time slot already booked" });
+      }
+      throw error;
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/:id/change-intent", requireAuth, bookingLimiter, async (req, res, next) => {
+  try {
+    if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
+    const bookingId = z.string().uuid().parse(req.params.id);
+    const schema = z.object({
+      newStartTime: z.string().datetime(),
+      newEndTime: z.string().datetime(),
+    });
+    const { newStartTime, newEndTime } = schema.parse(req.body);
+    const driverId = req.user?.userId;
+    if (!driverId) return res.status(401).json({ message: "Unauthorized" });
+
+    const booking = await getBookingForExtension({ bookingId, driverId });
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    if (booking.status !== "confirmed") {
+      return res.status(400).json({ message: "Only confirmed bookings can be updated" });
+    }
+
+    const currentEnd = new Date(booking.end_time);
+    const requestedStart = new Date(newStartTime);
+    const requestedEnd = new Date(newEndTime);
+    if (Number.isNaN(requestedStart.getTime()) || Number.isNaN(requestedEnd.getTime())) {
+      return res.status(400).json({ message: "Invalid booking times" });
+    }
+    if (requestedEnd.getTime() <= requestedStart.getTime()) {
+      return res.status(400).json({ message: "End time must be after start time" });
+    }
+    if (requestedStart.getTime() < Date.now() - 5 * 60 * 1000) {
+      return res.status(400).json({ message: "Start time must be in the future" });
+    }
+    if (currentEnd.getTime() <= Date.now()) {
+      return res.status(400).json({ message: "Only upcoming bookings can be updated" });
+    }
+
+    const overlapCheck = await pool.query(
+      `SELECT 1 FROM bookings
+       WHERE listing_id = $1
+         AND id <> $2
+         AND (status IS NULL OR status <> 'canceled')
+         AND tstzrange(start_time, end_time, '[)') && tstzrange($3::timestamptz, $4::timestamptz, '[)')
+       LIMIT 1`,
+      [booking.listing_id, booking.id, requestedStart.toISOString(), requestedEnd.toISOString()]
+    );
+    if (overlapCheck.rowCount && overlapCheck.rowCount > 0) {
+      return res.status(409).json({ message: "Time slot already booked" });
+    }
+
+    const durationHours = Math.max(
+      1,
+      Math.ceil((requestedEnd.getTime() - requestedStart.getTime()) / (1000 * 60 * 60))
+    );
+    const currentHours = Math.max(
+      1,
+      Math.ceil((currentEnd.getTime() - new Date(booking.start_time).getTime()) / (1000 * 60 * 60))
+    );
+    const newDays = Math.max(1, Math.ceil(durationHours / 24));
+    const currentDays = Math.max(1, Math.ceil(currentHours / 24));
+    const newTotalCents = booking.price_per_day * newDays * 100;
+    const currentTotalCents =
+      booking.amount_cents ?? booking.price_per_day * currentDays * 100;
+    const effectiveTotalCents = Math.max(currentTotalCents, newTotalCents);
+    const additionalAmountCents = effectiveTotalCents - currentTotalCents;
+
+    if (additionalAmountCents === 0) {
+      try {
+        const updated = await updateBookingWindow({
+          bookingId,
+          driverId,
+          newStartTime: requestedStart.toISOString(),
+          newEndTime: requestedEnd.toISOString(),
+          newAmountCents: effectiveTotalCents,
+        });
+        if (!updated) {
+          return res.status(400).json({ message: "Booking cannot be updated" });
+        }
+        return res.json({
+          noCharge: true,
+          newStartTime: requestedStart.toISOString(),
+          newEndTime: requestedEnd.toISOString(),
+          newTotalCents: effectiveTotalCents,
+        });
+      } catch (error: any) {
+        if (error?.code === "23P01") {
+          return res.status(409).json({ message: "Time slot already booked" });
+        }
+        throw error;
+      }
+    }
+
+    const user = await findUserById(driverId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const customerId = await getOrCreateCustomer(user.email);
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+      { customer: customerId },
+      { apiVersion: "2024-06-20" }
+    );
+
+    const intent = await stripe.paymentIntents.create({
+      amount: additionalAmountCents,
+      currency: booking.currency ?? "eur",
+      customer: customerId,
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        booking_id: bookingId,
+        type: "change",
+      },
+    });
+
+    res.json({
+      paymentIntentClientSecret: intent.client_secret,
+      paymentIntentId: intent.id,
+      customerId,
+      ephemeralKeySecret: ephemeralKey.secret,
+      additionalAmountCents,
+      newTotalCents: effectiveTotalCents,
+      newStartTime: requestedStart.toISOString(),
+      newEndTime: requestedEnd.toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/:id/change-confirm", requireAuth, bookingLimiter, async (req, res, next) => {
+  try {
+    if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
+    const bookingId = z.string().uuid().parse(req.params.id);
+    const schema = z.object({
+      paymentIntentId: z.string().trim().min(5).max(200),
+      newStartTime: z.string().datetime(),
+      newEndTime: z.string().datetime(),
+      newTotalCents: z.number().int().positive().max(10000000),
+    });
+    const { paymentIntentId, newStartTime, newEndTime, newTotalCents } = schema.parse(req.body);
+    const driverId = req.user?.userId;
+    if (!driverId) return res.status(401).json({ message: "Unauthorized" });
+
+    const booking = await getBookingForExtension({ bookingId, driverId });
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    if (booking.status !== "confirmed") {
+      return res.status(400).json({ message: "Only confirmed bookings can be updated" });
+    }
+
+    const requestedStart = new Date(newStartTime);
+    const requestedEnd = new Date(newEndTime);
+    if (requestedEnd.getTime() <= requestedStart.getTime()) {
+      return res.status(400).json({ message: "End time must be after start time" });
+    }
+
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["charges.data.balance_transaction"],
+    });
+    if (intent.status !== "succeeded") {
+      return res.status(400).json({ message: `Payment not completed (${intent.status})` });
+    }
+
+    try {
+      const updated = await updateBookingWindow({
+        bookingId,
+        driverId,
+        newStartTime: requestedStart.toISOString(),
+        newEndTime: requestedEnd.toISOString(),
+        newAmountCents: newTotalCents,
+        paymentIntentId,
+        receiptUrl: intent.charges?.data?.[0]?.receipt_url ?? null,
+      });
+      if (!updated) {
+        return res.status(400).json({ message: "Booking cannot be updated" });
+      }
+      res.json({
+        ok: true,
+        newStartTime: updated.start_time.toISOString(),
+        newEndTime: updated.end_time.toISOString(),
+        newTotalCents: updated.amount_cents,
+      });
+    } catch (error: any) {
+      if (error?.code === "23P01") {
+        return res.status(409).json({ message: "Time slot already booked" });
+      }
+      throw error;
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/confirm", requireAuth, bookingLimiter, async (req, res, next) => {
+  try {
+    const schema = z.object({
+      paymentIntentId: z.string().trim().min(5).max(200),
+      status: z.enum(["confirmed", "canceled"]).optional(),
+    });
     const { paymentIntentId, status = "confirmed" } = schema.parse(req.body);
-    const ok = await updateBookingStatusByPaymentIntent({ paymentIntentId, status });
+    let receiptUrl: string | null = null;
+    if (status === "confirmed" && stripe) {
+      const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+        expand: ["charges.data.balance_transaction"],
+      });
+      if (intent.status !== "succeeded") {
+        return res.status(400).json({ message: `Payment not completed (${intent.status})` });
+      }
+      receiptUrl = intent.charges?.data?.[0]?.receipt_url ?? null;
+    }
+    const ok = await updateBookingStatusByPaymentIntent({ paymentIntentId, status, receiptUrl });
     if (!ok) return res.status(404).json({ message: "Booking not found" });
     res.json({ ok: true });
   } catch (error) {
@@ -183,14 +590,46 @@ router.post("/confirm", requireAuth, async (req, res, next) => {
   }
 });
 
-router.post("/:id/cancel", requireAuth, async (req, res, next) => {
+router.post("/:id/cancel", requireAuth, bookingLimiter, async (req, res, next) => {
   try {
-    const bookingId = req.params.id;
+    const bookingId = z.string().uuid().parse(req.params.id);
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
-    const ok = await cancelBookingByDriver({ bookingId, driverId: userId });
+    const booking = await getBookingForRefund({ bookingId, driverId: userId });
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    if (booking.status === "canceled") {
+      return res.json({ ok: true, alreadyCanceled: true });
+    }
+
+    let refundId: string | null = null;
+    if (booking.payment_intent_id && stripe && booking.status === "confirmed") {
+      const refund = await stripe.refunds.create({
+        payment_intent: booking.payment_intent_id,
+      });
+      refundId = refund.id;
+    }
+
+    const ok = refundId
+      ? await cancelBookingWithRefund({ bookingId, driverId: userId, refundId })
+      : await cancelBookingByDriver({ bookingId, driverId: userId });
+
     if (!ok) return res.status(400).json({ message: "Booking cannot be canceled" });
-    res.json({ ok: true });
+    res.json({ ok: true, refunded: Boolean(refundId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/:id/check-in", requireAuth, bookingLimiter, async (req, res, next) => {
+  try {
+    const bookingId = z.string().uuid().parse(req.params.id);
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const checkedInAt = await checkInBooking({ bookingId, driverId: userId });
+    if (!checkedInAt) {
+      return res.status(400).json({ message: "Check-in not available" });
+    }
+    res.json({ ok: true, checkedInAt });
   } catch (error) {
     next(error);
   }
@@ -212,14 +651,22 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
   try {
     const event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
 
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as any;
-      await updateBookingStatus({
-        checkoutSessionId: session.id,
-        status: "confirmed",
-        paymentIntentId: session.payment_intent as string,
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as any;
+    let receiptUrl: string | null = null;
+    if (stripe && session.payment_intent) {
+      const intent = await stripe.paymentIntents.retrieve(session.payment_intent as string, {
+        expand: ["charges.data.balance_transaction"],
       });
+      receiptUrl = intent.charges?.data?.[0]?.receipt_url ?? null;
     }
+    await updateBookingStatus({
+      checkoutSessionId: session.id,
+      status: "confirmed",
+      paymentIntentId: session.payment_intent as string,
+      receiptUrl,
+    });
+  }
 
     if (event.type === "checkout.session.expired" || event.type === "checkout.session.async_payment_failed") {
       const session = event.data.object as any;
@@ -227,6 +674,23 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
         checkoutSessionId: session.id,
         status: "canceled",
         paymentIntentId: session.payment_intent as string,
+      });
+    }
+
+  if (event.type === "payment_intent.succeeded") {
+    const intent = event.data.object as any;
+    await updateBookingStatusByPaymentIntent({
+      paymentIntentId: intent.id,
+      status: "confirmed",
+      receiptUrl: intent.charges?.data?.[0]?.receipt_url ?? null,
+    });
+  }
+
+    if (event.type === "payment_intent.payment_failed" || event.type === "payment_intent.canceled") {
+      const intent = event.data.object as any;
+      await updateBookingStatusByPaymentIntent({
+        paymentIntentId: intent.id,
+        status: "canceled",
       });
     }
 

@@ -1,6 +1,20 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
+import { getListingImageUploadUrl } from "../../api";
+import { useAuth } from "../../auth";
 import { useListingFlow } from "./context";
 import { StepProgress } from "./StepProgress";
 
@@ -13,6 +27,9 @@ type Props = NativeStackScreenProps<FlowStackParamList, "ListingPhotos">;
 
 export function ListingPhotosScreen({ navigation }: Props) {
   const { draft, setDraft } = useListingFlow();
+  const { token } = useAuth();
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const hasPhoto = draft.photos.some((photo) => photo?.trim());
 
   const updatePhoto = (index: number, value: string) => {
@@ -21,6 +38,56 @@ export function ListingPhotosScreen({ navigation }: Props) {
       next[index] = value;
       return { ...prev, photos: next };
     });
+  };
+
+  const removePhoto = (index: number) => {
+    setDraft((prev) => {
+      const next = [...prev.photos];
+      next[index] = "";
+      return { ...prev, photos: next };
+    });
+  };
+
+  const uploadPhoto = async (index: number) => {
+    if (!token) {
+      Alert.alert("Sign in required", "Please sign in to upload photos.");
+      return;
+    }
+    setUploadError(null);
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission needed", "Enable photo access to upload images.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+    });
+    if (result.canceled) return;
+    const asset = result.assets?.[0];
+    if (!asset?.uri) return;
+    const contentType = asset.mimeType ?? "image/jpeg";
+    setUploadingIndex(index);
+    try {
+      const upload = await getListingImageUploadUrl({ token, contentType });
+      const fileResponse = await fetch(asset.uri);
+      const blob = await fileResponse.blob();
+      const putResult = await fetch(upload.signedUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": contentType,
+        },
+        body: blob,
+      });
+      if (!putResult.ok) {
+        throw new Error("Upload failed. Try again.");
+      }
+      updatePhoto(index, upload.publicUrl);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Upload failed.");
+    } finally {
+      setUploadingIndex(null);
+    }
   };
 
   return (
@@ -33,25 +100,66 @@ export function ListingPhotosScreen({ navigation }: Props) {
           Photos help drivers trust your listing, but you can add them later.
         </Text>
 
-        {[0, 1, 2].map((index) => (
-          <View key={index} style={styles.field}>
-            <Text style={styles.label}>Photo URL {index + 1}</Text>
-            <TextInput
-              style={styles.input}
-              value={draft.photos[index] ?? ""}
-              onChangeText={(value) => updatePhoto(index, value)}
-              placeholder="https://..."
-              placeholderTextColor="#94a3b8"
-              autoCapitalize="none"
-            />
-          </View>
-        ))}
+        {uploadError ? <Text style={styles.errorText}>{uploadError}</Text> : null}
+        {[0, 1, 2].map((index) => {
+          const uri = draft.photos[index];
+          const isUploading = uploadingIndex === index;
+          return (
+            <View key={index} style={styles.field}>
+              <Text style={styles.label}>Photo {index + 1}</Text>
+              {uri ? (
+                <View style={styles.previewRow}>
+                  <Image source={{ uri }} style={styles.previewImage} />
+                  <View style={styles.previewActions}>
+                    <Pressable
+                      style={styles.secondaryButton}
+                      onPress={() => uploadPhoto(index)}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? (
+                        <ActivityIndicator size="small" color="#00d4aa" />
+                      ) : (
+                        <Text style={styles.secondaryButtonText}>Replace</Text>
+                      )}
+                    </Pressable>
+                    <Pressable style={styles.removeButton} onPress={() => removePhoto(index)}>
+                      <Text style={styles.removeButtonText}>Remove</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : (
+                <Pressable
+                  style={styles.uploadButton}
+                  onPress={() => uploadPhoto(index)}
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.uploadButtonText}>Upload from phone</Text>
+                  )}
+                </Pressable>
+              )}
+              <TextInput
+                style={styles.input}
+                value={uri ?? ""}
+                onChangeText={(value) => updatePhoto(index, value)}
+                placeholder="Or paste a URL"
+                placeholderTextColor="#94a3b8"
+                autoCapitalize="none"
+              />
+            </View>
+          );
+        })}
       </ScrollView>
       <View style={styles.footer}>
         <Pressable
-          style={[styles.primaryButton, !hasPhoto && styles.primaryButtonDisabled]}
+          style={[
+            styles.primaryButton,
+            (!hasPhoto || uploadingIndex !== null) && styles.primaryButtonDisabled,
+          ]}
           onPress={() => navigation.navigate("ListingReview")}
-          disabled={!hasPhoto}
+          disabled={!hasPhoto || uploadingIndex !== null}
         >
           <Text style={styles.primaryButtonText}>Continue</Text>
         </Pressable>
@@ -71,24 +179,32 @@ const styles = StyleSheet.create({
   content: {
     padding: 18,
     paddingBottom: 160,
+    paddingTop: 0,
   },
   kicker: {
     color: "#00d4aa",
     fontSize: 12,
     fontWeight: "700",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     textTransform: "uppercase",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   title: {
     color: "#0f172a",
     fontSize: 22,
     fontWeight: "700",
     marginTop: 6,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   subtitle: {
     color: "#6b7280",
     fontSize: 13,
     marginTop: 6,
+    lineHeight: 20,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   field: {
     marginTop: 16,
@@ -98,6 +214,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     marginBottom: 6,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   input: {
     borderColor: "#e5e7eb",
@@ -107,6 +227,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  },
+  previewRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 10,
+  },
+  previewImage: {
+    borderRadius: 12,
+    height: 70,
+    width: 100,
+  },
+  previewActions: {
+    flex: 1,
+    gap: 8,
+  },
+  uploadButton: {
+    alignItems: "center",
+    backgroundColor: "#00d4aa",
+    borderRadius: 12,
+    marginBottom: 10,
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  uploadButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  removeButton: {
+    alignItems: "center",
+    borderColor: "#fecaca",
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 8,
+  },
+  removeButtonText: {
+    color: "#b42318",
+    fontSize: 12,
+    fontWeight: "700",
   },
   footer: {
     backgroundColor: "#ffffff",
@@ -127,16 +289,28 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 15,
     fontWeight: "700",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   secondaryButton: {
     alignItems: "center",
     borderRadius: 14,
     marginTop: 10,
     paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "#00d4aa",
   },
   secondaryButtonText: {
-    color: "#6b7280",
+    color: "#00d4aa",
     fontSize: 13,
     fontWeight: "600",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  },
+  errorText: {
+    color: "#b42318",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 10,
   },
 });

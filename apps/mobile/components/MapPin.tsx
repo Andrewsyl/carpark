@@ -38,6 +38,11 @@ const styles = StyleSheet.create({
   },
   pinWrapper: {
     alignItems: "center",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
   pinCircle: {
     alignItems: "center",

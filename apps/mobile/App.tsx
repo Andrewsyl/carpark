@@ -5,7 +5,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
 import { StripeProvider } from "@stripe/stripe-react-native";
-import { AuthProvider } from "./auth";
+import { AuthProvider, useAuth } from "./auth";
 import { AppLaunchContext } from "./appLaunch";
 import { FavoritesProvider } from "./favorites";
 import { HistoryScreen } from "./screens/HistoryScreen";
@@ -15,13 +15,17 @@ import { ListingScreen } from "./screens/ListingScreen";
 import { ListingsScreen } from "./screens/ListingsScreen";
 import { PaymentsScreen } from "./screens/PaymentsScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
+import { LegalScreen } from "./screens/LegalScreen";
 import { BookingDetailScreen } from "./screens/BookingDetailScreen";
 import { ReviewScreen } from "./screens/ReviewScreen";
 import { SearchScreen } from "./screens/SearchScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { SignInScreen } from "./screens/SignInScreen";
+import { ResetPasswordScreen } from "./screens/ResetPasswordScreen";
 import { ListingFlowScreen } from "./screens/ListingFlowScreen";
 import { EditListingScreen } from "./screens/EditListingScreen";
+import { SupportScreen } from "./screens/SupportScreen";
+import { AdminScreen } from "./screens/AdminScreen";
 import type { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -71,7 +75,7 @@ export default function App() {
 
   return (
     <View style={styles.app}>
-      <StripeProvider publishableKey={stripeKey}>
+      <StripeProvider publishableKey={stripeKey} urlScheme="carparking">
         <AuthProvider>
           <FavoritesProvider>
             <AppLaunchContext.Provider value={appLaunchValue}>
@@ -80,8 +84,10 @@ export default function App() {
                 <Stack.Screen name="Search" component={SearchScreen} />
                 <Stack.Screen name="Listing" component={ListingScreen} />
                 <Stack.Screen name="BookingSummary" component={BookingSummaryScreen} />
-                  <Stack.Screen name="SignIn" component={SignInScreen} />
+                <Stack.Screen name="SignIn" component={SignInScreen} />
+                <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
                   <Stack.Screen name="Profile" component={ProfileScreen} />
+                  <Stack.Screen name="Legal" component={LegalScreen} />
                 <Stack.Screen name="History" component={HistoryScreen} />
                 <Stack.Screen name="Favorites" component={FavoritesScreen} />
                 <Stack.Screen name="Payments" component={PaymentsScreen} />
@@ -89,10 +95,13 @@ export default function App() {
                 <Stack.Screen name="Listings" component={ListingsScreen} />
                 <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
                 <Stack.Screen name="Review" component={ReviewScreen} />
+                <Stack.Screen name="Support" component={SupportScreen} />
+                <Stack.Screen name="Admin" component={AdminScreen} />
                 <Stack.Screen name="CreateListingFlow" component={ListingFlowScreen} />
                   <Stack.Screen name="EditListing" component={EditListingScreen} />
                 </Stack.Navigator>
               </NavigationContainer>
+              <LegalGate />
               <StatusBar style="dark" translucent backgroundColor="transparent" />
             </AppLaunchContext.Provider>
           </FavoritesProvider>
@@ -103,6 +112,68 @@ export default function App() {
           <Image source={require("./assets/splash.png")} style={styles.splashImage} />
         </Animated.View>
       ) : null}
+    </View>
+  );
+}
+
+function LegalGate() {
+  const { user, acceptLegal, logout } = useAuth();
+  const [accepted, setAccepted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const legalVersion = "2026-01-10";
+  const requiresLegal = !!user && (!user.termsVersion || !user.privacyVersion);
+
+  if (!requiresLegal) return null;
+
+  const handleContinue = async () => {
+    if (!accepted) {
+      setError("Please accept the Terms & Privacy to continue.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await acceptLegal({ termsVersion: legalVersion, privacyVersion: legalVersion });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save acceptance");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <View style={styles.legalOverlay} pointerEvents="auto">
+      <View style={styles.legalCard}>
+        <Text style={styles.legalTitle}>Terms & Privacy</Text>
+        <Text style={styles.legalBody}>
+          Please accept the Terms & Privacy to continue using the app.
+        </Text>
+        <Pressable
+          style={styles.legalRow}
+          onPress={() => setAccepted((value) => !value)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: accepted }}
+        >
+          <View style={[styles.legalCheckbox, accepted && styles.legalCheckboxChecked]}>
+            {accepted ? <View style={styles.legalCheckboxInner} /> : null}
+          </View>
+          <Text style={styles.legalText}>I agree to the Terms & Privacy.</Text>
+        </Pressable>
+        {error ? <Text style={styles.legalError}>{error}</Text> : null}
+        <View style={styles.legalActions}>
+          <Pressable style={styles.legalSecondary} onPress={logout} disabled={saving}>
+            <Text style={styles.legalSecondaryText}>Sign out</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.legalPrimary, !accepted && styles.legalPrimaryDisabled]}
+            onPress={handleContinue}
+            disabled={!accepted || saving}
+          >
+            <Text style={styles.legalPrimaryText}>{saving ? "Saving..." : "Continue"}</Text>
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 }
@@ -122,5 +193,95 @@ const styles = StyleSheet.create({
     height: "60%",
     width: "60%",
     resizeMode: "contain",
+  },
+  legalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    zIndex: 1000,
+  },
+  legalCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 20,
+    width: "100%",
+  },
+  legalTitle: {
+    color: "#0f172a",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  legalBody: {
+    color: "#64748b",
+    fontSize: 13,
+    marginTop: 8,
+    lineHeight: 18,
+  },
+  legalRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    marginTop: 14,
+  },
+  legalCheckbox: {
+    borderColor: "#cbd5f5",
+    borderRadius: 6,
+    borderWidth: 1,
+    height: 20,
+    marginRight: 10,
+    width: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  legalCheckboxChecked: {
+    borderColor: "#00d4aa",
+    backgroundColor: "#00d4aa",
+  },
+  legalCheckboxInner: {
+    backgroundColor: "#ffffff",
+    borderRadius: 2,
+    height: 6,
+    width: 6,
+  },
+  legalText: {
+    color: "#0f172a",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  legalError: {
+    color: "#dc2626",
+    fontSize: 12,
+    marginTop: 10,
+  },
+  legalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 16,
+  },
+  legalSecondary: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  legalSecondaryText: {
+    color: "#475569",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  legalPrimary: {
+    backgroundColor: "#00d4aa",
+    borderRadius: 12,
+    marginLeft: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  legalPrimaryDisabled: {
+    opacity: 0.5,
+  },
+  legalPrimaryText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "700",
   },
 });

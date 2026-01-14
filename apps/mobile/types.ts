@@ -11,12 +11,16 @@ export type RootStackParamList = {
     to: string;
   };
   SignIn: undefined;
+  ResetPassword: undefined;
   Profile: undefined;
-  History: { showSuccess?: boolean } | undefined;
+  Legal: undefined;
+  History: { showSuccess?: boolean; refreshToken?: number; showMapCTA?: boolean } | undefined;
   Settings: undefined;
   Listings: undefined;
   Payments: undefined;
   Favorites: undefined;
+  Support: undefined;
+  Admin: undefined;
   BookingDetail: {
     booking: import("./api").BookingSummary;
   };
@@ -40,6 +44,8 @@ export type ListingSummary = {
   rating_count?: number | null;
   availability_text?: string | null;
   amenities?: string[] | null;
+  access_code?: string | null;
+  accessCode?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   distance_m?: number | null;
@@ -50,6 +56,10 @@ export type ListingSummary = {
 export type ListingDetail = ListingSummary & {
   image_urls?: string[] | null;
   amenities?: string[] | null;
+  access_code?: string | null;
+  accessCode?: string | null;
+  permission_declared?: boolean | null;
+  permissionDeclared?: boolean | null;
 };
 
 export type SecurityLevel = "basic" | "gated" | "cctv";

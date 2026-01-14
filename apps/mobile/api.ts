@@ -4,11 +4,16 @@ const baseUrl = process.env.EXPO_PUBLIC_API_BASE ?? "http://localhost:4000";
 
 type AuthResponse = {
   token: string;
+  refreshToken?: string;
   user: {
     id: string;
     email: string;
     role?: string;
     emailVerified?: boolean;
+    termsVersion?: string | null;
+    termsAcceptedAt?: string | null;
+    privacyVersion?: string | null;
+    privacyAcceptedAt?: string | null;
   };
 };
 
@@ -58,6 +63,7 @@ export async function searchListings(params: SearchParams) {
     rating_count: space.rating_count ?? space.ratingCount,
     availability_text: space.availability_text ?? space.availability,
     amenities: space.amenities ?? null,
+    access_code: space.access_code ?? space.accessCode ?? null,
     latitude: space.latitude,
     longitude: space.longitude,
     distance_m:
@@ -80,6 +86,9 @@ export async function getListing(id: string) {
     rating_count: listing.rating_count ?? listing.ratingCount,
     availability_text: listing.availability_text ?? listing.availability,
     amenities: listing.amenities ?? null,
+    access_code: listing.access_code ?? listing.accessCode ?? null,
+    permission_declared:
+      listing.permission_declared ?? listing.permissionDeclared ?? null,
     image_urls: listing.image_urls ?? listing.imageUrls ?? null,
   } as ListingDetail;
 }
@@ -124,6 +133,180 @@ export async function removeFavorite(token: string, listingId: string) {
   }
 }
 
+export async function getHostEarningsSummary(token: string) {
+  const response = await fetch(`${baseUrl}/api/host/earnings`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Earnings failed (${response.status})`);
+  }
+  const payload = (await response.json()) as {
+    summary: { totalCents: number; feeCents: number; netCents: number; currency: string };
+  };
+  return payload.summary;
+}
+
+export type HostPayoutStatus = {
+  accountId: string | null;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  detailsSubmitted: boolean;
+  requirementsDue: string[];
+};
+
+export async function getHostPayoutStatus(token: string) {
+  const response = await fetch(`${baseUrl}/api/host/payout`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Payout status failed (${response.status})`);
+  }
+  return (await response.json()) as HostPayoutStatus;
+}
+
+export async function createHostPayoutLink(payload: {
+  token: string;
+  accountId?: string | null;
+  returnUrl?: string;
+  refreshUrl?: string;
+}) {
+  const response = await fetch(`${baseUrl}/api/host/payout`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${payload.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      accountId: payload.accountId ?? undefined,
+      returnUrl: payload.returnUrl,
+      refreshUrl: payload.refreshUrl,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Payout setup failed (${response.status})`);
+  }
+  return (await response.json()) as { accountId: string; onboardingUrl: string | null };
+}
+
+export async function runHostPayouts(token: string) {
+  const response = await fetch(`${baseUrl}/api/host/payouts/run`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Payout run failed (${response.status})`);
+  }
+  return (await response.json()) as { processed: number };
+}
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  role: "driver" | "host" | "admin";
+  status: "active" | "suspended";
+};
+
+export type AdminListing = {
+  id: string;
+  title: string;
+  address: string;
+  status: "approved" | "pending" | "rejected" | "disabled";
+  moderation_reason?: string | null;
+  moderation_note?: string | null;
+  host_id: string;
+};
+
+export async function adminListUsers(token: string) {
+  const response = await fetch(`${baseUrl}/api/admin/users`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Admin users failed (${response.status})`);
+  }
+  const payload = (await response.json()) as { users: AdminUser[] };
+  return payload.users ?? [];
+}
+
+export async function adminUpdateUser(
+  token: string,
+  userId: string,
+  payload: { status?: "active" | "suspended"; role?: "driver" | "host" | "admin"; reason?: string }
+) {
+  const response = await fetch(`${baseUrl}/api/admin/users/${userId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error(`Admin user update failed (${response.status})`);
+  }
+  return (await response.json()) as { user: AdminUser };
+}
+
+export async function adminListListings(token: string) {
+  const response = await fetch(`${baseUrl}/api/admin/listings`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Admin listings failed (${response.status})`);
+  }
+  const payload = (await response.json()) as { listings: AdminListing[] };
+  return payload.listings ?? [];
+}
+
+export async function adminUpdateListing(
+  token: string,
+  listingId: string,
+  payload: {
+    status: "approved" | "pending" | "rejected" | "disabled";
+    moderationReason?: string;
+    moderationNote?: string;
+    reason?: string;
+  }
+) {
+  const response = await fetch(`${baseUrl}/api/admin/listings/${listingId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error(`Admin listing update failed (${response.status})`);
+  }
+  return (await response.json()) as { listing: AdminListing };
+}
+
+export async function sendSupportMessage(token: string, payload: { subject: string; message: string }) {
+  const response = await fetch(`${baseUrl}/api/support`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const message = await readErrorMessage(response, "Support request failed");
+    throw new Error(message);
+  }
+  return (await response.json()) as { ok: boolean };
+}
+
 export async function login(email: string, password: string) {
   const response = await fetch(`${baseUrl}/api/auth/login`, {
     method: "POST",
@@ -136,16 +319,106 @@ export async function login(email: string, password: string) {
   return (await response.json()) as AuthResponse;
 }
 
-export async function register(email: string, password: string) {
+export async function register(
+  email: string,
+  password: string,
+  payload?: { termsVersion: string; privacyVersion: string }
+) {
   const response = await fetch(`${baseUrl}/api/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, ...payload }),
   });
   if (!response.ok) {
     throw new Error(await readErrorMessage(response, "Sign up failed"));
   }
+  return (await response.json()) as AuthResponse & { previewUrl?: string };
+}
+
+export async function refreshSession(refreshToken: string) {
+  const response = await fetch(`${baseUrl}/api/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Session refresh failed"));
+  }
   return (await response.json()) as AuthResponse;
+}
+
+export async function revokeSession(token: string) {
+  const response = await fetch(`${baseUrl}/api/auth/logout`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Logout failed"));
+  }
+  return (await response.json()) as { ok: boolean };
+}
+
+export async function requestPasswordReset(email: string) {
+  const response = await fetch(`${baseUrl}/api/auth/request-password-reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Reset request failed"));
+  }
+  return (await response.json()) as { ok: boolean; previewUrl?: string };
+}
+
+export async function resetPassword(token: string, password: string) {
+  const response = await fetch(`${baseUrl}/api/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, password }),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Reset failed"));
+  }
+  return (await response.json()) as { ok: boolean };
+}
+
+export async function oauthLoginGoogle(idToken: string) {
+  const response = await fetch(`${baseUrl}/api/auth/oauth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Google sign-in failed"));
+  }
+  return (await response.json()) as AuthResponse;
+}
+
+export async function oauthLoginFacebook(accessToken: string) {
+  const response = await fetch(`${baseUrl}/api/auth/oauth/facebook`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accessToken }),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Facebook sign-in failed"));
+  }
+  return (await response.json()) as AuthResponse;
+}
+
+export async function acceptLegal(token: string, payload: { termsVersion: string; privacyVersion: string }) {
+  const response = await fetch(`${baseUrl}/api/auth/legal`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Legal acceptance failed"));
+  }
+  return (await response.json()) as { user: AuthResponse["user"] };
 }
 
 export async function requestEmailVerification(email: string) {
@@ -157,6 +430,8 @@ export async function requestEmailVerification(email: string) {
   if (!response.ok) {
     throw new Error(await readErrorMessage(response, "Verification request failed"));
   }
+  const payload = (await response.json()) as { ok?: boolean; previewUrl?: string };
+  return payload.previewUrl ?? null;
 }
 
 export async function deleteAccount(token: string) {
@@ -176,6 +451,7 @@ export async function createBooking(payload: {
   from: string;
   to: string;
   amountCents: number;
+  vehiclePlate?: string | null;
   token: string;
 }) {
   const response = await fetch(`${baseUrl}/api/bookings`, {
@@ -189,6 +465,7 @@ export async function createBooking(payload: {
       from: payload.from,
       to: payload.to,
       amountCents: payload.amountCents,
+      vehiclePlate: payload.vehiclePlate ?? undefined,
     }),
   });
   if (!response.ok) {
@@ -203,6 +480,7 @@ export async function createBookingPaymentIntent(payload: {
   from: string;
   to: string;
   amountCents: number;
+  vehiclePlate?: string | null;
   token: string;
 }) {
   const response = await fetch(`${baseUrl}/api/bookings/payment-intent`, {
@@ -216,6 +494,7 @@ export async function createBookingPaymentIntent(payload: {
       from: payload.from,
       to: payload.to,
       amountCents: payload.amountCents,
+      vehiclePlate: payload.vehiclePlate ?? undefined,
     }),
   });
   if (!response.ok) {
@@ -320,6 +599,13 @@ export type BookingSummary = {
   startTime: string;
   endTime: string;
   status: string;
+  refundStatus?: string | null;
+  refundedAt?: string | null;
+  receiptUrl?: string | null;
+  checkedInAt?: string | null;
+  noShowAt?: string | null;
+  vehiclePlate?: string | null;
+  accessCode?: string | null;
   amountCents: number;
   currency: string;
   title: string;
@@ -345,6 +631,81 @@ export async function listMyBookings(token: string) {
   };
 }
 
+export async function checkInBooking(payload: { token: string; bookingId: string }) {
+  const response = await fetch(`${baseUrl}/api/bookings/${payload.bookingId}/check-in`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${payload.token}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Check-in failed"));
+  }
+  return (await response.json()) as { ok: true; checkedInAt: string };
+}
+
+export async function createBookingExtensionIntent(payload: {
+  token: string;
+  bookingId: string;
+  newEndTime: string;
+}) {
+  const response = await fetch(`${baseUrl}/api/bookings/${payload.bookingId}/extend-intent`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${payload.token}`,
+    },
+    body: JSON.stringify({ newEndTime: payload.newEndTime }),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Extend booking failed"));
+  }
+  return (await response.json()) as
+    | {
+        noCharge: true;
+        newEndTime: string;
+        newTotalCents: number;
+      }
+    | {
+        paymentIntentClientSecret: string;
+        paymentIntentId: string;
+        customerId: string;
+        ephemeralKeySecret: string;
+        additionalAmountCents: number;
+        newTotalCents: number;
+        newEndTime: string;
+      };
+}
+
+export async function confirmBookingExtension(payload: {
+  token: string;
+  bookingId: string;
+  paymentIntentId: string;
+  newEndTime: string;
+  newTotalCents: number;
+}) {
+  const response = await fetch(`${baseUrl}/api/bookings/${payload.bookingId}/extend-confirm`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${payload.token}`,
+    },
+    body: JSON.stringify({
+      paymentIntentId: payload.paymentIntentId,
+      newEndTime: payload.newEndTime,
+      newTotalCents: payload.newTotalCents,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Extend booking failed"));
+  }
+  return (await response.json()) as {
+    ok: true;
+    newEndTime: string;
+    newTotalCents: number;
+  };
+}
+
 export async function createListing(payload: {
   token: string;
   title: string;
@@ -355,6 +716,8 @@ export async function createListing(payload: {
   longitude: number;
   imageUrls?: string[];
   amenities?: string[];
+  accessCode?: string | null;
+  permissionDeclared?: boolean;
 }) {
   const response = await fetch(`${baseUrl}/api/listings`, {
     method: "POST",
@@ -371,6 +734,8 @@ export async function createListing(payload: {
       longitude: payload.longitude,
       imageUrls: payload.imageUrls ?? [],
       amenities: payload.amenities ?? [],
+      accessCode: payload.accessCode ?? null,
+      permissionDeclared: payload.permissionDeclared ?? false,
     }),
   });
   if (!response.ok) {
@@ -398,6 +763,7 @@ export async function listHostListings(token: string) {
     availability_text: listing.availability_text ?? listing.availability,
     image_urls: listing.image_urls ?? listing.imageUrls ?? [],
     amenities: listing.amenities ?? [],
+    access_code: listing.access_code ?? listing.accessCode ?? null,
     latitude: listing.latitude,
     longitude: listing.longitude,
   }));
@@ -412,6 +778,8 @@ export async function updateListing(payload: {
   availabilityText: string;
   imageUrls?: string[];
   amenities?: string[];
+  accessCode?: string | null;
+  permissionDeclared?: boolean;
 }) {
   const response = await fetch(`${baseUrl}/api/listings/${payload.listingId}`, {
     method: "PATCH",
@@ -426,6 +794,8 @@ export async function updateListing(payload: {
       availabilityText: payload.availabilityText,
       imageUrls: payload.imageUrls ?? [],
       amenities: payload.amenities ?? [],
+      accessCode: payload.accessCode ?? null,
+      permissionDeclared: payload.permissionDeclared ?? false,
     }),
   });
   if (!response.ok) {
@@ -445,6 +815,28 @@ export async function deleteListing(payload: { token: string; listingId: string 
   }
 }
 
+export async function getListingImageUploadUrl(payload: {
+  token: string;
+  contentType: string;
+}) {
+  const response = await fetch(`${baseUrl}/api/listings/image-upload-url`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${payload.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ contentType: payload.contentType }),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Image upload failed"));
+  }
+  const payloadJson = (await response.json()) as { signedUrl?: string; publicUrl?: string };
+  if (!payloadJson.signedUrl || !payloadJson.publicUrl) {
+    throw new Error("Image upload failed: missing upload URL");
+  }
+  return payloadJson;
+}
+
 export type PaymentMethod = {
   id: string;
   brand: string;
@@ -454,6 +846,76 @@ export type PaymentMethod = {
   is_default?: boolean;
   created_at?: string;
 };
+
+export type AvailabilityEntry = {
+  id: string;
+  kind: "open" | "blocked";
+  startsAt: string;
+  endsAt: string;
+  repeatWeekdays?: number[] | null;
+  repeatUntil?: string | null;
+};
+
+export async function listAvailability(payload: { token: string; listingId: string }) {
+  const response = await fetch(`${baseUrl}/api/host/listings/${payload.listingId}/availability`, {
+    headers: {
+      Authorization: `Bearer ${payload.token}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Availability fetch failed"));
+  }
+  const data = (await response.json()) as { availability?: AvailabilityEntry[] };
+  return data.availability ?? [];
+}
+
+export async function createAvailabilityEntry(payload: {
+  token: string;
+  listingId: string;
+  kind: "open" | "blocked";
+  startsAt: string;
+  endsAt: string;
+  repeatWeekdays?: number[] | null;
+  repeatUntil?: string | null;
+}) {
+  const response = await fetch(`${baseUrl}/api/host/listings/${payload.listingId}/availability`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${payload.token}`,
+    },
+    body: JSON.stringify({
+      kind: payload.kind,
+      startsAt: payload.startsAt,
+      endsAt: payload.endsAt,
+      repeatWeekdays: payload.repeatWeekdays ?? undefined,
+      repeatUntil: payload.repeatUntil ?? null,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Availability update failed"));
+  }
+  const data = (await response.json()) as { availability?: AvailabilityEntry };
+  return data.availability ?? null;
+}
+
+export async function deleteAvailabilityEntry(payload: {
+  token: string;
+  availabilityId: string;
+}) {
+  const response = await fetch(
+    `${baseUrl}/api/host/availability/${payload.availabilityId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${payload.token}`,
+      },
+    }
+  );
+  if (!response.ok && response.status !== 204) {
+    throw new Error(await readErrorMessage(response, "Availability deletion failed"));
+  }
+}
 
 export type PaymentHistoryItem = {
   id: string;

@@ -96,6 +96,10 @@ export default function MapSection({
     });
     return keys;
   }, [pinLabelById]);
+  const pinsReady = useMemo(
+    () => labelKeys.every((key) => Boolean(pinImages[key])),
+    [labelKeys, pinImages]
+  );
   const providerValue =
     provider === "google"
       ? PROVIDER_GOOGLE
@@ -182,7 +186,8 @@ export default function MapSection({
         moveOnMarkerPress={false}
         mapType="standard"
       >
-        {(freezeMarkers ? renderedResultsRef.current : nextResults).map((listing) => {
+        {pinsReady
+          ? (freezeMarkers ? renderedResultsRef.current : nextResults).map((listing) => {
           const isSelected = selectedId === listing.id;
           const label = pinLabelById[listing.id] ?? `€${listing.price_per_day}`;
           const pinKey = getPinKey(label, isSelected);
@@ -204,7 +209,8 @@ export default function MapSection({
               image={{ uri: pinImage }}
             />
           );
-        })}
+        })
+          : null}
       </MapView>
       <View style={styles.captureShell} pointerEvents="none">
         {labelKeys.map((key) => {

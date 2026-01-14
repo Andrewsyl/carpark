@@ -1,0 +1,2 @@
+ALTER TABLE listings
+ADD COLUMN IF NOT EXISTS access_code TEXT;

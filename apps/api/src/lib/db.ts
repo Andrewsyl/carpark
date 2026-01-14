@@ -189,12 +189,25 @@ export type NewListing = {
   longitude: number;
   amenities?: string[];
   imageUrls?: string[];
+  accessCode?: string | null;
+  permissionDeclared?: boolean;
 };
 
 export async function createListing(listing: NewListing) {
   const query = `
-    INSERT INTO listings (title, address, price_per_day, availability_text, host_id, host_stripe_account_id, amenities, geom, image_urls)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($8, $9), 4326), $10)
+    INSERT INTO listings (
+      title,
+      address,
+      price_per_day,
+      availability_text,
+      host_id,
+      amenities,
+      geom,
+      image_urls,
+      access_code,
+      permission_declared
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, ST_SetSRID(ST_MakePoint($7, $8), 4326), $9, $10, $11)
     RETURNING id;
   `;
   const params = [
@@ -203,11 +216,12 @@ export async function createListing(listing: NewListing) {
     listing.pricePerDay,
     listing.availabilityText,
     listing.hostId,
-    listing.hostStripeAccountId ?? null,
     listing.amenities ?? [],
     listing.longitude,
     listing.latitude,
     listing.imageUrls ?? [],
+    listing.accessCode ?? null,
+    listing.permissionDeclared ?? false,
   ];
 
   const result = await pool.query(query, params);
@@ -223,6 +237,9 @@ export async function createBooking({
   checkoutSessionId,
   amountCents,
   currency,
+  platformFeeCents,
+  payoutAvailableAt,
+  vehiclePlate,
 }: {
   listingId: string;
   driverId: string;
@@ -232,10 +249,27 @@ export async function createBooking({
   checkoutSessionId?: string | null;
   amountCents: number;
   currency: string;
+  platformFeeCents: number;
+  payoutAvailableAt: Date;
+  vehiclePlate?: string | null;
 }) {
   const insertWithStatus = `
-    INSERT INTO bookings (listing_id, driver_id, start_time, end_time, payment_intent_id, checkout_session_id, amount_cents, currency, status)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+    INSERT INTO bookings (
+      listing_id,
+      driver_id,
+      start_time,
+      end_time,
+      payment_intent_id,
+      checkout_session_id,
+      amount_cents,
+      currency,
+      status,
+      platform_fee_cents,
+      payout_available_at,
+      payout_status,
+      vehicle_plate
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, 'pending', $11)
     RETURNING id;
   `;
   try {
@@ -248,6 +282,9 @@ export async function createBooking({
       checkoutSessionId ?? null,
       amountCents,
       currency,
+      platformFeeCents,
+      payoutAvailableAt,
+      vehiclePlate ?? null,
     ]);
     return result.rows[0];
   } catch (err: any) {
@@ -272,6 +309,12 @@ export type UserRecord = {
   password_hash: string;
   host_stripe_account_id?: string | null;
   role?: "driver" | "host" | "admin";
+  refresh_token_hash?: string | null;
+  refresh_expires?: Date | null;
+  terms_version?: string | null;
+  terms_accepted_at?: Date | null;
+  privacy_version?: string | null;
+  privacy_accepted_at?: Date | null;
 };
 
 export async function createUser({
@@ -280,26 +323,55 @@ export async function createUser({
   role = "driver",
   verificationToken,
   verificationExpires,
+  termsVersion,
+  privacyVersion,
 }: {
   email: string;
   passwordHash: string;
   role?: UserRecord["role"];
   verificationToken?: string | null;
   verificationExpires?: Date | null;
+  termsVersion?: string | null;
+  privacyVersion?: string | null;
 }) {
+  const now = new Date();
   const query = `
-    INSERT INTO users (email, password_hash, role, verification_token, verification_expires)
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO users (
+      email,
+      password_hash,
+      role,
+      verification_token,
+      verification_expires,
+      terms_version,
+      terms_accepted_at,
+      privacy_version,
+      privacy_accepted_at
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     ON CONFLICT (email) DO NOTHING
-    RETURNING id, email, role, password_hash, host_stripe_account_id, email_verified, verification_token, verification_expires;
+    RETURNING id, email, role, password_hash, host_stripe_account_id, email_verified,
+      verification_token, verification_expires, terms_version, terms_accepted_at, privacy_version, privacy_accepted_at;
   `;
-  const result = await pool.query(query, [email.toLowerCase(), passwordHash, role, verificationToken ?? null, verificationExpires ?? null]);
+  const result = await pool.query(query, [
+    email.toLowerCase(),
+    passwordHash,
+    role,
+    verificationToken ?? null,
+    verificationExpires ?? null,
+    termsVersion ?? null,
+    termsVersion ? now : null,
+    privacyVersion ?? null,
+    privacyVersion ? now : null,
+  ]);
   return result.rows[0] as UserRecord | undefined;
 }
 
 export async function findUserByEmail(email: string) {
   const result = await pool.query(
-    `SELECT id, email, password_hash, role, host_stripe_account_id, email_verified, verification_token, verification_expires FROM users WHERE email = $1 LIMIT 1`,
+    `SELECT id, email, password_hash, role, host_stripe_account_id, email_verified, verification_token,
+      verification_expires, refresh_token_hash, refresh_expires, terms_version, terms_accepted_at,
+      privacy_version, privacy_accepted_at
+     FROM users WHERE email = $1 LIMIT 1`,
     [email.toLowerCase()]
   );
   return result.rows[0] as UserRecord | undefined;
@@ -307,8 +379,24 @@ export async function findUserByEmail(email: string) {
 
 export async function findUserById(userId: string) {
   const result = await pool.query(
-    `SELECT id, email, password_hash, role, host_stripe_account_id, email_verified, verification_token, verification_expires FROM users WHERE id = $1 LIMIT 1`,
+    `SELECT id, email, password_hash, role, host_stripe_account_id, email_verified, verification_token,
+      verification_expires, refresh_token_hash, refresh_expires, terms_version, terms_accepted_at,
+      privacy_version, privacy_accepted_at
+     FROM users WHERE id = $1 LIMIT 1`,
     [userId]
+  );
+  return result.rows[0] as UserRecord | undefined;
+}
+
+export async function findUserByResetToken(token: string) {
+  const result = await pool.query(
+    `
+    SELECT id, email, password_hash, role, host_stripe_account_id
+    FROM users
+    WHERE reset_token = $1 AND (reset_expires IS NULL OR reset_expires > now())
+    LIMIT 1
+    `,
+    [token]
   );
   return result.rows[0] as UserRecord | undefined;
 }
@@ -337,10 +425,120 @@ export async function setVerificationToken(userId: string, token: string, expire
   );
 }
 
+export async function setPasswordResetToken(userId: string, token: string, expiresAt: Date) {
+  await pool.query(
+    `
+    UPDATE users
+    SET reset_token = $1, reset_expires = $2
+    WHERE id = $3
+    `,
+    [token, expiresAt, userId]
+  );
+}
+
+export async function setRefreshToken(userId: string, tokenHash: string, expiresAt: Date) {
+  await pool.query(
+    `
+    UPDATE users
+    SET refresh_token_hash = $1, refresh_expires = $2
+    WHERE id = $3
+    `,
+    [tokenHash, expiresAt, userId]
+  );
+}
+
+export async function clearRefreshToken(userId: string) {
+  await pool.query(
+    `
+    UPDATE users
+    SET refresh_token_hash = null, refresh_expires = null
+    WHERE id = $1
+    `,
+    [userId]
+  );
+}
+
+export async function findUserByRefreshTokenHash(tokenHash: string) {
+  const result = await pool.query(
+    `
+    SELECT id, email, role, host_stripe_account_id, email_verified, refresh_token_hash, refresh_expires,
+      terms_version, terms_accepted_at, privacy_version, privacy_accepted_at
+    FROM users
+    WHERE refresh_token_hash = $1
+      AND (refresh_expires IS NULL OR refresh_expires > now())
+    LIMIT 1
+    `,
+    [tokenHash]
+  );
+  return result.rows[0] as UserRecord | undefined;
+}
+
+export async function setLegalAcceptance({
+  userId,
+  termsVersion,
+  privacyVersion,
+}: {
+  userId: string;
+  termsVersion?: string | null;
+  privacyVersion?: string | null;
+}) {
+  const now = new Date();
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET terms_version = COALESCE($2, terms_version),
+        terms_accepted_at = CASE WHEN $2 IS NOT NULL THEN $4 ELSE terms_accepted_at END,
+        privacy_version = COALESCE($3, privacy_version),
+        privacy_accepted_at = CASE WHEN $3 IS NOT NULL THEN $4 ELSE privacy_accepted_at END
+    WHERE id = $1
+    RETURNING id, email, role, host_stripe_account_id, email_verified, terms_version, terms_accepted_at,
+      privacy_version, privacy_accepted_at;
+    `,
+    [userId, termsVersion ?? null, privacyVersion ?? null, now]
+  );
+  return result.rows[0] as UserRecord | undefined;
+}
+
+export async function updateUserPassword(userId: string, passwordHash: string) {
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET password_hash = $1, reset_token = null, reset_expires = null
+    WHERE id = $2
+    RETURNING id, email, role, host_stripe_account_id
+    `,
+    [passwordHash, userId]
+  );
+  return result.rows[0] as Pick<UserRecord, "id" | "email" | "role" | "host_stripe_account_id"> | undefined;
+}
+
+export async function setEmailVerified(userId: string, verified: boolean) {
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET email_verified = $1, verification_token = null, verification_expires = null
+    WHERE id = $2
+    RETURNING id, email, role, host_stripe_account_id, email_verified;
+    `,
+    [verified, userId]
+  );
+  return result.rows[0] as Pick<UserRecord, "id" | "email" | "role" | "host_stripe_account_id"> &
+    { email_verified: boolean };
+}
+
 export async function listListingsByHost(hostId: string) {
   const result = await pool.query(
     `
-    SELECT id, title, address, price_per_day, availability_text, image_urls, ST_X(geom) AS longitude, ST_Y(geom) AS latitude
+    SELECT
+      id,
+      title,
+      address,
+      price_per_day,
+      availability_text,
+      image_urls,
+      access_code,
+      ST_X(geom) AS longitude,
+      ST_Y(geom) AS latitude
     FROM listings
     WHERE host_id = $1
       AND status <> 'archived'
@@ -355,36 +553,17 @@ export async function listListingsByHost(hostId: string) {
     pricePerDay: row.price_per_day,
     availability: row.availability_text,
     imageUrls: row.image_urls ?? [],
+    accessCode: row.access_code ?? null,
     longitude: row.longitude,
     latitude: row.latitude,
   }));
 }
 
 export async function deleteListing({ listingId, hostId }: { listingId: string; hostId: string }) {
-  const bookingCheck = await pool.query(
-    `
-    SELECT 1
-    FROM bookings
-    WHERE listing_id = $1
-    LIMIT 1
-    `,
-    [listingId]
-  );
-  if (bookingCheck.rowCount > 0) {
-    const result = await pool.query(
-      `
-      UPDATE listings
-      SET status = 'archived'
-      WHERE id = $1 AND host_id = $2
-      RETURNING id;
-      `,
-      [listingId, hostId]
-    );
-    return result.rowCount && result.rowCount > 0;
-  }
   const result = await pool.query(
     `
-    DELETE FROM listings
+    UPDATE listings
+    SET status = 'archived'
     WHERE id = $1 AND host_id = $2
     RETURNING id;
     `,
@@ -409,6 +588,8 @@ export async function updateListingForHost({
   longitude,
   imageUrls,
   amenities,
+  accessCode,
+  permissionDeclared,
 }: {
   listingId: string;
   hostId: string;
@@ -420,6 +601,8 @@ export async function updateListingForHost({
   longitude?: number;
   imageUrls?: string[];
   amenities?: string[];
+  accessCode?: string | null;
+  permissionDeclared?: boolean;
 }) {
   const fields: string[] = [];
   const values: any[] = [];
@@ -448,6 +631,14 @@ export async function updateListingForHost({
   if (Array.isArray(amenities)) {
     fields.push(`amenities = $${idx++}`);
     values.push(amenities);
+  }
+  if (accessCode !== undefined) {
+    fields.push(`access_code = $${idx++}`);
+    values.push(accessCode ? accessCode.trim() : null);
+  }
+  if (typeof permissionDeclared === "boolean") {
+    fields.push(`permission_declared = $${idx++}`);
+    values.push(permissionDeclared);
   }
   if (typeof latitude === "number" && typeof longitude === "number") {
     fields.push(`geom = ST_SetSRID(ST_MakePoint($${idx++}, $${idx++}), 4326)`);
@@ -478,6 +669,9 @@ export async function getListingById(listingId: string) {
       price_per_day,
       availability_text,
       image_urls,
+      amenities,
+      access_code,
+      permission_declared,
       host_id,
       rating,
       rating_count,
@@ -501,6 +695,8 @@ export async function getListingById(listingId: string) {
     availability: row.availability_text,
     amenities: row.amenities ?? [],
     imageUrls: row.image_urls ?? [],
+    accessCode: row.access_code ?? null,
+    permissionDeclared: row.permission_declared ?? false,
     hostId: row.host_id,
     rating: Number(row.rating ?? 5),
     ratingCount: Number(row.rating_count ?? 0),
@@ -614,6 +810,7 @@ export async function getListingWithHostAccount(listingId: string) {
     longitude: row.longitude,
   };
 }
+
 
 export async function listAvailability(listingId: string) {
   const res = await pool.query(
@@ -760,21 +957,32 @@ export async function updateBookingStatus({
   checkoutSessionId,
   status,
   paymentIntentId,
+  receiptUrl,
 }: {
   checkoutSessionId: string;
   status: "confirmed" | "canceled";
   paymentIntentId?: string;
+  receiptUrl?: string | null;
 }) {
   try {
     const result = await pool.query(
       `
       UPDATE bookings
       SET status = $1,
-          payment_intent_id = COALESCE($3, payment_intent_id)
+          payment_intent_id = COALESCE($3, payment_intent_id),
+          receipt_url = COALESCE($4, receipt_url),
+          payout_status = CASE
+            WHEN $1 = 'confirmed' THEN COALESCE(payout_status, 'pending')
+            ELSE 'canceled'
+          END,
+          payout_available_at = CASE
+            WHEN $1 = 'confirmed' AND payout_available_at IS NULL THEN start_time + interval '24 hours'
+            ELSE payout_available_at
+          END
       WHERE checkout_session_id = $2
       RETURNING id;
       `,
-      [status, checkoutSessionId, paymentIntentId ?? null]
+      [status, checkoutSessionId, paymentIntentId ?? null, receiptUrl ?? null]
     );
     return result.rowCount && result.rowCount > 0;
   } catch (err: any) {
@@ -789,19 +997,30 @@ export async function updateBookingStatus({
 export async function updateBookingStatusByPaymentIntent({
   paymentIntentId,
   status,
+  receiptUrl,
 }: {
   paymentIntentId: string;
   status: "confirmed" | "canceled";
+  receiptUrl?: string | null;
 }) {
   try {
     const result = await pool.query(
       `
       UPDATE bookings
-      SET status = $1
+      SET status = $1,
+          receipt_url = COALESCE($3, receipt_url),
+          payout_status = CASE
+            WHEN $1 = 'confirmed' THEN COALESCE(payout_status, 'pending')
+            ELSE 'canceled'
+          END,
+          payout_available_at = CASE
+            WHEN $1 = 'confirmed' AND payout_available_at IS NULL THEN start_time + interval '24 hours'
+            ELSE payout_available_at
+          END
       WHERE payment_intent_id = $2
       RETURNING id;
       `,
-      [status, paymentIntentId]
+      [status, paymentIntentId, receiptUrl ?? null]
     );
     return result.rowCount && result.rowCount > 0;
   } catch (err: any) {
@@ -834,6 +1053,207 @@ export async function cancelBookingByDriver({
   return result.rowCount && result.rowCount > 0;
 }
 
+export async function getBookingForRefund({
+  bookingId,
+  driverId,
+}: {
+  bookingId: string;
+  driverId: string;
+}) {
+  const res = await pool.query(
+    `
+    SELECT id, status, payment_intent_id, payout_status, end_time
+    FROM bookings
+    WHERE id = $1
+      AND driver_id = $2
+    `,
+    [bookingId, driverId]
+  );
+  return res.rows[0] as
+    | {
+        id: string;
+        status: string | null;
+        payment_intent_id: string | null;
+        payout_status: string | null;
+        end_time: Date;
+      }
+    | undefined;
+}
+
+export async function getBookingForExtension({
+  bookingId,
+  driverId,
+}: {
+  bookingId: string;
+  driverId: string;
+}) {
+  const res = await pool.query(
+    `
+    SELECT
+      b.id,
+      b.listing_id,
+      b.start_time,
+      b.end_time,
+      b.amount_cents,
+      b.currency,
+      b.status,
+      l.price_per_day
+    FROM bookings b
+    JOIN listings l ON l.id = b.listing_id
+    WHERE b.id = $1
+      AND b.driver_id = $2
+    `,
+    [bookingId, driverId]
+  );
+  return res.rows[0] as
+    | {
+        id: string;
+        listing_id: string;
+        start_time: Date;
+        end_time: Date;
+        amount_cents: number | null;
+        currency: string | null;
+        status: string | null;
+        price_per_day: number;
+      }
+    | undefined;
+}
+
+export async function updateBookingWindow({
+  bookingId,
+  driverId,
+  newStartTime,
+  newEndTime,
+  newAmountCents,
+  paymentIntentId,
+  receiptUrl,
+}: {
+  bookingId: string;
+  driverId: string;
+  newStartTime: string;
+  newEndTime: string;
+  newAmountCents: number;
+  paymentIntentId?: string | null;
+  receiptUrl?: string | null;
+}) {
+  const res = await pool.query(
+    `
+    UPDATE bookings
+    SET start_time = $1,
+        end_time = $2,
+        amount_cents = $3,
+        payment_intent_id = COALESCE($4, payment_intent_id),
+        receipt_url = COALESCE($5, receipt_url)
+    WHERE id = $6
+      AND driver_id = $7
+      AND status = 'confirmed'
+      AND end_time > NOW()
+    RETURNING id, start_time, end_time, amount_cents;
+    `,
+    [
+      newStartTime,
+      newEndTime,
+      newAmountCents,
+      paymentIntentId ?? null,
+      receiptUrl ?? null,
+      bookingId,
+      driverId,
+    ]
+  );
+  return res.rows[0] as
+    | { id: string; start_time: Date; end_time: Date; amount_cents: number }
+    | undefined;
+}
+
+export async function updateBookingExtension({
+  bookingId,
+  driverId,
+  newEndTime,
+  newAmountCents,
+  paymentIntentId,
+  receiptUrl,
+}: {
+  bookingId: string;
+  driverId: string;
+  newEndTime: string;
+  newAmountCents: number;
+  paymentIntentId?: string | null;
+  receiptUrl?: string | null;
+}) {
+  const res = await pool.query(
+    `
+    UPDATE bookings
+    SET end_time = $1,
+        amount_cents = $2,
+        payment_intent_id = COALESCE($3, payment_intent_id),
+        receipt_url = COALESCE($4, receipt_url)
+    WHERE id = $5
+      AND driver_id = $6
+      AND status = 'confirmed'
+      AND end_time > NOW()
+    RETURNING id, end_time, amount_cents;
+    `,
+    [newEndTime, newAmountCents, paymentIntentId ?? null, receiptUrl ?? null, bookingId, driverId]
+  );
+  return res.rows[0] as { id: string; end_time: Date; amount_cents: number } | undefined;
+}
+
+export async function checkInBooking({
+  bookingId,
+  driverId,
+}: {
+  bookingId: string;
+  driverId: string;
+}) {
+  const res = await pool.query(
+    `
+    UPDATE bookings
+    SET checked_in_at = COALESCE(checked_in_at, NOW())
+    WHERE id = $1
+      AND driver_id = $2
+      AND status = 'confirmed'
+      AND start_time <= NOW() + interval '15 minutes'
+      AND end_time >= NOW()
+    RETURNING checked_in_at;
+    `,
+    [bookingId, driverId]
+  );
+  return res.rows[0]?.checked_in_at as Date | undefined;
+}
+
+export async function cancelBookingWithRefund({
+  bookingId,
+  driverId,
+  refundId,
+}: {
+  bookingId: string;
+  driverId: string;
+  refundId?: string | null;
+}) {
+  const res = await pool.query(
+    `
+    UPDATE bookings
+    SET status = 'canceled',
+        payout_status = 'canceled',
+        refund_status = CASE
+          WHEN $3 IS NOT NULL THEN 'succeeded'
+          ELSE refund_status
+        END,
+        refund_id = COALESCE($3, refund_id),
+        refunded_at = CASE
+          WHEN $3 IS NOT NULL THEN NOW()
+          ELSE refunded_at
+        END
+    WHERE id = $1
+      AND driver_id = $2
+      AND end_time > NOW()
+    RETURNING id;
+    `,
+    [bookingId, driverId, refundId ?? null]
+  );
+  return res.rowCount > 0;
+}
+
 export async function listUserBookings(userId: string) {
   const driverRows = await pool.query(
     `
@@ -842,11 +1262,18 @@ export async function listUserBookings(userId: string) {
       b.start_time,
       b.end_time,
       b.status,
+      b.refund_status,
+      b.refunded_at,
+      b.receipt_url,
+      b.checked_in_at,
+      b.no_show_at,
+      b.vehicle_plate,
       b.amount_cents,
       b.currency,
       l.title,
       l.address,
-      l.host_id
+      l.host_id,
+      l.access_code
     FROM bookings b
     JOIN listings l ON l.id = b.listing_id
     WHERE b.driver_id = $1
@@ -863,11 +1290,18 @@ export async function listUserBookings(userId: string) {
       b.start_time,
       b.end_time,
       b.status,
+      b.refund_status,
+      b.refunded_at,
+      b.receipt_url,
+      b.checked_in_at,
+      b.no_show_at,
+      b.vehicle_plate,
       b.amount_cents,
       b.currency,
       l.title,
       l.address,
-      l.host_id
+      l.host_id,
+      l.access_code
     FROM bookings b
     JOIN listings l ON l.id = b.listing_id
     WHERE l.host_id = $1
@@ -882,16 +1316,181 @@ export async function listUserBookings(userId: string) {
     startTime: row.start_time,
     endTime: row.end_time,
     status: row.status ?? "pending",
+    refundStatus: row.refund_status ?? null,
+    refundedAt: row.refunded_at ?? null,
+    receiptUrl: row.receipt_url ?? null,
+    checkedInAt: row.checked_in_at ?? null,
+    noShowAt: row.no_show_at ?? null,
+    vehiclePlate: row.vehicle_plate ?? null,
     amountCents: row.amount_cents ?? 0,
     currency: row.currency ?? "eur",
     address: row.address,
     title: row.title,
+    accessCode: row.access_code ?? null,
   });
 
   return {
     driverBookings: driverRows.rows.map(mapRow),
     hostBookings: hostRows.rows.map(mapRow),
   };
+}
+
+export async function getHostEarningsSummary(hostId: string) {
+  try {
+    const res = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(b.amount_cents), 0) AS total_cents,
+        COALESCE(SUM(COALESCE(b.platform_fee_cents, ROUND(b.amount_cents * 0.10))), 0) AS fee_cents
+      FROM bookings b
+      JOIN listings l ON l.id = b.listing_id
+      WHERE l.host_id = $1
+        AND b.status = 'confirmed';
+      `,
+      [hostId]
+    );
+    const row = res.rows[0] ?? { total_cents: 0, fee_cents: 0 };
+    const totalCents = Number(row.total_cents) || 0;
+    const feeCents = Number(row.fee_cents) || 0;
+    return {
+      totalCents,
+      feeCents,
+      netCents: Math.max(0, totalCents - feeCents),
+      currency: "eur",
+    };
+  } catch (err: any) {
+    if (err?.code === "42703") {
+      const res = await pool.query(
+        `
+        SELECT
+          COALESCE(SUM(b.amount_cents), 0) AS total_cents,
+          COALESCE(SUM(ROUND(b.amount_cents * 0.10)), 0) AS fee_cents
+        FROM bookings b
+        JOIN listings l ON l.id = b.listing_id
+        WHERE l.host_id = $1
+          AND b.status = 'confirmed';
+        `,
+        [hostId]
+      );
+      const row = res.rows[0] ?? { total_cents: 0, fee_cents: 0 };
+      const totalCents = Number(row.total_cents) || 0;
+      const feeCents = Number(row.fee_cents) || 0;
+      return {
+        totalCents,
+        feeCents,
+        netCents: Math.max(0, totalCents - feeCents),
+        currency: "eur",
+      };
+    }
+    throw err;
+  }
+}
+
+export async function listDuePayoutsForHost(hostId: string) {
+  const res = await pool.query(
+    `
+    SELECT
+      b.id,
+      b.amount_cents,
+      COALESCE(b.platform_fee_cents, ROUND(b.amount_cents * 0.10)) AS fee_cents,
+      b.currency,
+      b.payout_available_at
+    FROM bookings b
+    JOIN listings l ON l.id = b.listing_id
+    WHERE l.host_id = $1
+      AND b.status = 'confirmed'
+      AND (b.payout_status IS NULL OR b.payout_status = 'pending')
+      AND b.payout_available_at IS NOT NULL
+      AND b.payout_available_at <= NOW();
+    `,
+    [hostId]
+  );
+  return res.rows as Array<{
+    id: string;
+    amount_cents: number;
+    fee_cents: number;
+    currency: string;
+    payout_available_at: Date;
+  }>;
+}
+
+export async function listDuePayoutsForAllHosts() {
+  const res = await pool.query(
+    `
+    SELECT
+      b.id,
+      b.amount_cents,
+      COALESCE(b.platform_fee_cents, ROUND(b.amount_cents * 0.10)) AS fee_cents,
+      b.currency,
+      b.payout_available_at,
+      l.host_id,
+      u.host_stripe_account_id
+    FROM bookings b
+    JOIN listings l ON l.id = b.listing_id
+    JOIN users u ON u.id = l.host_id
+    WHERE b.status = 'confirmed'
+      AND (b.payout_status IS NULL OR b.payout_status = 'pending')
+      AND b.payout_available_at IS NOT NULL
+      AND b.payout_available_at <= NOW()
+      AND u.host_stripe_account_id IS NOT NULL;
+    `
+  );
+  return res.rows as Array<{
+    id: string;
+    amount_cents: number;
+    fee_cents: number;
+    currency: string;
+    payout_available_at: Date;
+    host_id: string;
+    host_stripe_account_id: string;
+  }>;
+}
+
+export async function markPayoutProcessing(bookingId: string) {
+  const res = await pool.query(
+    `
+    UPDATE bookings
+    SET payout_status = 'processing'
+    WHERE id = $1
+      AND (payout_status IS NULL OR payout_status = 'pending')
+    RETURNING id;
+    `,
+    [bookingId]
+  );
+  return res.rowCount > 0;
+}
+
+export async function markPayoutTransferred({
+  bookingId,
+  transferId,
+}: {
+  bookingId: string;
+  transferId: string;
+}) {
+  const res = await pool.query(
+    `
+    UPDATE bookings
+    SET payout_status = 'paid',
+        stripe_transfer_id = $2
+    WHERE id = $1
+    RETURNING id;
+    `,
+    [bookingId, transferId]
+  );
+  return res.rowCount > 0;
+}
+
+export async function markPayoutPending(bookingId: string) {
+  const res = await pool.query(
+    `
+    UPDATE bookings
+    SET payout_status = 'pending'
+    WHERE id = $1
+    RETURNING id;
+    `,
+    [bookingId]
+  );
+  return res.rowCount > 0;
 }
 
 export async function setHostStripeAccountId(userId: string, accountId: string) {

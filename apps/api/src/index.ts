@@ -10,8 +10,25 @@ import { z } from "zod";
 import hostRouter from "./routes/host.js";
 import adminRouter from "./routes/admin.js";
 import paymentsRouter from "./routes/payments.js";
+import supportRouter from "./routes/support.js";
+import { csrfProtection } from "./middleware/csrf.js";
 
 const app = express();
+// Trust proxy so req.secure works behind load balancers.
+app.set("trust proxy", 1);
+
+if (process.env.ENFORCE_HTTPS === "true" || process.env.NODE_ENV === "production") {
+  app.use((req, res, next) => {
+    if (req.secure || req.headers["x-forwarded-proto"] === "https") {
+      if (process.env.NODE_ENV === "production") {
+        res.setHeader("Strict-Transport-Security", "max-age=15552000; includeSubDomains");
+      }
+      return next();
+    }
+    const host = req.headers.host ?? "";
+    return res.redirect(301, `https://${host}${req.originalUrl}`);
+  });
+}
 const allowedOrigins = new Set(
   [
     process.env.WEB_BASE_URL,
@@ -29,6 +46,7 @@ app.use(
     },
   })
 );
+app.use(csrfProtection);
 // Skip JSON parsing for Stripe webhook route so we can validate the raw payload.
 app.use((req, res, next) => {
   if (req.originalUrl === "/api/bookings/webhook") {
@@ -49,6 +67,7 @@ app.use("/api/host", hostRouter);
 app.use("/api/reviews", reviewsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api", paymentsRouter);
+app.use("/api/support", supportRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

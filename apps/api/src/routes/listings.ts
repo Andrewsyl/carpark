@@ -13,14 +13,28 @@ import {
 import { getPresignedUploadUrl } from "../lib/s3.js";
 import { geocodeAddress } from "../lib/geocode.js";
 import { requireAuth } from "../middleware/auth.js";
+import { createRateLimiter } from "../middleware/rateLimit.js";
 
 const router = Router();
 
-const imageUploadSchema = z.object({
-  contentType: z.string(),
+const searchLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 60,
+  keyPrefix: "listing-search",
 });
 
-router.post("/image-upload-url", requireAuth, async (req, res, next) => {
+const listingWriteLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 20,
+  keyPrefix: "listing-write",
+  keyGenerator: (req) => req.user?.userId ?? req.ip ?? "unknown",
+});
+
+const imageUploadSchema = z.object({
+  contentType: z.string().trim().min(3).max(100),
+});
+
+router.post("/image-upload-url", requireAuth, listingWriteLimiter, async (req, res, next) => {
   try {
     const { contentType } = imageUploadSchema.parse(req.body);
     const userId = req.user!.userId;
@@ -32,19 +46,22 @@ router.post("/image-upload-url", requireAuth, async (req, res, next) => {
 });
 
 const createListingSchema = z.object({
-  title: z.string().min(3),
-  address: z.string().min(3),
-  pricePerDay: z.number().positive(),
-  availabilityText: z.string().min(3),
-  latitude: z.number(),
-  longitude: z.number(),
-  amenities: z.array(z.string()).optional(),
-  imageUrls: z.array(z.string()).optional(),
+  title: z.string().trim().min(3).max(80),
+  address: z.string().trim().min(3).max(200),
+  pricePerDay: z.coerce.number().positive().max(100000),
+  availabilityText: z.string().trim().min(3).max(240),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  amenities: z.array(z.string().trim().max(40)).max(20).optional(),
+  imageUrls: z.array(z.string().trim().url()).max(10).optional(),
+  accessCode: z.string().trim().min(2).max(40).optional(),
+  permissionDeclared: z.boolean().optional(),
 });
 
-router.post("/", requireAuth, async (req, res, next) => {
+router.post("/", requireAuth, listingWriteLimiter, async (req, res, next) => {
   try {
     const payload = createListingSchema.parse(req.body);
+    const pricePerDay = Math.max(1, Math.round(payload.pricePerDay));
     const hostId = req.user?.userId;
     if (!hostId) return res.status(401).json({ message: "Unauthorized" });
 
@@ -65,10 +82,13 @@ router.post("/", requireAuth, async (req, res, next) => {
 
     const created = await createListing({
       ...payload,
+      pricePerDay,
       hostId,
       latitude,
       longitude,
       imageUrls: payload.imageUrls,
+      accessCode: payload.accessCode?.trim() || null,
+      permissionDeclared: payload.permissionDeclared ?? false,
       hostStripeAccountId,
     });
     res.status(201).json({ id: created.id });
@@ -78,14 +98,14 @@ router.post("/", requireAuth, async (req, res, next) => {
 });
 
 const searchSchema = z.object({
-  lat: z.coerce.number(),
-  lng: z.coerce.number(),
-  radiusKm: z.coerce.number().default(5),
-  from: z.string(),
-  to: z.string(),
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
+  radiusKm: z.coerce.number().min(0.1).max(50).default(5),
+  from: z.string().datetime(),
+  to: z.string().datetime(),
 });
 
-router.get("/search", async (req, res, next) => {
+router.get("/search", searchLimiter, async (req, res, next) => {
   try {
     const query = searchSchema.parse(req.query);
     const results = await findAvailableSpaces(query);
@@ -97,7 +117,8 @@ router.get("/search", async (req, res, next) => {
 
 router.get("/:id", async (req, res, next) => {
   try {
-    const listing = await getListingById(req.params.id);
+    const listingId = z.string().uuid().parse(req.params.id);
+    const listing = await getListingById(listingId);
     if (!listing) return res.status(404).json({ message: "Listing not found" });
     res.json({ listing });
   } catch (error) {
@@ -106,34 +127,43 @@ router.get("/:id", async (req, res, next) => {
 });
 
 const updateListingSchema = z.object({
-  title: z.string().min(3).optional(),
-  address: z.string().min(3).optional(),
-  pricePerDay: z.number().positive().optional(),
-  availabilityText: z.string().min(3).optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-  imageUrls: z.array(z.string()).optional(),
-  amenities: z.array(z.string()).optional(),
+  title: z.string().trim().min(3).max(80).optional(),
+  address: z.string().trim().min(3).max(200).optional(),
+  pricePerDay: z.coerce.number().positive().max(100000).optional(),
+  availabilityText: z.string().trim().min(3).max(240).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  imageUrls: z.array(z.string().trim().url()).max(10).optional(),
+  amenities: z.array(z.string().trim().max(40)).max(20).optional(),
+  accessCode: z.string().trim().min(2).max(40).nullable().optional(),
+  permissionDeclared: z.boolean().optional(),
 });
 
-router.patch("/:id", requireAuth, async (req, res, next) => {
+router.patch("/:id", requireAuth, listingWriteLimiter, async (req, res, next) => {
   try {
     const hostId = req.user?.userId;
     if (!hostId) return res.status(401).json({ message: "Unauthorized" });
-    const ownerId = await getListingHostId(req.params.id);
+    const listingId = z.string().uuid().parse(req.params.id);
+    const ownerId = await getListingHostId(listingId);
     if (ownerId !== hostId) return res.status(403).json({ message: "Forbidden" });
     const payload = updateListingSchema.parse(req.body);
+    const pricePerDay =
+      typeof payload.pricePerDay === "number"
+        ? Math.max(1, Math.round(payload.pricePerDay))
+        : undefined;
     const updated = await updateListingForHost({
-      listingId: req.params.id,
+      listingId,
       hostId,
       title: payload.title,
       address: payload.address,
-      pricePerDay: payload.pricePerDay,
+      pricePerDay,
       availabilityText: payload.availabilityText,
       latitude: payload.latitude,
       longitude: payload.longitude,
       imageUrls: payload.imageUrls,
       amenities: payload.amenities,
+      accessCode: payload.accessCode ?? undefined,
+      permissionDeclared: payload.permissionDeclared,
     });
     if (!updated) return res.status(404).json({ message: "Listing not found" });
     res.json({ listing: updated });
@@ -153,11 +183,12 @@ router.get("/", requireAuth, async (req, res, next) => {
   }
 });
 
-router.delete("/:id", requireAuth, async (req, res, next) => {
+router.delete("/:id", requireAuth, listingWriteLimiter, async (req, res, next) => {
   try {
     const hostId = req.user?.userId;
     if (!hostId) return res.status(401).json({ message: "Unauthorized" });
-    const ok = await deleteListing({ listingId: req.params.id, hostId });
+    const listingId = z.string().uuid().parse(req.params.id);
+    const ok = await deleteListing({ listingId, hostId });
     if (!ok) return res.status(404).json({ message: "Listing not found or not owned by host" });
     res.status(204).end();
   } catch (error) {

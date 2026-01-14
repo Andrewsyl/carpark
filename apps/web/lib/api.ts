@@ -295,14 +295,22 @@ export async function createHostPayoutAccount(token?: string) {
 
 export type AuthResponse = {
   token: string;
+  refreshToken?: string;
   user: { id: string; email: string; role?: string; emailVerified?: boolean };
 };
+
+const LEGAL_VERSION = "2026-01-10";
 
 export async function register(email: string, password: string) {
   const res = await fetch(`${API_BASE}/api/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({
+      email,
+      password,
+      termsVersion: LEGAL_VERSION,
+      privacyVersion: LEGAL_VERSION,
+    }),
   });
   const { data, error } = await handleResponse<AuthResponse>(res);
   if (error) {
@@ -322,6 +330,31 @@ export async function login(email: string, password: string) {
     throw new Error(error);
   }
   return data!;
+}
+
+export async function refreshSession(refreshToken: string) {
+  const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  });
+  const { data, error } = await handleResponse<AuthResponse>(res);
+  if (error) {
+    throw new Error(error);
+  }
+  return data!;
+}
+
+export async function revokeSession(token: string) {
+  const res = await fetch(`${API_BASE}/api/auth/logout`, {
+    method: "POST",
+    headers: { ...authHeaders(token) },
+  });
+  const { error } = await handleResponse<{ ok: boolean }>(res);
+  if (error) {
+    throw new Error(error);
+  }
+  return true;
 }
 
 export async function requestVerification(email: string) {

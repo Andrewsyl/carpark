@@ -15,9 +15,12 @@ export function ReviewScreen({ navigation, route }: Props) {
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const end = new Date(booking.endTime);
+  const canReview = booking.status === "confirmed" && end.getTime() <= Date.now();
+  const showReviewNotice = !canReview && booking.status !== "canceled";
 
   const handleSubmit = async () => {
-    if (!token) return;
+    if (!token || !canReview) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -48,6 +51,15 @@ export function ReviewScreen({ navigation, route }: Props) {
         <Text style={styles.title}>How was your stay?</Text>
         <Text style={styles.subtitle}>{booking.title}</Text>
 
+        {showReviewNotice ? (
+          <View style={styles.noticeCard}>
+            <Text style={styles.noticeTitle}>Reviews unlock after the stay</Text>
+            <Text style={styles.noticeText}>
+              You can leave a review once the booking has ended and is confirmed.
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Rating</Text>
           <Text style={styles.cardSubtitle}>Tap a star to rate the space.</Text>
@@ -57,6 +69,7 @@ export function ReviewScreen({ navigation, route }: Props) {
                 key={value}
                 style={[styles.star, rating >= value && styles.starActive]}
                 onPress={() => setRating(value)}
+                disabled={!canReview}
               >
                 <Text style={[styles.starText, rating >= value && styles.starTextActive]}>★</Text>
               </Pressable>
@@ -74,6 +87,7 @@ export function ReviewScreen({ navigation, route }: Props) {
             multiline
             value={comment}
             onChangeText={setComment}
+            editable={canReview}
           />
         </View>
 
@@ -81,7 +95,7 @@ export function ReviewScreen({ navigation, route }: Props) {
         <Pressable
           style={[styles.primaryButton, submitting && styles.primaryButtonDisabled]}
           onPress={handleSubmit}
-          disabled={submitting}
+          disabled={submitting || !canReview}
         >
           <Text style={styles.primaryButtonText}>
             {submitting ? "Submitting..." : "Submit review"}
@@ -198,6 +212,25 @@ const styles = StyleSheet.create({
   error: {
     color: "#b42318",
     marginTop: 10,
+  },
+  noticeCard: {
+    backgroundColor: "#ffffff",
+    borderColor: "#e5e7eb",
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 16,
+    padding: 18,
+  },
+  noticeTitle: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  noticeText: {
+    color: "#6b7280",
+    fontSize: 12,
+    marginTop: 6,
+    lineHeight: 18,
   },
   primaryButton: {
     alignItems: "center",

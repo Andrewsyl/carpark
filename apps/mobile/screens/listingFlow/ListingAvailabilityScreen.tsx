@@ -19,14 +19,20 @@ type AvailabilityMode = "daily" | "dates" | "recurring";
 
 export function ListingAvailabilityScreen({ navigation }: Props) {
   const { draft, setDraft } = useListingFlow();
-  const [timeStart, setTimeStart] = useState(() => new Date());
+  const [timeStart, setTimeStart] = useState(() =>
+    draft.availability.timeStart
+      ? new Date(draft.availability.timeStart)
+      : new Date(new Date().setHours(0, 0, 0, 0))
+  );
   const [timeEnd, setTimeEnd] = useState(() => {
-    const next = new Date();
-    next.setHours(next.getHours() + 8);
-    return next;
+    if (draft.availability.timeEnd) return new Date(draft.availability.timeEnd);
+    return new Date(new Date().setHours(23, 59, 0, 0));
   });
-  const [dateStart, setDateStart] = useState(() => new Date());
+  const [dateStart, setDateStart] = useState(() =>
+    draft.availability.dateStart ? new Date(draft.availability.dateStart) : new Date()
+  );
   const [dateEnd, setDateEnd] = useState(() => {
+    if (draft.availability.dateEnd) return new Date(draft.availability.dateEnd);
     const next = new Date();
     next.setDate(next.getDate() + 7);
     return next;
@@ -34,7 +40,9 @@ export function ListingAvailabilityScreen({ navigation }: Props) {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerMode, setPickerMode] = useState<"time" | "date">("time");
   const [pickerField, setPickerField] = useState<PickerField>("timeStart");
-  const [weekdays, setWeekdays] = useState<string[]>([]);
+  const [weekdays, setWeekdays] = useState<string[]>(
+    draft.availability.weekdays.length ? draft.availability.weekdays : []
+  );
 
 
   const formatTime = (value: Date) =>
@@ -59,19 +67,58 @@ export function ListingAvailabilityScreen({ navigation }: Props) {
     return "";
   }, [dateEnd, dateStart, draft.availability.mode, timeEnd, timeStart, weekdays]);
 
+  const timeWindowValid = useMemo(() => {
+    const startMinutes = timeStart.getHours() * 60 + timeStart.getMinutes();
+    const endMinutes = timeEnd.getHours() * 60 + timeEnd.getMinutes();
+    return endMinutes > startMinutes;
+  }, [timeEnd, timeStart]);
+
+  const isAllDay =
+    timeStart.getHours() === 0 &&
+    timeStart.getMinutes() === 0 &&
+    timeEnd.getHours() === 23 &&
+    timeEnd.getMinutes() === 59;
+
+  const toggleAllDay = () => {
+    if (isAllDay) {
+      const start = new Date(timeStart);
+      const end = new Date(timeEnd);
+      start.setHours(8, 0, 0, 0);
+      end.setHours(18, 0, 0, 0);
+      setTimeStart(start);
+      setTimeEnd(end);
+      return;
+    }
+    const start = new Date(timeStart);
+    const end = new Date(timeEnd);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 0, 0);
+    setTimeStart(start);
+    setTimeEnd(end);
+  };
+
   useEffect(() => {
     if (!availabilitySummary && draft.availability.mode !== "daily") return;
     setDraft((prev) => ({
       ...prev,
-      availability: { ...prev.availability, detail: availabilitySummary },
+      availability: {
+        ...prev.availability,
+        detail: availabilitySummary,
+        timeStart: timeStart.toISOString(),
+        timeEnd: timeEnd.toISOString(),
+        dateStart: dateStart.toISOString(),
+        dateEnd: dateEnd.toISOString(),
+        weekdays,
+      },
     }));
-  }, [availabilitySummary, draft.availability.mode, setDraft]);
+  }, [availabilitySummary, dateEnd, dateStart, draft.availability.mode, setDraft, timeEnd, timeStart, weekdays]);
 
   const detail = draft.availability.detail.trim();
   const canContinue =
     draft.availability.mode === "daily" ||
     (draft.availability.mode === "dates" && detail.length > 0) ||
     (draft.availability.mode === "recurring" && detail.length > 0);
+  const canSave = canContinue && timeWindowValid;
 
   const openPicker = (field: PickerField) => {
     setPickerField(field);
@@ -104,7 +151,7 @@ export function ListingAvailabilityScreen({ navigation }: Props) {
   const setMode = (mode: AvailabilityMode) => {
     setDraft((prev) => ({
       ...prev,
-      availability: { mode, detail: prev.availability.detail },
+      availability: { ...prev.availability, mode },
     }));
   };
 
@@ -126,6 +173,17 @@ export function ListingAvailabilityScreen({ navigation }: Props) {
         {draft.availability.mode === "daily" ? (
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Daily hours</Text>
+            <View style={styles.toggleRow}>
+              <Pressable
+                style={[styles.toggleChip, isAllDay && styles.toggleChipActive]}
+                onPress={toggleAllDay}
+              >
+                <Text style={[styles.toggleChipText, isAllDay && styles.toggleChipTextActive]}>
+                  24/7
+                </Text>
+              </Pressable>
+              <Text style={styles.toggleHint}>Set full-day access</Text>
+            </View>
             <View style={styles.inlineRow}>
               <Pressable style={styles.timePill} onPress={() => openPicker("timeStart")}> 
                 <Text style={styles.timePillLabel}>Start</Text>
@@ -136,6 +194,9 @@ export function ListingAvailabilityScreen({ navigation }: Props) {
                 <Text style={styles.timePillValue}>{formatTime(timeEnd)}</Text>
               </Pressable>
             </View>
+            {!timeWindowValid ? (
+              <Text style={styles.warningText}>End time must be after start time.</Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -160,6 +221,17 @@ export function ListingAvailabilityScreen({ navigation }: Props) {
               </Pressable>
             </View>
             <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Daily hours</Text>
+            <View style={styles.toggleRow}>
+              <Pressable
+                style={[styles.toggleChip, isAllDay && styles.toggleChipActive]}
+                onPress={toggleAllDay}
+              >
+                <Text style={[styles.toggleChipText, isAllDay && styles.toggleChipTextActive]}>
+                  24/7
+                </Text>
+              </Pressable>
+              <Text style={styles.toggleHint}>Set full-day access</Text>
+            </View>
             <View style={styles.inlineRow}>
               <Pressable style={styles.timePill} onPress={() => openPicker("timeStart")}> 
                 <Text style={styles.timePillLabel}>Start</Text>
@@ -170,6 +242,9 @@ export function ListingAvailabilityScreen({ navigation }: Props) {
                 <Text style={styles.timePillValue}>{formatTime(timeEnd)}</Text>
               </Pressable>
             </View>
+            {!timeWindowValid ? (
+              <Text style={styles.warningText}>End time must be after start time.</Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -197,6 +272,17 @@ export function ListingAvailabilityScreen({ navigation }: Props) {
               ))}
             </View>
             <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Hours</Text>
+            <View style={styles.toggleRow}>
+              <Pressable
+                style={[styles.toggleChip, isAllDay && styles.toggleChipActive]}
+                onPress={toggleAllDay}
+              >
+                <Text style={[styles.toggleChipText, isAllDay && styles.toggleChipTextActive]}>
+                  24/7
+                </Text>
+              </Pressable>
+              <Text style={styles.toggleHint}>Set full-day access</Text>
+            </View>
             <View style={styles.inlineRow}>
               <Pressable style={styles.timePill} onPress={() => openPicker("timeStart")}> 
                 <Text style={styles.timePillLabel}>Start</Text>
@@ -207,14 +293,17 @@ export function ListingAvailabilityScreen({ navigation }: Props) {
                 <Text style={styles.timePillValue}>{formatTime(timeEnd)}</Text>
               </Pressable>
             </View>
+            {!timeWindowValid ? (
+              <Text style={styles.warningText}>End time must be after start time.</Text>
+            ) : null}
           </View>
         ) : null}
       </ScrollView>
       <View style={styles.footer}>
         <Pressable
-          style={[styles.primaryButton, !canContinue && styles.primaryButtonDisabled]}
+          style={[styles.primaryButton, !canSave && styles.primaryButtonDisabled]}
           onPress={() => navigation.navigate("ListingPrice")}
-          disabled={!canContinue}
+          disabled={!canSave}
         >
           <Text style={styles.primaryButtonText}>Save availability</Text>
         </Pressable>
@@ -251,24 +340,32 @@ const styles = StyleSheet.create({
   content: {
     padding: 18,
     paddingBottom: 140,
+    paddingTop: 0,
   },
   kicker: {
     color: "#10b981",
     fontSize: 12,
     fontWeight: "700",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     textTransform: "uppercase",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   title: {
     color: "#111827",
     fontSize: 22,
     fontWeight: "700",
     marginTop: 6,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   subtitle: {
     color: "#6b7280",
     fontSize: 13,
     marginTop: 6,
+    lineHeight: 20,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   optionCard: {
     backgroundColor: "#ffffff",
@@ -291,11 +388,16 @@ const styles = StyleSheet.create({
     color: "#111827",
     fontSize: 15,
     fontWeight: "700",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   optionBody: {
     color: "#6b7280",
     fontSize: 12,
     marginTop: 6,
+    lineHeight: 18,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   sectionCard: {
     backgroundColor: "#ffffff",
@@ -315,6 +417,40 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     textTransform: "uppercase",
+    letterSpacing: 0.5,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  },
+  toggleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10,
+  },
+  toggleChip: {
+    backgroundColor: "#f8fafc",
+    borderColor: "#e5e7eb",
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  toggleChipActive: {
+    backgroundColor: "#10b981",
+    borderColor: "#10b981",
+  },
+  toggleChipText: {
+    color: "#475569",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  toggleChipTextActive: {
+    color: "#ffffff",
+  },
+  toggleHint: {
+    color: "#6b7280",
+    fontSize: 12,
+    fontWeight: "600",
   },
   inlineRow: {
     flexDirection: "row",
@@ -335,12 +471,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     textTransform: "uppercase",
+    letterSpacing: 0.5,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   timePillValue: {
     color: "#111827",
     fontSize: 14,
     fontWeight: "700",
     marginTop: 6,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   chipRow: {
     flexDirection: "row",
@@ -367,6 +508,12 @@ const styles = StyleSheet.create({
   },
   chipTextActive: {
     color: "#ffffff",
+  },
+  warningText: {
+    color: "#b42318",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 10,
   },
   footer: {
     backgroundColor: "#ffffff",

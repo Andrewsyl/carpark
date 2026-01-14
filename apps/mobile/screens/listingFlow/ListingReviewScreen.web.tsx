@@ -44,7 +44,7 @@ export function ListingReviewScreen({ navigation }: Props) {
       setError(listingId ? "Sign in to update your space." : "Sign in to publish your space.");
       return;
     }
-    if (!draft.spaceType || !draft.pricePerDay) {
+    if (!draft.spaceType || !draft.pricePerDay || !draft.permissionDeclared) {
       setError("Complete the required steps first.");
       return;
     }
@@ -73,6 +73,8 @@ export function ListingReviewScreen({ navigation }: Props) {
           longitude: draft.location.longitude,
           imageUrls,
           amenities: draft.accessOptions,
+          accessCode: draft.accessCode.trim() || null,
+          permissionDeclared: draft.permissionDeclared,
         });
       } else {
         await createListing({
@@ -87,6 +89,8 @@ export function ListingReviewScreen({ navigation }: Props) {
           longitude: draft.location.longitude,
           imageUrls,
           amenities: draft.accessOptions,
+          accessCode: draft.accessCode.trim() || null,
+          permissionDeclared: draft.permissionDeclared,
         });
       }
       setPublished(true);
@@ -118,6 +122,34 @@ export function ListingReviewScreen({ navigation }: Props) {
         <Text style={styles.subtitle}>
           {listingId ? "Confirm everything looks right." : "You can edit anything after publishing."}
         </Text>
+
+        <Pressable
+          style={[
+            styles.confirmRow,
+            draft.permissionDeclared && styles.confirmRowActive,
+          ]}
+          onPress={() =>
+            setDraft((prev) => ({
+              ...prev,
+              permissionDeclared: !prev.permissionDeclared,
+            }))
+          }
+        >
+          <View
+            style={[
+              styles.confirmBox,
+              draft.permissionDeclared && styles.confirmBoxActive,
+            ]}
+          >
+            {draft.permissionDeclared ? <Text style={styles.confirmCheck}>✓</Text> : null}
+          </View>
+          <View style={styles.confirmTextWrap}>
+            <Text style={styles.confirmTitle}>I have permission to rent this space</Text>
+            <Text style={styles.confirmSubtitle}>
+              You confirm you own this space or have the owner’s consent to list it.
+            </Text>
+          </View>
+        </Pressable>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -230,6 +262,56 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
+  },
+  confirmRow: {
+    backgroundColor: "#ffffff",
+    borderColor: "#e5e7eb",
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 18,
+    padding: 14,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 1,
+  },
+  confirmRowActive: {
+    borderColor: "#00d4aa",
+  },
+  confirmBox: {
+    alignItems: "center",
+    borderColor: "#cbd5f5",
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 22,
+    justifyContent: "center",
+    marginTop: 2,
+    width: 22,
+  },
+  confirmBoxActive: {
+    backgroundColor: "#00d4aa",
+    borderColor: "#00d4aa",
+  },
+  confirmCheck: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  confirmTextWrap: {
+    flex: 1,
+  },
+  confirmTitle: {
+    color: "#0f172a",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  confirmSubtitle: {
+    color: "#6b7280",
+    fontSize: 12,
+    marginTop: 4,
   },
   label: {
     color: "#6b7280",

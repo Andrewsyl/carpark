@@ -8,18 +8,34 @@ import {
   listListingReviews,
 } from "../lib/db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { createRateLimiter } from "../middleware/rateLimit.js";
 
 const router = Router();
+
+const reviewWriteLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 20,
+  keyPrefix: "review-write",
+  keyGenerator: (req) => req.user?.userId ?? req.ip ?? "unknown",
+});
+
+const reviewReadLimiter = createRateLimiter({
+  windowMs: 5 * 60 * 1000,
+  max: 120,
+  keyPrefix: "review-read",
+});
 
 const createReviewSchema = z.object({
   bookingId: z.string().uuid(),
   rating: z.number().min(1).max(5).refine((val) => Number.isInteger(val * 2), {
     message: "Rating must be in 0.5 increments",
   }),
-  comment: z.string().max(1000).optional(),
+  comment: z
+    .preprocess((value) => (typeof value === "string" ? value.trim() : value), z.string().min(3).max(1000))
+    .optional(),
 });
 
-router.post("/", requireAuth, async (req, res, next) => {
+router.post("/", requireAuth, reviewWriteLimiter, async (req, res, next) => {
   try {
     const { bookingId, rating, comment } = createReviewSchema.parse(req.body);
     const userId = req.user?.userId;
@@ -86,7 +102,7 @@ const listReviewsSchema = z.object({
   offset: z.coerce.number().min(0).default(0),
 });
 
-router.get("/listing/:id", async (req, res, next) => {
+router.get("/listing/:id", reviewReadLimiter, async (req, res, next) => {
   try {
     const { limit, offset } = listReviewsSchema.parse(req.query);
     const reviews = await listListingReviews({ listingId: req.params.id, limit, offset });

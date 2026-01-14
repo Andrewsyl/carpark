@@ -186,23 +186,39 @@ export function SearchScreen({ navigation }: Props) {
   const historyLoadedRef = useRef(false);
   const HISTORY_KEY = "searchHistory";
 
-  const buildSearchParams = (overrides?: Partial<SearchParams>): SearchParams => {
-    const next: SearchParams = {
+  const buildSearchParams = useCallback(
+    (overrides?: Partial<SearchParams>): SearchParams => {
+      const next: SearchParams = {
+        lat,
+        lng,
+        radiusKm,
+        from,
+        to,
+      };
+      if (priceMin.trim()) next.priceMin = priceMin.trim();
+      if (priceMax.trim()) next.priceMax = priceMax.trim();
+      if (securityLevel) next.securityLevel = securityLevel;
+      if (vehicleSize) next.vehicleSize = vehicleSize;
+      if (coveredParking) next.coveredParking = true;
+      if (evCharging) next.evCharging = true;
+      if (instantBook) next.instantBook = true;
+      return { ...next, ...overrides };
+    },
+    [
       lat,
       lng,
       radiusKm,
       from,
       to,
-    };
-    if (priceMin.trim()) next.priceMin = priceMin.trim();
-    if (priceMax.trim()) next.priceMax = priceMax.trim();
-    if (securityLevel) next.securityLevel = securityLevel;
-    if (vehicleSize) next.vehicleSize = vehicleSize;
-    if (coveredParking) next.coveredParking = true;
-    if (evCharging) next.evCharging = true;
-    if (instantBook) next.instantBook = true;
-    return { ...next, ...overrides };
-  };
+      priceMin,
+      priceMax,
+      securityLevel,
+      vehicleSize,
+      coveredParking,
+      evCharging,
+      instantBook,
+    ]
+  );
 
   useEffect(() => {
     if (!mapsKey) return;
@@ -220,43 +236,46 @@ export function SearchScreen({ navigation }: Props) {
     return () => clearTimeout(handle);
   }, [addressQuery, mapsKey]);
 
-  const runSearch = async (paramsOverride?: Partial<SearchParams>) => {
-    const requestId = searchRequestIdRef.current + 1;
-    searchRequestIdRef.current = requestId;
-    searchStartedAtRef.current = Date.now();
-    setLoading(true);
-    setError(null);
-    const params = buildSearchParams(paramsOverride);
-    logInfo("Search started", params);
-    const nextCenter = {
-      lat: Number.parseFloat(params.lat),
-      lng: Number.parseFloat(params.lng),
-    };
-    if (Number.isFinite(nextCenter.lat) && Number.isFinite(nextCenter.lng)) {
-      lastSearchCenterRef.current = nextCenter;
-    }
-    try {
-      const spaces = await searchListings(params);
-      setResults(spaces);
-      setSelectedId((prev) => {
-        if (prev && spaces.some((listing) => listing.id === prev)) return prev;
-        return null;
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Search failed";
-      logError("Search error", { message });
-      setError(message);
-      setResults([]);
-    } finally {
-      const elapsed = Date.now() - searchStartedAtRef.current;
-      const remaining = Math.max(0, 1000 - elapsed);
-      setTimeout(() => {
-        if (searchRequestIdRef.current === requestId) {
-          setLoading(false);
-        }
-      }, remaining);
-    }
-  };
+  const runSearch = useCallback(
+    async (paramsOverride?: Partial<SearchParams>) => {
+      const requestId = searchRequestIdRef.current + 1;
+      searchRequestIdRef.current = requestId;
+      searchStartedAtRef.current = Date.now();
+      setLoading(true);
+      setError(null);
+      const params = buildSearchParams(paramsOverride);
+      logInfo("Search started", params);
+      const nextCenter = {
+        lat: Number.parseFloat(params.lat),
+        lng: Number.parseFloat(params.lng),
+      };
+      if (Number.isFinite(nextCenter.lat) && Number.isFinite(nextCenter.lng)) {
+        lastSearchCenterRef.current = nextCenter;
+      }
+      try {
+        const spaces = await searchListings(params);
+        setResults(spaces);
+        setSelectedId((prev) => {
+          if (prev && spaces.some((listing) => listing.id === prev)) return prev;
+          return null;
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Search failed";
+        logError("Search error", { message });
+        setError(message);
+        setResults([]);
+      } finally {
+        const elapsed = Date.now() - searchStartedAtRef.current;
+        const remaining = Math.max(0, 1000 - elapsed);
+        setTimeout(() => {
+          if (searchRequestIdRef.current === requestId) {
+            setLoading(false);
+          }
+        }, remaining);
+      }
+    },
+    [buildSearchParams]
+  );
 
   const handleMapReady = () => {
     setMapReady(true);
@@ -460,7 +479,15 @@ export function SearchScreen({ navigation }: Props) {
     useCallback(() => {
       setSelectedId(null);
       setSearchSheetOpen(false);
-    }, [])
+      void (async () => {
+        const refreshToken = await AsyncStorage.getItem("searchRefreshToken");
+        if (!refreshToken) return;
+        await AsyncStorage.removeItem("searchRefreshToken");
+        setShowSearchArea(false);
+        setPendingSearch(null);
+        void runSearch();
+      })();
+    }, [runSearch])
   );
 
   useEffect(() => {
@@ -601,7 +628,7 @@ export function SearchScreen({ navigation }: Props) {
             results={results}
             style={styles.map}
             mapPadding={{ bottom: 180 + insets.bottom + 16 }}
-            provider={Platform.OS === "android" ? "google" : undefined}
+            provider="google"
             customMapStyle={LIGHT_MAP_STYLE}
             onSelect={handleSelectListing}
             onRegionChangeComplete={handleRegionChange}
@@ -640,7 +667,11 @@ export function SearchScreen({ navigation }: Props) {
             </Pressable>
           </View>
           <View style={styles.searchGroup}>
-            <Pressable style={styles.searchBar} onPress={() => setSearchSheetOpen(true)}>
+            <Pressable
+              style={styles.searchBar}
+              onPress={() => setSearchSheetOpen(true)}
+              testID="search-bar"
+            >
               <TextInput
                 style={styles.searchInput}
                 value={addressQuery}

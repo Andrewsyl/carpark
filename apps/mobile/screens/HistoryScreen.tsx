@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useFocusEffect } from "@react-navigation/native";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { CommonActions, useFocusEffect } from "@react-navigation/native";
+import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { listMyBookings, type BookingSummary } from "../api";
 import { useAuth } from "../auth";
@@ -16,6 +16,7 @@ export function HistoryScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successVisible, setSuccessVisible] = useState(false);
+  const [mapCtaVisible, setMapCtaVisible] = useState(false);
 
   const loadBookings = useCallback(async () => {
     if (!token) return;
@@ -47,6 +48,22 @@ export function HistoryScreen({ navigation, route }: Props) {
     }, [loadBookings])
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: "Search" }],
+          })
+        );
+        return true;
+      };
+      const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+      return () => subscription.remove();
+    }, [navigation])
+  );
+
   useEffect(() => {
     if (!route.params?.showSuccess) return;
     setSuccessVisible(true);
@@ -55,8 +72,28 @@ export function HistoryScreen({ navigation, route }: Props) {
     return () => clearTimeout(timer);
   }, [navigation, route.params?.showSuccess]);
 
-  const now = useMemo(() => new Date(), []);
-  const upcoming = bookings.filter((booking) => new Date(booking.endTime) >= now);
+  useEffect(() => {
+    if (!route.params?.showMapCTA) return;
+    setMapCtaVisible(true);
+    navigation.setParams({ showMapCTA: undefined });
+  }, [navigation, route.params?.showMapCTA]);
+
+  useEffect(() => {
+    if (!route.params?.initialTab) return;
+    setTab(route.params.initialTab);
+    navigation.setParams({ initialTab: undefined });
+  }, [navigation, route.params?.initialTab]);
+
+  useEffect(() => {
+    if (!route.params?.refreshToken) return;
+    void loadBookings();
+    navigation.setParams({ refreshToken: undefined });
+  }, [loadBookings, navigation, route.params?.refreshToken]);
+
+  const now = new Date();
+  const upcoming = bookings.filter(
+    (booking) => new Date(booking.endTime) >= now && booking.status !== "canceled"
+  );
   const past = bookings.filter((booking) => new Date(booking.endTime) < now);
   const visible = tab === "upcoming" ? upcoming : past;
 
@@ -65,13 +102,14 @@ export function HistoryScreen({ navigation, route }: Props) {
       <View style={styles.topBar}>
         <Pressable
           style={styles.backButton}
-          onPress={() => {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            } else {
-              navigation.navigate("Search");
-            }
-          }}
+          onPress={() =>
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: "Search" }],
+              })
+            )
+          }
         >
           <Text style={styles.backLabel}>Back</Text>
         </Pressable>
@@ -89,6 +127,23 @@ export function HistoryScreen({ navigation, route }: Props) {
         <View style={styles.successBanner}>
           <Text style={styles.successTitle}>Booking confirmed</Text>
           <Text style={styles.successBody}>Your reservation is saved in Upcoming.</Text>
+        </View>
+      ) : null}
+      {mapCtaVisible ? (
+        <View style={styles.mapCtaBanner}>
+          <View>
+            <Text style={styles.mapCtaTitle}>Booking canceled</Text>
+            <Text style={styles.mapCtaBody}>Space is available again.</Text>
+          </View>
+          <Pressable
+            style={styles.mapCtaButton}
+            onPress={() => {
+              setMapCtaVisible(false);
+              navigation.navigate("Search");
+            }}
+          >
+            <Text style={styles.mapCtaButtonText}>View on map</Text>
+          </Pressable>
         </View>
       ) : null}
       <View style={styles.segment}>
@@ -155,6 +210,9 @@ export function HistoryScreen({ navigation, route }: Props) {
                 {visible.map((booking) => {
                   const start = new Date(booking.startTime);
                   const end = new Date(booking.endTime);
+                  const isRefunded = booking.refundStatus === "succeeded";
+                  const statusLabel = isRefunded ? "refunded" : booking.status;
+                  const refundedAt = booking.refundedAt ? new Date(booking.refundedAt) : null;
                   return (
                     <Pressable
                       key={booking.id}
@@ -166,20 +224,22 @@ export function HistoryScreen({ navigation, route }: Props) {
                         <View
                           style={[
                             styles.statusPill,
-                            booking.status === "confirmed" && styles.statusConfirmed,
-                            booking.status === "pending" && styles.statusPending,
-                            booking.status === "canceled" && styles.statusCanceled,
+                            isRefunded && styles.statusRefunded,
+                            !isRefunded && booking.status === "confirmed" && styles.statusConfirmed,
+                            !isRefunded && booking.status === "pending" && styles.statusPending,
+                            !isRefunded && booking.status === "canceled" && styles.statusCanceled,
                           ]}
                         >
                           <Text
                             style={[
                               styles.statusText,
-                              booking.status === "confirmed" && styles.statusTextConfirmed,
-                              booking.status === "pending" && styles.statusTextPending,
-                              booking.status === "canceled" && styles.statusTextCanceled,
+                              isRefunded && styles.statusTextRefunded,
+                              !isRefunded && booking.status === "confirmed" && styles.statusTextConfirmed,
+                              !isRefunded && booking.status === "pending" && styles.statusTextPending,
+                              !isRefunded && booking.status === "canceled" && styles.statusTextCanceled,
                             ]}
                           >
-                            {booking.status}
+                            {statusLabel}
                           </Text>
                         </View>
                       </View>
@@ -187,6 +247,11 @@ export function HistoryScreen({ navigation, route }: Props) {
                       <Text style={styles.bookingTime}>
                         {start.toLocaleDateString()} • {start.toLocaleTimeString()} – {end.toLocaleTimeString()}
                       </Text>
+                      {isRefunded ? (
+                        <Text style={styles.bookingRefunded}>
+                          Refunded {refundedAt ? refundedAt.toLocaleDateString() : ""}
+                        </Text>
+                      ) : null}
                       <Text style={styles.bookingPrice}>
                         €{(booking.amountCents / 100).toFixed(2)}
                       </Text>
@@ -276,6 +341,45 @@ const styles = StyleSheet.create({
     color: "#475467",
     fontSize: 12,
     marginTop: 4,
+  },
+  mapCtaBanner: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "#e5e7eb",
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginHorizontal: 18,
+    marginBottom: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  mapCtaTitle: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  mapCtaBody: {
+    color: "#6b7280",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  mapCtaButton: {
+    backgroundColor: "#10b981",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  mapCtaButtonText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "700",
   },
   segment: {
     flexDirection: "row",
@@ -381,6 +485,9 @@ const styles = StyleSheet.create({
   statusCanceled: {
     backgroundColor: "#fef2f2",
   },
+  statusRefunded: {
+    backgroundColor: "#ecfdf3",
+  },
   statusTextConfirmed: {
     color: "#047857",
   },
@@ -389,6 +496,9 @@ const styles = StyleSheet.create({
   },
   statusTextCanceled: {
     color: "#b42318",
+  },
+  statusTextRefunded: {
+    color: "#047857",
   },
   bookingAddress: {
     color: "#6b7280",
@@ -400,6 +510,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     marginTop: 8,
+  },
+  bookingRefunded: {
+    color: "#047857",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 6,
   },
   bookingPrice: {
     color: "#111827",

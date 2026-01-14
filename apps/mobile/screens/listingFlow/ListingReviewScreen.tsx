@@ -5,7 +5,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import LottieView from "lottie-react-native";
-import { createListing, updateListing } from "../../api";
+import {
+  createAvailabilityEntry,
+  createListing,
+  deleteAvailabilityEntry,
+  listAvailability,
+  updateListing,
+} from "../../api";
 import { useAuth } from "../../auth";
 import { MapPin } from "../../components/MapPin";
 import { LIGHT_MAP_STYLE } from "../../components/mapStyles";
@@ -37,7 +43,87 @@ export function ListingReviewScreen({ navigation }: Props) {
   const canPublish =
     draft.spaceType.trim().length > 0 &&
     draft.pricePerDay.trim().length > 0 &&
-    draft.location.address.trim().length > 0;
+    draft.location.address.trim().length > 0 &&
+    draft.permissionDeclared;
+
+  const buildAvailabilityPayload = () => {
+    const weekdayIndex: Record<string, number> = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
+    };
+    const mode = draft.availability.mode;
+    const timeStart = new Date(draft.availability.timeStart);
+    const timeEnd = new Date(draft.availability.timeEnd);
+    const withTime = (date: Date, time: Date) => {
+      const next = new Date(date);
+      next.setHours(time.getHours(), time.getMinutes(), 0, 0);
+      return next;
+    };
+    const baseDate = new Date();
+    if (mode === "daily") {
+      const startsAt = withTime(baseDate, timeStart);
+      const endsAt = withTime(baseDate, timeEnd);
+      if (endsAt <= startsAt) endsAt.setDate(endsAt.getDate() + 1);
+      return {
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        repeatWeekdays: [0, 1, 2, 3, 4, 5, 6],
+        repeatUntil: null,
+      };
+    }
+    if (mode === "recurring") {
+      const repeatWeekdays = draft.availability.weekdays
+        .map((day) => weekdayIndex[day])
+        .filter((value) => typeof value === "number");
+      if (!repeatWeekdays.length) return null;
+      const startsAt = withTime(baseDate, timeStart);
+      const endsAt = withTime(baseDate, timeEnd);
+      if (endsAt <= startsAt) endsAt.setDate(endsAt.getDate() + 1);
+      return {
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        repeatWeekdays,
+        repeatUntil: null,
+      };
+    }
+    const dateStart = new Date(draft.availability.dateStart);
+    const dateEnd = new Date(draft.availability.dateEnd);
+    const startsAt = withTime(dateStart, timeStart);
+    const endsAt = withTime(dateEnd, timeEnd);
+    if (endsAt <= startsAt) endsAt.setDate(endsAt.getDate() + 1);
+    return {
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+      repeatWeekdays: null,
+      repeatUntil: null,
+    };
+  };
+
+  const syncAvailability = async (targetListingId: string) => {
+    if (!token) return;
+    const existing = await listAvailability({ token, listingId: targetListingId });
+    await Promise.all(
+      existing.map((entry) =>
+        deleteAvailabilityEntry({ token, availabilityId: entry.id })
+      )
+    );
+    const payload = buildAvailabilityPayload();
+    if (!payload) return;
+    await createAvailabilityEntry({
+      token,
+      listingId: targetListingId,
+      kind: "open",
+      startsAt: payload.startsAt,
+      endsAt: payload.endsAt,
+      repeatWeekdays: payload.repeatWeekdays,
+      repeatUntil: payload.repeatUntil,
+    });
+  };
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (event) => {
@@ -55,7 +141,7 @@ export function ListingReviewScreen({ navigation }: Props) {
       setError(listingId ? "Sign in to update your space." : "Sign in to publish your space.");
       return;
     }
-    if (!draft.spaceType || !draft.pricePerDay) {
+    if (!draft.spaceType || !draft.pricePerDay || !draft.permissionDeclared) {
       setError("Complete the required steps first.");
       return;
     }
@@ -84,9 +170,12 @@ export function ListingReviewScreen({ navigation }: Props) {
           longitude: draft.location.longitude,
           imageUrls,
           amenities: draft.accessOptions,
+          accessCode: draft.accessCode.trim() || null,
+          permissionDeclared: draft.permissionDeclared,
         });
+        await syncAvailability(listingId);
       } else {
-        await createListing({
+        const newListingId = await createListing({
           token,
           title: draft.spaceType
             ? `${draft.spaceType} parking`
@@ -98,7 +187,10 @@ export function ListingReviewScreen({ navigation }: Props) {
           longitude: draft.location.longitude,
           imageUrls,
           amenities: draft.accessOptions,
+          accessCode: draft.accessCode.trim() || null,
+          permissionDeclared: draft.permissionDeclared,
         });
+        await syncAvailability(newListingId);
       }
       setPublished(true);
       setShowSuccess(true);
@@ -121,8 +213,8 @@ export function ListingReviewScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <SafeAreaView style={styles.container} edges={["bottom"]}>
+      <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="never">
         <Text style={styles.kicker}>
           {listingId ? "Review & update" : "Review & publish"}
         </Text>
@@ -131,6 +223,34 @@ export function ListingReviewScreen({ navigation }: Props) {
         <Text style={styles.subtitle}>
           {listingId ? "Confirm everything looks right." : "You can edit anything after publishing."}
         </Text>
+
+        <Pressable
+          style={[
+            styles.confirmRow,
+            draft.permissionDeclared && styles.confirmRowActive,
+          ]}
+          onPress={() =>
+            setDraft((prev) => ({
+              ...prev,
+              permissionDeclared: !prev.permissionDeclared,
+            }))
+          }
+        >
+          <View
+            style={[
+              styles.confirmBox,
+              draft.permissionDeclared && styles.confirmBoxActive,
+            ]}
+          >
+            {draft.permissionDeclared ? <Text style={styles.confirmCheck}>✓</Text> : null}
+          </View>
+          <View style={styles.confirmTextWrap}>
+            <Text style={styles.confirmTitle}>I have permission to rent this space</Text>
+            <Text style={styles.confirmSubtitle}>
+              You confirm you own this space or have the owner’s consent to list it.
+            </Text>
+          </View>
+        </Pressable>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -262,24 +382,32 @@ const styles = StyleSheet.create({
   content: {
     padding: 18,
     paddingBottom: 160,
+    paddingTop: 0,
   },
   kicker: {
     color: "#00d4aa",
     fontSize: 12,
     fontWeight: "700",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     textTransform: "uppercase",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   title: {
     color: "#0f172a",
     fontSize: 22,
     fontWeight: "700",
     marginTop: 6,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   subtitle: {
     color: "#6b7280",
     fontSize: 13,
     marginTop: 6,
+    lineHeight: 20,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   error: {
     backgroundColor: "#fef2f2",
@@ -315,6 +443,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 8,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   editRow: {
     alignItems: "center",
@@ -332,11 +464,15 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     fontSize: 14,
     fontWeight: "600",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   editChevron: {
     color: "#94a3b8",
     fontSize: 18,
     fontWeight: "700",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   mapPreview: {
     height: 160,
@@ -350,17 +486,72 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  confirmRow: {
+    backgroundColor: "#ffffff",
+    borderColor: "#e5e7eb",
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 18,
+    padding: 14,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 1,
+  },
+  confirmRowActive: {
+    borderColor: "#00d4aa",
+  },
+  confirmBox: {
+    alignItems: "center",
+    borderColor: "#cbd5f5",
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 22,
+    justifyContent: "center",
+    marginTop: 2,
+    width: 22,
+  },
+  confirmBoxActive: {
+    backgroundColor: "#00d4aa",
+    borderColor: "#00d4aa",
+  },
+  confirmCheck: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  confirmTextWrap: {
+    flex: 1,
+  },
+  confirmTitle: {
+    color: "#0f172a",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  confirmSubtitle: {
+    color: "#6b7280",
+    fontSize: 12,
+    marginTop: 4,
+  },
   label: {
     color: "#6b7280",
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
+    letterSpacing: 0.5,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   value: {
     color: "#0f172a",
     fontSize: 14,
     fontWeight: "600",
     marginTop: 6,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   footer: {
     backgroundColor: "#ffffff",

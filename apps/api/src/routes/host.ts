@@ -9,6 +9,11 @@ import {
   createAvailabilityEntry,
   deleteAvailabilityEntry,
   updateAvailabilityEntry,
+  getHostEarningsSummary,
+  listDuePayoutsForHost,
+  markPayoutProcessing,
+  markPayoutTransferred,
+  markPayoutPending,
 } from "../lib/db.js";
 import { stripe } from "../lib/stripe.js";
 
@@ -19,10 +24,33 @@ router.get("/payout", requireAuth, async (req, res, next) => {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     const user = await findUserById(userId);
-    res.json({ accountId: user?.host_stripe_account_id ?? null });
+    const accountId = user?.host_stripe_account_id ?? null;
+    if (!stripe || !accountId) {
+      return res.json({
+        accountId,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        detailsSubmitted: false,
+        requirementsDue: [],
+      });
+    }
+    const account = await stripe.accounts.retrieve(accountId);
+    res.json({
+      accountId,
+      chargesEnabled: account.charges_enabled ?? false,
+      payoutsEnabled: account.payouts_enabled ?? false,
+      detailsSubmitted: account.details_submitted ?? false,
+      requirementsDue: account.requirements?.currently_due ?? [],
+    });
   } catch (error) {
     next(error);
   }
+});
+
+const payoutSchema = z.object({
+  accountId: z.string().trim().max(128).optional(),
+  returnUrl: z.string().trim().url().optional(),
+  refreshUrl: z.string().trim().url().optional(),
 });
 
 router.post("/payout", requireAuth, async (req, res, next) => {
@@ -30,11 +58,23 @@ router.post("/payout", requireAuth, async (req, res, next) => {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-    let accountId = req.body?.accountId as string | undefined;
+    const payload = payoutSchema.parse(req.body ?? {});
+    let accountId = payload.accountId;
 
     if (!accountId) {
       if (stripe) {
-        const account = await stripe.accounts.create({ type: "express" });
+        const account = await stripe.accounts.create({
+          type: "express",
+          capabilities: {
+            card_payments: { requested: true },
+            transfers: { requested: true },
+          },
+          settings: {
+            payouts: {
+              schedule: { interval: "daily" },
+            },
+          },
+        });
         accountId = account.id;
       } else {
         accountId = `acct_mock_${userId.slice(0, 8)}`;
@@ -42,7 +82,71 @@ router.post("/payout", requireAuth, async (req, res, next) => {
     }
 
     await setHostStripeAccountId(userId, accountId);
-    res.json({ accountId, onboardingUrl: null });
+    let onboardingUrl: string | null = null;
+    if (stripe) {
+      const baseUrl = process.env.WEB_BASE_URL ?? "http://localhost:3000";
+      const refreshUrl = payload.refreshUrl ?? `${baseUrl}/host/payouts`;
+      const returnUrl = payload.returnUrl ?? `${baseUrl}/host/payouts`;
+      const link = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: refreshUrl,
+        return_url: returnUrl,
+        type: "account_onboarding",
+      });
+      onboardingUrl = link.url;
+    }
+
+    res.json({ accountId, onboardingUrl });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/earnings", requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const summary = await getHostEarningsSummary(userId);
+    res.json({ summary });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/payouts/run", requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const user = await findUserById(userId);
+    const accountId = user?.host_stripe_account_id ?? null;
+    if (!stripe || !accountId) {
+      return res.json({ processed: 0, skipped: true });
+    }
+
+    const due = await listDuePayoutsForHost(userId);
+    let processed = 0;
+    for (const booking of due) {
+      const locked = await markPayoutProcessing(booking.id);
+      if (!locked) continue;
+      const net = Math.max(0, Number(booking.amount_cents) - Number(booking.fee_cents));
+      if (net <= 0) {
+        await markPayoutPending(booking.id);
+        continue;
+      }
+      try {
+        const transfer = await stripe.transfers.create({
+          amount: net,
+          currency: booking.currency ?? "eur",
+          destination: accountId,
+          metadata: { booking_id: booking.id },
+        });
+        await markPayoutTransferred({ bookingId: booking.id, transferId: transfer.id });
+        processed += 1;
+      } catch {
+        await markPayoutPending(booking.id);
+      }
+    }
+    res.json({ processed });
   } catch (error) {
     next(error);
   }
@@ -56,13 +160,22 @@ const availabilitySchema = z.object({
   repeatUntil: z.string().optional().nullable(),
 });
 
+const listingIdParamSchema = z.object({
+  id: z.string().uuid(),
+});
+
+const availabilityIdParamSchema = z.object({
+  availabilityId: z.string().uuid(),
+});
+
 router.get("/listings/:id/availability", requireAuth, async (req, res, next) => {
   try {
+    const { id: listingId } = listingIdParamSchema.parse(req.params);
     const hostId = req.user?.userId;
     if (!hostId) return res.status(401).json({ message: "Unauthorized" });
-    const ownerId = await getListingHostId(req.params.id);
+    const ownerId = await getListingHostId(listingId);
     if (ownerId !== hostId) return res.status(403).json({ message: "Forbidden" });
-    const availability = await listAvailability(req.params.id);
+    const availability = await listAvailability(listingId);
     res.json({ availability });
   } catch (error) {
     next(error);
@@ -71,13 +184,14 @@ router.get("/listings/:id/availability", requireAuth, async (req, res, next) => 
 
 router.post("/listings/:id/availability", requireAuth, async (req, res, next) => {
   try {
+    const { id: listingId } = listingIdParamSchema.parse(req.params);
     const hostId = req.user?.userId;
     if (!hostId) return res.status(401).json({ message: "Unauthorized" });
-    const ownerId = await getListingHostId(req.params.id);
+    const ownerId = await getListingHostId(listingId);
     if (ownerId !== hostId) return res.status(403).json({ message: "Forbidden" });
     const payload = availabilitySchema.parse(req.body);
     const created = await createAvailabilityEntry({
-      listingId: req.params.id,
+      listingId,
       kind: payload.kind,
       startsAt: payload.startsAt,
       endsAt: payload.endsAt,
@@ -92,11 +206,12 @@ router.post("/listings/:id/availability", requireAuth, async (req, res, next) =>
 
 router.patch("/availability/:availabilityId", requireAuth, async (req, res, next) => {
   try {
+    const { availabilityId } = availabilityIdParamSchema.parse(req.params);
     const hostId = req.user?.userId;
     if (!hostId) return res.status(401).json({ message: "Unauthorized" });
     const payload = availabilitySchema.partial().parse(req.body);
     const updated = await updateAvailabilityEntry({
-      id: req.params.availabilityId,
+      id: availabilityId,
       hostId,
       kind: payload.kind,
       startsAt: payload.startsAt,
@@ -113,9 +228,10 @@ router.patch("/availability/:availabilityId", requireAuth, async (req, res, next
 
 router.delete("/availability/:availabilityId", requireAuth, async (req, res, next) => {
   try {
+    const { availabilityId } = availabilityIdParamSchema.parse(req.params);
     const hostId = req.user?.userId;
     if (!hostId) return res.status(401).json({ message: "Unauthorized" });
-    const deleted = await deleteAvailabilityEntry({ id: req.params.availabilityId, hostId });
+    const deleted = await deleteAvailabilityEntry({ id: availabilityId, hostId });
     if (!deleted) return res.status(404).json({ message: "Not found" });
     res.status(204).end();
   } catch (error) {

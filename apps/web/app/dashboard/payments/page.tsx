@@ -182,7 +182,7 @@ export default function PaymentsPage() {
     )
   );
 
-  return (
+  const pageContent = (
     <div className="space-y-6 p-4 lg:p-6">
       <header className="flex flex-col gap-1">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Payments</p>
@@ -203,13 +203,19 @@ export default function PaymentsPage() {
               <h2 className="text-lg font-semibold text-slate-900">Saved payment methods</h2>
               <p className="text-sm text-slate-600">Use a card for faster checkout.</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowAdd(true)}
-              className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
-            >
-              Add card
-            </button>
+            <div className="flex flex-col items-end gap-1">
+              <button
+                type="button"
+                onClick={() => setShowAdd(true)}
+                disabled={!stripePromise}
+                className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Add card
+              </button>
+              {!stripePromise ? (
+                <span className="text-[11px] text-amber-700">Stripe isn’t configured for web.</span>
+              ) : null}
+            </div>
           </div>
 
           {status === "loading" && <div className="text-sm text-slate-600">Loading cards…</div>}
@@ -313,21 +319,19 @@ export default function PaymentsPage() {
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           {stripePromise ? (
-            <Elements stripe={stripePromise} options={{ appearance: { theme: "stripe" } } as StripeElementsOptions}>
-              <AddCardModalStripe
-                onClose={() => setShowAdd(false)}
-                onAdded={loadMethods}
-                onLocalAdd={(pm) => {
-                  setMethods((prev) => {
-                    const next = prev.length === 0 ? [pm] : [...prev, pm];
-                    saveLocalMethods(next);
-                    return next;
-                  });
-                }}
-                setError={setError}
-                token={token}
-              />
-            </Elements>
+            <AddCardModalStripe
+              onClose={() => setShowAdd(false)}
+              onAdded={loadMethods}
+              onLocalAdd={(pm) => {
+                setMethods((prev) => {
+                  const next = prev.length === 0 ? [pm] : [...prev, pm];
+                  saveLocalMethods(next);
+                  return next;
+                });
+              }}
+              setError={setError}
+              token={token}
+            />
           ) : (
             <AddCardModalFallback
               onClose={() => setShowAdd(false)}
@@ -343,6 +347,12 @@ export default function PaymentsPage() {
         </div>
       )}
     </div>
+  );
+  if (!stripePromise) return pageContent;
+  return (
+    <Elements stripe={stripePromise} options={{ appearance: { theme: "stripe" } } as StripeElementsOptions}>
+      {pageContent}
+    </Elements>
   );
 }
 

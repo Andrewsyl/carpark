@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path, Rect } from "react-native-svg";
 import { useListingFlow } from "./context";
@@ -110,6 +110,23 @@ export function ListingDetailsScreen({ navigation }: Props) {
             </Pressable>
           ))}
         </View>
+
+        <Text style={styles.sectionTitle}>Access code (optional)</Text>
+        <Text style={styles.subtitle}>Share a gate or keypad code if needed.</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. 2468"
+          placeholderTextColor="#9ca3af"
+          value={draft.accessCode}
+          onChangeText={(value) =>
+            setDraft((prev) => ({
+              ...prev,
+              accessCode: value,
+            }))
+          }
+          autoCapitalize="characters"
+          maxLength={40}
+        />
       </ScrollView>
       <View style={styles.footer}>
         <Pressable
@@ -132,24 +149,32 @@ const styles = StyleSheet.create({
   content: {
     padding: 18,
     paddingBottom: 140,
+    paddingTop: 0,
   },
   kicker: {
     color: "#00d4aa",
     fontSize: 12,
     fontWeight: "700",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     textTransform: "uppercase",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   title: {
     color: "#0f172a",
     fontSize: 22,
     fontWeight: "700",
     marginTop: 6,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   subtitle: {
     color: "#6b7280",
     fontSize: 13,
     marginTop: 6,
+    lineHeight: 20,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   grid: {
     flexDirection: "row",
@@ -188,14 +213,31 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     fontSize: 14,
     fontWeight: "600",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   sectionTitle: {
     color: "#0f172a",
     fontSize: 12,
     fontWeight: "700",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     marginTop: 24,
     textTransform: "uppercase",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  },
+  input: {
+    backgroundColor: "#ffffff",
+    borderColor: "#e5e7eb",
+    borderRadius: 14,
+    borderWidth: 1,
+    color: "#0f172a",
+    fontSize: 14,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   footer: {
     backgroundColor: "#ffffff",
@@ -216,5 +258,7 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 15,
     fontWeight: "700",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
 });

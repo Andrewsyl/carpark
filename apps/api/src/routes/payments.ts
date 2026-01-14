@@ -1,4 +1,5 @@
 import express from "express";
+import { z } from "zod";
 import Stripe from "stripe";
 import { requireAuth } from "../middleware/auth.js";
 import { findUserById, findUserByEmail } from "../lib/db.js";
@@ -73,7 +74,7 @@ router.put("/payment-methods/:id", requireAuth, async (req, res, next) => {
     const user = userFromId ?? (req.user?.email ? await findUserByEmail(req.user.email) : undefined);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     const customerId = await getOrCreateCustomer(user.email);
-    const pmId = req.params.id;
+    const pmId = z.string().trim().min(5).max(200).parse(req.params.id);
     await stripe.paymentMethods.attach(pmId, { customer: customerId });
     await stripe.customers.update(customerId, {
       invoice_settings: { default_payment_method: pmId },
@@ -87,7 +88,7 @@ router.put("/payment-methods/:id", requireAuth, async (req, res, next) => {
 router.delete("/payment-methods/:id", requireAuth, async (req, res, next) => {
   try {
     if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
-    const pmId = req.params.id;
+    const pmId = z.string().trim().min(5).max(200).parse(req.params.id);
     await stripe.paymentMethods.detach(pmId);
     res.status(204).send();
   } catch (err) {
@@ -128,7 +129,7 @@ router.get("/payments/history", requireAuth, async (req, res, next) => {
 router.post("/payments/:id/retry", requireAuth, async (req, res, next) => {
   try {
     if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
-    const paymentIntentId = req.params.id;
+    const paymentIntentId = z.string().trim().min(5).max(200).parse(req.params.id);
     await stripe.paymentIntents.confirm(paymentIntentId);
     res.json({ ok: true });
   } catch (err) {

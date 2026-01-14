@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { deleteListing, getListing, updateListing } from "../api";
 import { useAuth } from "../auth";
 import { Toast } from "../components/Toast";
@@ -99,6 +100,7 @@ export function EditListingScreen({ navigation, route }: Props) {
         onPress: async () => {
           try {
             await deleteListing({ token, listingId: id });
+            await AsyncStorage.setItem("searchRefreshToken", Date.now().toString());
             setToast("Listing deleted.");
             setTimeout(() => navigation.goBack(), 1600);
           } catch (err) {

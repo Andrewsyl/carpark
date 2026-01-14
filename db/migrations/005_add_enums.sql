@@ -1,5 +1,16 @@
-CREATE TYPE user_role AS ENUM ('driver', 'host');
-CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'canceled');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+    CREATE TYPE user_role AS ENUM ('driver', 'host');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'booking_status') THEN
+    CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'canceled');
+  END IF;
+END $$;
 
 -- Note: default values needs to be dropped and re-created to avoid type conflicts
 ALTER TABLE users

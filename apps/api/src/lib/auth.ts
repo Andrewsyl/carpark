@@ -1,5 +1,6 @@
 import "../loadEnv.js";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 
 const jwtSecret = process.env.JWT_SECRET;
@@ -39,4 +40,12 @@ export function verifyToken(token: string) {
 
 export function generateVerificationToken() {
   return crypto.randomUUID();
+}
+
+export function generateRefreshToken() {
+  return crypto.randomBytes(48).toString("base64url");
+}
+
+export function hashToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
 }

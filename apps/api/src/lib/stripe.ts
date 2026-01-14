@@ -52,19 +52,14 @@ export async function createCheckoutSession(input: PaymentInput) {
           quantity: 1,
         },
       ],
+      metadata: {
+        listing_id: listingId,
+        platform_fee_cents: String(feeAmount),
+        host_account_id: hostStripeAccountId ?? "",
+      },
       success_url: successUrl,
       cancel_url: cancelUrl,
     };
-
-    // If host account is available, use Connect transfer + app fee; otherwise bill to platform.
-    if (hostStripeAccountId) {
-      base.payment_intent_data = {
-        application_fee_amount: feeAmount,
-        transfer_data: {
-          destination: hostStripeAccountId,
-        },
-      };
-    }
 
     return await stripe.checkout.sessions.create(base);
   } catch (err: any) {

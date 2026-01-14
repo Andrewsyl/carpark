@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 const PIN_WIDTH = 52;
-const PIN_HEIGHT = 48;
+const PIN_HEIGHT = 52;
 const LABEL_HEIGHT = 36;
 
 export function PricePin({ label, selected = false }: { label?: string; selected?: boolean }) {
@@ -14,7 +14,19 @@ export function PricePin({ label, selected = false }: { label?: string; selected
     <View style={styles.container} pointerEvents="box-none">
       <View style={styles.hitArea} />
       <View style={styles.pinWrapper}>
-        <Svg width={PIN_WIDTH} height={PIN_HEIGHT} viewBox="-1 -1 54 50">
+        <Svg width={PIN_WIDTH} height={PIN_HEIGHT} viewBox="-6 -4 64 64" overflow="visible">
+          <Path
+            d="M26 0A18 18 0 0 1 44 18C44 26.464 38.274 33.535 30.49 35.676L26 48L21.51 35.676C13.726 33.535 8 26.464 8 18A18 18 0 0 1 26 0Z"
+            fill="rgba(0, 0, 0, 0.18)"
+            opacity={0.9}
+            transform="translate(0 7) scale(1.06)"
+          />
+          <Path
+            d="M26 0A18 18 0 0 1 44 18C44 26.464 38.274 33.535 30.49 35.676L26 48L21.51 35.676C13.726 33.535 8 26.464 8 18A18 18 0 0 1 26 0Z"
+            fill="rgba(0, 0, 0, 0.3)"
+            opacity={0.95}
+            transform="translate(0 5) scale(1.02)"
+          />
           <Path
             d="M26 0A18 18 0 0 1 44 18C44 26.464 38.274 33.535 30.49 35.676L26 48L21.51 35.676C13.726 33.535 8 26.464 8 18A18 18 0 0 1 26 0Z"
             fill={fill}
@@ -36,6 +48,11 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     position: "relative",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
   },
   hitArea: {
     position: "absolute",
@@ -50,11 +67,6 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     width: PIN_WIDTH,
     height: PIN_HEIGHT,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 4,
   },
   labelWrap: {
     position: "absolute",

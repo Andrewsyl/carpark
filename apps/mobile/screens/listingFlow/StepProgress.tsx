@@ -38,16 +38,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.6,
     textTransform: "uppercase",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   percent: {
     color: "#94a3b8",
     fontSize: 11,
     fontWeight: "700",
+    fontFamily:
+      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   bar: {
     backgroundColor: "#e5e7eb",
     borderRadius: 999,
-    height: 6,
+    height: 4,
     marginTop: 8,
     overflow: "hidden",
   },
