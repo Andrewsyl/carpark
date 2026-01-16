@@ -767,6 +767,219 @@ export async function listFavoritesByUser(userId: string) {
   }));
 }
 
+export async function upsertPushToken({
+  userId,
+  expoToken,
+  platform,
+  deviceId,
+}: {
+  userId: string;
+  expoToken: string;
+  platform: string;
+  deviceId?: string | null;
+}) {
+  const res = await pool.query(
+    `
+    INSERT INTO push_tokens (user_id, expo_token, platform, device_id, updated_at)
+    VALUES ($1, $2, $3, $4, NOW())
+    ON CONFLICT (expo_token)
+    DO UPDATE SET user_id = EXCLUDED.user_id,
+                  platform = EXCLUDED.platform,
+                  device_id = EXCLUDED.device_id,
+                  updated_at = NOW()
+    RETURNING id;
+    `,
+    [userId, expoToken, platform, deviceId ?? null]
+  );
+  return res.rowCount > 0;
+}
+
+export async function deletePushToken({
+  userId,
+  expoToken,
+}: {
+  userId: string;
+  expoToken: string;
+}) {
+  const res = await pool.query(
+    `
+    DELETE FROM push_tokens
+    WHERE user_id = $1 AND expo_token = $2
+    `,
+    [userId, expoToken]
+  );
+  return res.rowCount > 0;
+}
+
+export async function listPushTokensByUserIds(userIds: string[]) {
+  if (!userIds.length) return [];
+  const res = await pool.query(
+    `
+    SELECT user_id, expo_token, platform
+    FROM push_tokens
+    WHERE user_id = ANY($1)
+    `,
+    [userIds]
+  );
+  return res.rows as { user_id: string; expo_token: string; platform: string }[];
+}
+
+export async function getBookingNotificationTargetsByPaymentIntent(paymentIntentId: string) {
+  const res = await pool.query(
+    `
+    SELECT b.id AS booking_id,
+           b.driver_id,
+           l.host_id,
+           l.title AS listing_title,
+           b.start_time,
+           b.end_time
+    FROM bookings b
+    JOIN listings l ON l.id = b.listing_id
+    WHERE b.payment_intent_id = $1
+    LIMIT 1;
+    `,
+    [paymentIntentId]
+  );
+  return res.rows[0] as
+    | {
+        booking_id: string;
+        driver_id: string;
+        host_id: string;
+        listing_title: string;
+        start_time: Date;
+        end_time: Date;
+      }
+    | undefined;
+}
+
+export async function getBookingNotificationTargetsByCheckoutSession(checkoutSessionId: string) {
+  const res = await pool.query(
+    `
+    SELECT b.id AS booking_id,
+           b.driver_id,
+           l.host_id,
+           l.title AS listing_title,
+           b.start_time,
+           b.end_time
+    FROM bookings b
+    JOIN listings l ON l.id = b.listing_id
+    WHERE b.checkout_session_id = $1
+    LIMIT 1;
+    `,
+    [checkoutSessionId]
+  );
+  return res.rows[0] as
+    | {
+        booking_id: string;
+        driver_id: string;
+        host_id: string;
+        listing_title: string;
+        start_time: Date;
+        end_time: Date;
+      }
+    | undefined;
+}
+
+export async function getBookingNotificationTargets(bookingId: string) {
+  const res = await pool.query(
+    `
+    SELECT b.id AS booking_id,
+           b.driver_id,
+           l.host_id,
+           l.title AS listing_title,
+           b.start_time,
+           b.end_time
+    FROM bookings b
+    JOIN listings l ON l.id = b.listing_id
+    WHERE b.id = $1
+    LIMIT 1;
+    `,
+    [bookingId]
+  );
+  return res.rows[0] as
+    | {
+        booking_id: string;
+        driver_id: string;
+        host_id: string;
+        listing_title: string;
+        start_time: Date;
+        end_time: Date;
+      }
+    | undefined;
+}
+
+export async function insertScheduledNotification({
+  userId,
+  bookingId,
+  type,
+  scheduledAt,
+  payload,
+}: {
+  userId: string;
+  bookingId: string | null;
+  type: string;
+  scheduledAt: Date;
+  payload?: Record<string, unknown> | null;
+}) {
+  const res = await pool.query(
+    `
+    INSERT INTO scheduled_notifications (user_id, booking_id, type, scheduled_at, payload)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (booking_id, type) DO UPDATE
+      SET scheduled_at = EXCLUDED.scheduled_at,
+          payload = EXCLUDED.payload
+    RETURNING id;
+    `,
+    [userId, bookingId, type, scheduledAt, payload ?? null]
+  );
+  return res.rowCount > 0;
+}
+
+export async function listDueScheduledNotifications(limit = 50) {
+  const res = await pool.query(
+    `
+    SELECT id, user_id, booking_id, type, scheduled_at, payload
+    FROM scheduled_notifications
+    WHERE sent_at IS NULL
+      AND scheduled_at <= NOW()
+    ORDER BY scheduled_at ASC
+    LIMIT $1;
+    `,
+    [limit]
+  );
+  return res.rows as {
+    id: string;
+    user_id: string;
+    booking_id: string | null;
+    type: string;
+    scheduled_at: Date;
+    payload: Record<string, unknown> | null;
+  }[];
+}
+
+export async function markScheduledNotificationSent(id: string) {
+  const res = await pool.query(
+    `
+    UPDATE scheduled_notifications
+    SET sent_at = NOW()
+    WHERE id = $1
+    `,
+    [id]
+  );
+  return res.rowCount > 0;
+}
+
+export async function deleteScheduledNotificationsByBooking(bookingId: string) {
+  const res = await pool.query(
+    `
+    DELETE FROM scheduled_notifications
+    WHERE booking_id = $1
+    `,
+    [bookingId]
+  );
+  return res.rowCount > 0;
+}
+
 export async function getListingWithHostAccount(listingId: string) {
   const result = await pool.query(
     `
@@ -968,7 +1181,7 @@ export async function updateBookingStatus({
     const result = await pool.query(
       `
       UPDATE bookings
-      SET status = $1,
+      SET status = $1::booking_status,
           payment_intent_id = COALESCE($3, payment_intent_id),
           receipt_url = COALESCE($4, receipt_url),
           payout_status = CASE
@@ -1007,7 +1220,7 @@ export async function updateBookingStatusByPaymentIntent({
     const result = await pool.query(
       `
       UPDATE bookings
-      SET status = $1,
+      SET status = $1::booking_status,
           receipt_url = COALESCE($3, receipt_url),
           payout_status = CASE
             WHEN $1 = 'confirmed' THEN COALESCE(payout_status, 'pending')
@@ -1030,6 +1243,43 @@ export async function updateBookingStatusByPaymentIntent({
     }
     throw err;
   }
+}
+
+export async function markBookingRefundedByPaymentIntent({
+  paymentIntentId,
+  refundId,
+}: {
+  paymentIntentId: string;
+  refundId: string;
+}) {
+  const result = await pool.query(
+    `
+    UPDATE bookings
+    SET refund_status = 'succeeded',
+        refund_id = $2,
+        refunded_at = NOW()
+    WHERE payment_intent_id = $1
+    RETURNING id;
+    `,
+    [paymentIntentId, refundId]
+  );
+  return result.rowCount && result.rowCount > 0;
+}
+
+export async function insertEventLog({
+  eventType,
+  payload,
+}: {
+  eventType: string;
+  payload?: Record<string, unknown> | null;
+}) {
+  await pool.query(
+    `
+    INSERT INTO event_log (event_type, payload)
+    VALUES ($1, $2)
+    `,
+    [eventType, payload ?? null]
+  );
 }
 
 export async function cancelBookingByDriver({

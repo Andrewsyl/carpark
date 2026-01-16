@@ -152,13 +152,26 @@ router.post("/payouts/run", requireAuth, async (req, res, next) => {
   }
 });
 
-const availabilitySchema = z.object({
-  kind: z.enum(["open", "blocked"]),
-  startsAt: z.string(),
-  endsAt: z.string(),
-  repeatWeekdays: z.array(z.number().int().min(0).max(6)).optional(),
-  repeatUntil: z.string().optional().nullable(),
-});
+const availabilitySchema = z
+  .object({
+    kind: z.enum(["open", "blocked"]),
+    startsAt: z.string().datetime(),
+    endsAt: z.string().datetime(),
+    repeatWeekdays: z.array(z.number().int().min(0).max(6)).optional(),
+    repeatUntil: z.string().datetime().optional().nullable(),
+  })
+  .superRefine((value, ctx) => {
+    const start = Date.parse(value.startsAt);
+    const end = Date.parse(value.endsAt);
+    if (Number.isNaN(start) || Number.isNaN(end)) return;
+    if (end <= start) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["endsAt"],
+        message: "End time must be after start time",
+      });
+    }
+  });
 
 const listingIdParamSchema = z.object({
   id: z.string().uuid(),

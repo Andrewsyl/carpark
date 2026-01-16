@@ -97,13 +97,26 @@ router.post("/", requireAuth, listingWriteLimiter, async (req, res, next) => {
   }
 });
 
-const searchSchema = z.object({
-  lat: z.coerce.number().min(-90).max(90),
-  lng: z.coerce.number().min(-180).max(180),
-  radiusKm: z.coerce.number().min(0.1).max(50).default(5),
-  from: z.string().datetime(),
-  to: z.string().datetime(),
-});
+const searchSchema = z
+  .object({
+    lat: z.coerce.number().min(-90).max(90),
+    lng: z.coerce.number().min(-180).max(180),
+    radiusKm: z.coerce.number().min(0.1).max(50).default(5),
+    from: z.string().datetime(),
+    to: z.string().datetime(),
+  })
+  .superRefine((value, ctx) => {
+    const start = Date.parse(value.from);
+    const end = Date.parse(value.to);
+    if (Number.isNaN(start) || Number.isNaN(end)) return;
+    if (end <= start) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["to"],
+        message: "End time must be after start time",
+      });
+    }
+  });
 
 router.get("/search", searchLimiter, async (req, res, next) => {
   try {

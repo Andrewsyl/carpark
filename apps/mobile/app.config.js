@@ -1,5 +1,6 @@
 const {
   withProjectBuildGradle,
+  withAppBuildGradle,
   withGradleProperties,
   withDangerousMod,
   withAndroidManifest,
@@ -8,12 +9,19 @@ const {
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const appJson = require("./app.json");
 
 const withCoreKtxFix = (config) =>
   withProjectBuildGradle(config, (configMod) => {
     if (configMod.modResults.language !== "groovy") return configMod;
+    if (!configMod.modResults.contents.includes("com.google.gms:google-services")) {
+      configMod.modResults.contents = configMod.modResults.contents.replace(
+        /classpath\('org.jetbrains.kotlin:kotlin-gradle-plugin'\)/,
+        "classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')\n    classpath('com.google.gms:google-services:4.4.4')"
+      );
+    }
     const block = `
 
 subprojects {
@@ -47,6 +55,18 @@ subprojects {
     if (!configMod.modResults.contents.includes("playServicesVersion")) {
       configMod.modResults.contents +=
         '\n\next {\n  playServicesVersion = "19.2.0"\n}\n';
+    }
+    return configMod;
+  });
+
+const withGoogleServicesPlugin = (config) =>
+  withAppBuildGradle(config, (configMod) => {
+    if (configMod.modResults.language !== "groovy") return configMod;
+    if (!configMod.modResults.contents.includes("com.google.gms.google-services")) {
+      configMod.modResults.contents = configMod.modResults.contents.replace(
+        /apply plugin: "com.facebook.react"/,
+        'apply plugin: "com.facebook.react"\napply plugin: "com.google.gms.google-services"'
+      );
     }
     return configMod;
   });
@@ -192,6 +212,12 @@ const withIosGoogleMapsKey = (config) =>
 
 module.exports = ({ config }) => {
   const base = { ...(appJson.expo ?? {}), ...(config ?? {}) };
+  const easProjectId =
+    base.extra?.eas?.projectId || process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+  const extra = {
+    ...(base.extra ?? {}),
+    ...(easProjectId ? { eas: { ...(base.extra?.eas ?? {}), projectId: easProjectId } } : {}),
+  };
   const plugins = base.plugins ?? [];
   const buildProps = [
     "expo-build-properties",
@@ -205,21 +231,24 @@ module.exports = ({ config }) => {
     },
   ];
 
-  return withIosGoogleMapsKey(
-    withForceDarkDisabled(
-      withForceDarkAllowedInManifest(
-        withGradleWrapperVersion(
-          withAapt2Override(
-            withCoreKtxFix({
-              ...base,
-              android: {
-                ...base.android,
-                compileSdkVersion: 35,
-                targetSdkVersion: 35,
-                buildToolsVersion: "35.0.0",
-              },
-              plugins: [...plugins, buildProps],
-            })
+  return withGoogleServicesPlugin(
+    withIosGoogleMapsKey(
+      withForceDarkDisabled(
+        withForceDarkAllowedInManifest(
+          withGradleWrapperVersion(
+            withAapt2Override(
+              withCoreKtxFix({
+                ...base,
+                extra,
+                android: {
+                  ...base.android,
+                  compileSdkVersion: 35,
+                  targetSdkVersion: 35,
+                  buildToolsVersion: "35.0.0",
+                },
+                plugins: [...plugins, buildProps],
+              })
+            )
           )
         )
       )

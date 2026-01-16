@@ -125,7 +125,7 @@ export function HistoryScreen({ navigation, route }: Props) {
       </View>
       {successVisible ? (
         <View style={styles.successBanner}>
-          <Text style={styles.successTitle}>Booking confirmed</Text>
+          <Text style={styles.successTitle}>✓ Booking confirmed</Text>
           <Text style={styles.successBody}>Your reservation is saved in Upcoming.</Text>
         </View>
       ) : null}
@@ -148,7 +148,7 @@ export function HistoryScreen({ navigation, route }: Props) {
       ) : null}
       <View style={styles.segment}>
         <Pressable
-          style={[styles.segmentPill, tab === "upcoming" && styles.segmentPillActive]}
+          style={[styles.segmentTab, tab === "upcoming" && styles.segmentTabActive]}
           onPress={() => setTab("upcoming")}
         >
           <Text style={[styles.segmentText, tab === "upcoming" && styles.segmentTextActive]}>
@@ -156,7 +156,7 @@ export function HistoryScreen({ navigation, route }: Props) {
           </Text>
         </Pressable>
         <Pressable
-          style={[styles.segmentPill, tab === "past" && styles.segmentPillActive]}
+          style={[styles.segmentTab, tab === "past" && styles.segmentTabActive]}
           onPress={() => setTab("past")}
         >
           <Text style={[styles.segmentText, tab === "past" && styles.segmentTextActive]}>
@@ -219,30 +219,28 @@ export function HistoryScreen({ navigation, route }: Props) {
                       style={styles.bookingCard}
                       onPress={() => navigation.navigate("BookingDetail", { booking })}
                     >
-                      <View style={styles.bookingHeader}>
-                        <Text style={styles.bookingTitle}>{booking.title}</Text>
-                        <View
+                      <View
+                        style={[
+                          styles.statusPill,
+                          isRefunded && styles.statusRefunded,
+                          !isRefunded && booking.status === "confirmed" && styles.statusConfirmed,
+                          !isRefunded && booking.status === "pending" && styles.statusPending,
+                          !isRefunded && booking.status === "canceled" && styles.statusCanceled,
+                        ]}
+                      >
+                        <Text
                           style={[
-                            styles.statusPill,
-                            isRefunded && styles.statusRefunded,
-                            !isRefunded && booking.status === "confirmed" && styles.statusConfirmed,
-                            !isRefunded && booking.status === "pending" && styles.statusPending,
-                            !isRefunded && booking.status === "canceled" && styles.statusCanceled,
+                            styles.statusText,
+                            isRefunded && styles.statusTextRefunded,
+                            !isRefunded && booking.status === "confirmed" && styles.statusTextConfirmed,
+                            !isRefunded && booking.status === "pending" && styles.statusTextPending,
+                            !isRefunded && booking.status === "canceled" && styles.statusTextCanceled,
                           ]}
                         >
-                          <Text
-                            style={[
-                              styles.statusText,
-                              isRefunded && styles.statusTextRefunded,
-                              !isRefunded && booking.status === "confirmed" && styles.statusTextConfirmed,
-                              !isRefunded && booking.status === "pending" && styles.statusTextPending,
-                              !isRefunded && booking.status === "canceled" && styles.statusTextCanceled,
-                            ]}
-                          >
-                            {statusLabel}
-                          </Text>
-                        </View>
+                          {statusLabel}
+                        </Text>
                       </View>
+                      <Text style={styles.bookingTitle}>{booking.title}</Text>
                       <Text style={styles.bookingAddress}>{booking.address}</Text>
                       <Text style={styles.bookingTime}>
                         {start.toLocaleDateString()} • {start.toLocaleTimeString()} – {end.toLocaleTimeString()}
@@ -252,9 +250,7 @@ export function HistoryScreen({ navigation, route }: Props) {
                           Refunded {refundedAt ? refundedAt.toLocaleDateString() : ""}
                         </Text>
                       ) : null}
-                      <Text style={styles.bookingPrice}>
-                        €{(booking.amountCents / 100).toFixed(2)}
-                      </Text>
+                      <Text style={styles.bookingPrice}>€{(booking.amountCents / 100).toFixed(2)}</Text>
                     </Pressable>
                   );
                 })}
@@ -276,7 +272,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingTop: 8,
   },
   backButton: {
@@ -296,68 +292,59 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   header: {
-    paddingHorizontal: 18,
-    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
   kicker: {
     color: "#10b981",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   title: {
     color: "#111827",
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "700",
-    marginTop: 6,
+    marginTop: 8,
   },
   subtitle: {
     color: "#6b7280",
-    fontSize: 13,
-    marginTop: 6,
+    fontSize: 14,
+    marginTop: 8,
   },
   successBanner: {
-    backgroundColor: "#ecfdf3",
-    borderColor: "#10b981",
-    borderRadius: 16,
-    borderWidth: 1,
-    marginHorizontal: 18,
-    marginBottom: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
+    backgroundColor: "#d1fae5",
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   successTitle: {
     color: "#111827",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   successBody: {
-    color: "#475467",
-    fontSize: 12,
-    marginTop: 4,
+    color: "#6b7280",
+    fontSize: 14,
+    marginTop: 6,
   },
   mapCtaBanner: {
     alignItems: "center",
     backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
     borderRadius: 16,
-    borderWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    marginHorizontal: 18,
-    marginBottom: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
   mapCtaTitle: {
@@ -373,8 +360,8 @@ const styles = StyleSheet.create({
   mapCtaButton: {
     backgroundColor: "#10b981",
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   mapCtaButtonText: {
     color: "#ffffff",
@@ -382,31 +369,33 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   segment: {
+    borderBottomColor: "#e5e7eb",
+    borderBottomWidth: 1,
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingTop: 8,
   },
-  segmentPill: {
-    backgroundColor: "#e5e7eb",
-    borderRadius: 999,
+  segmentTab: {
+    alignItems: "center",
     flex: 1,
-    paddingVertical: 10,
+    paddingBottom: 14,
+    paddingTop: 8,
   },
-  segmentPillActive: {
-    backgroundColor: "#0f172a",
+  segmentTabActive: {
+    borderBottomColor: "#10b981",
+    borderBottomWidth: 2,
   },
   segmentText: {
-    color: "#6b7280",
-    fontSize: 13,
+    color: "#9ca3af",
+    fontSize: 14,
     fontWeight: "700",
     textAlign: "center",
   },
   segmentTextActive: {
-    color: "#ffffff",
+    color: "#111827",
   },
   content: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingBottom: 32,
   },
   loadingOverlay: {
@@ -430,98 +419,91 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   list: {
-    gap: 12,
+    gap: 16,
   },
   card: {
     backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
     borderRadius: 16,
-    borderWidth: 1,
     padding: 20,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   bookingCard: {
     backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
     borderRadius: 16,
-    borderWidth: 1,
     padding: 20,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  bookingHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   bookingTitle: {
     color: "#111827",
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: "700",
   },
   statusPill: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    position: "absolute",
+    right: 16,
+    top: 16,
   },
   statusText: {
     fontSize: 11,
     fontWeight: "700",
-    textTransform: "capitalize",
+    textTransform: "uppercase",
   },
   statusConfirmed: {
-    backgroundColor: "#ecfdf7",
+    backgroundColor: "#10b981",
   },
   statusPending: {
-    backgroundColor: "#fff7ed",
+    backgroundColor: "#f59e0b",
   },
   statusCanceled: {
-    backgroundColor: "#fef2f2",
+    backgroundColor: "#6b7280",
   },
   statusRefunded: {
-    backgroundColor: "#ecfdf3",
+    backgroundColor: "#3b82f6",
   },
   statusTextConfirmed: {
-    color: "#047857",
+    color: "#ffffff",
   },
   statusTextPending: {
-    color: "#b45309",
+    color: "#ffffff",
   },
   statusTextCanceled: {
-    color: "#b42318",
+    color: "#ffffff",
   },
   statusTextRefunded: {
-    color: "#047857",
+    color: "#ffffff",
   },
   bookingAddress: {
-    color: "#6b7280",
-    fontSize: 12,
-    marginTop: 6,
+    color: "#9ca3af",
+    fontSize: 14,
+    marginTop: 4,
   },
   bookingTime: {
-    color: "#111827",
+    color: "#9ca3af",
+    fontSize: 14,
+    marginTop: 8,
+  },
+  bookingRefunded: {
+    color: "#3b82f6",
     fontSize: 12,
     fontWeight: "600",
     marginTop: 8,
   },
-  bookingRefunded: {
-    color: "#047857",
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 6,
-  },
   bookingPrice: {
     color: "#111827",
-    fontSize: 13,
+    fontSize: 20,
     fontWeight: "700",
-    marginTop: 10,
+    marginTop: 12,
   },
   cardTitle: {
     color: "#111827",
@@ -530,7 +512,7 @@ const styles = StyleSheet.create({
   },
   cardBody: {
     color: "#6b7280",
-    fontSize: 13,
+    fontSize: 14,
     marginTop: 6,
   },
   error: {

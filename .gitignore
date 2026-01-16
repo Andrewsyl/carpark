@@ -15,3 +15,7 @@ yarn.lock
 npm-debug.log
 .idea
 .vscode
+
+# Local secrets / editor junk
+apps/mobile/*.swp
+apps/mobile/*firebase-adminsdk*.json

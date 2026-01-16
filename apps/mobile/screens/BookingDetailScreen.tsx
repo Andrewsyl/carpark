@@ -9,6 +9,7 @@ import DatePicker from "react-native-date-picker";
 import { useStripe } from "@stripe/stripe-react-native";
 import { cancelBooking, checkInBooking, confirmBookingExtension, createBookingExtensionIntent } from "../api";
 import { useAuth } from "../auth";
+import { getNotificationImageAttachment } from "../notifications";
 import type { RootStackParamList } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingDetail">;
@@ -57,10 +58,12 @@ export function BookingDetailScreen({ navigation, route }: Props) {
       await AsyncStorage.setItem("searchRefreshToken", Date.now().toString());
       setLocalStatus("canceled");
       try {
+        const attachments = await getNotificationImageAttachment();
         await Notifications.scheduleNotificationAsync({
           content: {
             title: "Booking canceled",
             body: "The space is now back on the map.",
+            attachments,
           },
           trigger: null,
         });
@@ -213,11 +216,11 @@ export function BookingDetailScreen({ navigation, route }: Props) {
             ) : null}
             <View style={[styles.detailRow, styles.detailRowBorder]}>
               <Text style={styles.detailLabel}>START</Text>
-              <Text style={styles.detailValue}>{start.toLocaleString()}</Text>
+                <Text style={styles.detailValue}>{start.toLocaleString()}</Text>
             </View>
             <View style={[styles.detailRow, styles.detailRowBorder]}>
               <Text style={styles.detailLabel}>END</Text>
-              <Text style={styles.detailValue}>{end.toLocaleString()}</Text>
+                <Text style={styles.detailValue}>{end.toLocaleString()}</Text>
             </View>
             {vehiclePlate ? (
               <View style={[styles.detailRow, styles.detailRowBorder]}>

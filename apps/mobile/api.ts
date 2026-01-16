@@ -133,6 +133,44 @@ export async function removeFavorite(token: string, listingId: string) {
   }
 }
 
+export async function registerPushToken({
+  token,
+  expoToken,
+  platform,
+  deviceId,
+}: {
+  token: string;
+  expoToken: string;
+  platform: string;
+  deviceId?: string;
+}) {
+  const response = await fetch(`${baseUrl}/api/notifications/register`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ expoToken, platform, deviceId }),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Push registration failed"));
+  }
+}
+
+export async function unregisterPushToken(token: string, expoToken: string) {
+  const response = await fetch(`${baseUrl}/api/notifications/register`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ expoToken }),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Push unregister failed"));
+  }
+}
+
 export async function getHostEarningsSummary(token: string) {
   const response = await fetch(`${baseUrl}/api/host/earnings`, {
     headers: {
@@ -534,6 +572,9 @@ export async function confirmBookingPayment(payload: {
     }),
   });
   if (!response.ok) {
+    if (response.status === 409) {
+      throw new Error("Time slot already booked");
+    }
     throw new Error(await readErrorMessage(response, "Payment confirmation failed"));
   }
 }

@@ -321,15 +321,21 @@ router.post("/request-password-reset", resetLimiter, async (req, res, next) => {
       const expires = new Date(Date.now() + 1000 * 60 * 60); // 1h
       await setPasswordResetToken(user.id, token, expires);
       const resetUrl = `${process.env.WEB_BASE_URL ?? "http://localhost:3000"}/reset-password?token=${token}`;
-      sendMail({
-        to: user.email,
-        subject: "Reset your password",
-        text: `Reset your password: ${resetUrl}`,
-        html: buildPasswordResetEmail(resetUrl),
-      }).catch((err) => console.warn("send reset email failed", err));
+      let sent = true;
+      try {
+        await sendMail({
+          to: user.email,
+          subject: "Reset your password",
+          text: `Reset your password: ${resetUrl}`,
+          html: buildPasswordResetEmail(resetUrl),
+        });
+      } catch (err) {
+        sent = false;
+        console.warn("send reset email failed", err);
+      }
       const previewUrl =
         process.env.NODE_ENV !== "production" || !isMailerConfigured ? resetUrl : undefined;
-      return res.json({ ok: true, previewUrl });
+      return res.json({ ok: sent, previewUrl });
     }
     res.json({ ok: true });
   } catch (error) {

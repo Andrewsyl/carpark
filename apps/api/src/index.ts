@@ -11,6 +11,8 @@ import hostRouter from "./routes/host.js";
 import adminRouter from "./routes/admin.js";
 import paymentsRouter from "./routes/payments.js";
 import supportRouter from "./routes/support.js";
+import notificationsRouter from "./routes/notifications.js";
+import { processScheduledNotifications } from "./lib/notifications.js";
 import { csrfProtection } from "./middleware/csrf.js";
 
 const app = express();
@@ -68,6 +70,7 @@ app.use("/api/reviews", reviewsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api", paymentsRouter);
 app.use("/api/support", supportRouter);
+app.use("/api/notifications", notificationsRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
@@ -90,3 +93,12 @@ const port = process.env.PORT ?? 4000;
 app.listen(port, () => {
   console.log(`API listening on http://localhost:${port}`);
 });
+
+if (process.env.NOTIFICATION_PROCESSOR_INTERVAL_MS) {
+  const intervalMs = Number(process.env.NOTIFICATION_PROCESSOR_INTERVAL_MS);
+  if (!Number.isNaN(intervalMs) && intervalMs > 0) {
+    setInterval(() => {
+      void processScheduledNotifications(50);
+    }, intervalMs);
+  }
+}

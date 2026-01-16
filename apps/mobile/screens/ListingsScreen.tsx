@@ -92,6 +92,7 @@ export function ListingsScreen({ navigation }: Props) {
             try {
               await deleteListing({ token, listingId });
               setListings((prev) => prev.filter((item) => item.id !== listingId));
+              await AsyncStorage.setItem("deletedListingId", listingId);
               await AsyncStorage.setItem("searchRefreshToken", Date.now().toString());
             } catch (err) {
               setError(err instanceof Error ? err.message : "Could not delete listing");

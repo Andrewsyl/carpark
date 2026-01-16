@@ -33,6 +33,12 @@ const distanceMeters = (a: { lat: number; lng: number }, b: { lat: number; lng: 
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * 6371000 * Math.asin(Math.sqrt(h));
 };
+const formatPinPrice = (value: number) => {
+  const rounded = Math.round(value * 100) / 100;
+  const formatted = rounded.toFixed(2);
+  if (formatted.endsWith(".00")) return formatted.slice(0, -3);
+  return formatted.replace(/0+$/, "").replace(/\.$/, "");
+};
 
 export default function MapSection({
   region,
@@ -82,7 +88,7 @@ export default function MapSection({
   const pinLabelById = useMemo(
     () =>
       nextResults.reduce<Record<string, string>>((acc, listing) => {
-        acc[listing.id] = `€${listing.price_per_day}`;
+        acc[listing.id] = `€${formatPinPrice(listing.price_per_day)}`;
         return acc;
       }, {}),
     [nextResults]
@@ -189,7 +195,8 @@ export default function MapSection({
         {pinsReady
           ? (freezeMarkers ? renderedResultsRef.current : nextResults).map((listing) => {
           const isSelected = selectedId === listing.id;
-          const label = pinLabelById[listing.id] ?? `€${listing.price_per_day}`;
+          const label =
+            pinLabelById[listing.id] ?? `€${formatPinPrice(listing.price_per_day)}`;
           const pinKey = getPinKey(label, isSelected);
           const pinImage = pinImages[pinKey];
           if (!pinImage) return null;

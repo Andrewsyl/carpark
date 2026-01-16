@@ -21,7 +21,7 @@ import type { RootStackParamList } from "../types";
 type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
 
 export function SignInScreen({ navigation }: Props) {
-  const { login, register, loginWithOAuth, acceptLegal, logout } = useAuth();
+  const { login, register, loginWithOAuth, logout } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -31,9 +31,6 @@ export function SignInScreen({ navigation }: Props) {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const [acceptLegalChecked, setAcceptLegalChecked] = useState(false);
-  const [oauthAcceptLegal, setOauthAcceptLegal] = useState(false);
-  const [showOauthLegalPrompt, setShowOauthLegalPrompt] = useState(false);
-  const [oauthLegalLoading, setOauthLegalLoading] = useState(false);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID ?? "";
   const legalVersion = "2026-01-10";
@@ -58,27 +55,6 @@ export function SignInScreen({ navigation }: Props) {
       webClientId: googleWebClientId || undefined,
     });
   }, [googleWebClientId]);
-
-  const handleAcceptOAuthLegal = async () => {
-    if (!oauthAcceptLegal) {
-      setError("Please accept the Terms & Privacy to continue.");
-      return;
-    }
-    setOauthLegalLoading(true);
-    setError(null);
-    try {
-      await acceptLegal({ termsVersion: legalVersion, privacyVersion: legalVersion });
-      setShowOauthLegalPrompt(false);
-      setAuthSuccess("Signed in with Google");
-      successTimerRef.current = setTimeout(() => {
-        navigation.replace("Profile");
-      }, 600);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save acceptance");
-    } finally {
-      setOauthLegalLoading(false);
-    }
-  };
 
   const handleLogin = async () => {
     const trimmed = email.trim();
@@ -234,7 +210,14 @@ export function SignInScreen({ navigation }: Props) {
             >
               <Text style={styles.primaryButtonText}>{submitting ? "Signing in..." : "Sign in"}</Text>
             </Pressable>
-            <Pressable style={styles.secondaryButton} onPress={handleRegister} disabled={submitting}>
+            <Pressable
+              style={[
+                styles.secondaryButton,
+                (!acceptLegalChecked || submitting) && styles.secondaryButtonDisabled,
+              ]}
+              onPress={handleRegister}
+              disabled={submitting || !acceptLegalChecked}
+            >
               <Text style={styles.secondaryButtonText}>Create account</Text>
             </Pressable>
             <View style={styles.dividerRow}>
@@ -256,12 +239,7 @@ export function SignInScreen({ navigation }: Props) {
                   if (!idToken) {
                     throw new Error("Missing Google idToken");
                   }
-                  const oauthUser = await loginWithOAuth("google", idToken);
-                  if (!oauthUser.termsVersion || !oauthUser.privacyVersion) {
-                    setShowOauthLegalPrompt(true);
-                    setOauthAcceptLegal(false);
-                    return;
-                  }
+                  await loginWithOAuth("google", idToken);
                   setAuthSuccess("Signed in with Google");
                   successTimerRef.current = setTimeout(() => {
                     navigation.replace("Profile");
@@ -289,57 +267,6 @@ export function SignInScreen({ navigation }: Props) {
               </Text>
               .
             </Text>
-            {showOauthLegalPrompt ? (
-              <View style={styles.oauthOverlay}>
-                <View style={styles.oauthLegalCard}>
-                  <Text style={styles.oauthLegalTitle}>One last step</Text>
-                  <Text style={styles.oauthLegalBody}>
-                    Please accept the Terms & Privacy to finish signing in.
-                  </Text>
-                  <Pressable
-                    style={styles.legalRow}
-                    onPress={() => setOauthAcceptLegal((value) => !value)}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: oauthAcceptLegal }}
-                  >
-                    <MaterialIcons
-                      name={oauthAcceptLegal ? "check-box" : "check-box-outline-blank"}
-                      size={20}
-                      color={oauthAcceptLegal ? "#00d4aa" : "#9ca3af"}
-                    />
-                    <Text style={styles.legalText}>
-                      I agree to the{" "}
-                      <Text style={styles.legalLink} onPress={() => navigation.navigate("Legal")}>
-                        Terms & Privacy
-                      </Text>
-                      .
-                    </Text>
-                  </Pressable>
-                  <View style={styles.oauthLegalActions}>
-                    <Pressable
-                      style={styles.secondaryButton}
-                      onPress={async () => {
-                        setShowOauthLegalPrompt(false);
-                        setOauthAcceptLegal(false);
-                        await logout();
-                      }}
-                      disabled={oauthLegalLoading}
-                    >
-                      <Text style={styles.secondaryButtonText}>Cancel</Text>
-                    </Pressable>
-                    <Pressable
-                      style={[styles.primaryButton, !oauthAcceptLegal && styles.primaryButtonDisabled]}
-                      onPress={handleAcceptOAuthLegal}
-                      disabled={!oauthAcceptLegal || oauthLegalLoading}
-                    >
-                      <Text style={styles.primaryButtonText}>
-                        {oauthLegalLoading ? "Saving..." : "Continue"}
-                      </Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
-            ) : null}
             {error ? <Text style={styles.error}>{error}</Text> : null}
             {notice ? <Text style={styles.notice}>{notice}</Text> : null}
             {previewUrl ? (
@@ -473,6 +400,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingVertical: 12,
   },
+  secondaryButtonDisabled: {
+    opacity: 0.6,
+  },
   secondaryButtonText: {
     color: "#0f172a",
     fontSize: 14,
@@ -502,53 +432,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     textAlign: "center",
-  },
-  oauthLegalCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 18,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 18,
-    width: "100%",
-    maxWidth: 420,
-  },
-  oauthOverlay: {
-    alignItems: "center",
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
-    bottom: 0,
-    justifyContent: "center",
-    left: 0,
-    padding: 18,
-    position: "absolute",
-    right: 0,
-    top: 0,
-    zIndex: 20,
-  },
-  oauthLegalTitle: {
-    backgroundColor: "#f8fafc",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
-    borderWidth: 1,
-    marginTop: 14,
-    padding: 16,
-  },
-  oauthLegalTitle: {
-    color: "#111827",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  oauthLegalBody: {
-    color: "#6b7280",
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 6,
-  },
-  oauthLegalActions: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 10,
   },
   legalLink: {
     color: "#00d4aa",

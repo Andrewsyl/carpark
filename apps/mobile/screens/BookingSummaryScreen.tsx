@@ -21,6 +21,7 @@ import {
 } from "../api";
 import { useAuth } from "../auth";
 import { logError, logInfo } from "../logger";
+import { getNotificationImageAttachment } from "../notifications";
 import type { ListingDetail, RootStackParamList } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingSummary">;
@@ -108,20 +109,24 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
     const endReminder = new Date(end.getTime() - 30 * 60 * 1000);
 
     if (startReminder.getTime() > nowMs) {
+      const attachments = await getNotificationImageAttachment();
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "Booking starts soon",
           body: `${listing.title} starts in 1 hour.`,
+          attachments,
         },
         trigger: startReminder,
       });
     }
 
     if (endReminder.getTime() > nowMs) {
+      const attachments = await getNotificationImageAttachment();
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "Booking ending soon",
           body: `${listing.title} ends in 30 minutes.`,
+          attachments,
         },
         trigger: endReminder,
       });
@@ -197,6 +202,12 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
             await confirmBookingPayment({ paymentIntentId, token });
             return;
           } catch (err) {
+            if (
+              err instanceof Error &&
+              err.message.toLowerCase().includes("time slot already booked")
+            ) {
+              throw err;
+            }
             lastError = err;
           }
         }
@@ -207,22 +218,6 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
       didConfirm = true;
       setBookingConfirmed(true);
       setConfirmingBooking(false);
-      try {
-        await scheduleBookingReminders();
-      } catch {
-        // Reminder failures shouldn't block the success flow.
-      }
-      try {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Booking confirmed",
-            body: "Your reservation is saved in Upcoming.",
-          },
-          trigger: null,
-        });
-      } catch {
-        // Notification failures shouldn't block the success flow.
-      }
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -238,9 +233,35 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
           ],
         })
       );
+      void scheduleBookingReminders().catch(() => {
+        // Reminder failures shouldn't block the success flow.
+      });
+      void (async () => {
+        try {
+          const attachments = await getNotificationImageAttachment();
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Booking confirmed",
+              body: "Your reservation is saved in Upcoming.",
+              attachments,
+            },
+            trigger: null,
+          });
+        } catch {
+          // Notification failures shouldn't block the success flow.
+        }
+      })();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Booking failed";
       logError("Booking error", { message });
+      if (message.toLowerCase().includes("time slot already booked")) {
+        setPaymentFailed(true);
+        setPaymentFailureMessage(
+          "That slot was just booked by someone else. Please choose another time."
+        );
+        setError(null);
+        return;
+      }
       setError(message);
     } finally {
       setConfirmingBooking(false);

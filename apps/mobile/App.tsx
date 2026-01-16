@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Image, Platform, StyleSheet, View } from "react-native";
+import { Animated, Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import * as Notifications from "expo-notifications";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
+import Constants from "expo-constants";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { AuthProvider, useAuth } from "./auth";
 import { AppLaunchContext } from "./appLaunch";
@@ -27,6 +28,7 @@ import { EditListingScreen } from "./screens/EditListingScreen";
 import { SupportScreen } from "./screens/SupportScreen";
 import { AdminScreen } from "./screens/AdminScreen";
 import type { RootStackParamList } from "./types";
+import { registerPushToken } from "./api";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -101,6 +103,7 @@ export default function App() {
                   <Stack.Screen name="EditListing" component={EditListingScreen} />
                 </Stack.Navigator>
               </NavigationContainer>
+              <PushRegistration />
               <LegalGate />
               <StatusBar style="dark" translucent backgroundColor="transparent" />
             </AppLaunchContext.Provider>
@@ -176,6 +179,61 @@ function LegalGate() {
       </View>
     </View>
   );
+}
+
+function PushRegistration() {
+  const { token, user } = useAuth();
+  const lastTokenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!token || !user) return;
+    let active = true;
+
+    const register = async () => {
+      const permissions = await Notifications.getPermissionsAsync();
+      if (!permissions.granted) {
+        const request = await Notifications.requestPermissionsAsync();
+        if (!request.granted) {
+          console.warn("Push registration skipped: permissions not granted");
+          return;
+        }
+      }
+      const projectId =
+        Constants.easConfig?.projectId ??
+        (Constants.expoConfig as any)?.extra?.eas?.projectId;
+      if (__DEV__ && !projectId) {
+        console.warn("Push registration: missing EAS projectId (Expo token may be null)");
+      }
+      const expoTokenResult = await Notifications.getExpoPushTokenAsync(
+        projectId ? { projectId } : undefined
+      );
+      const expoToken = expoTokenResult.data;
+      if (!expoToken || !active) {
+        console.warn("Push registration skipped: no Expo token");
+        return;
+      }
+      if (lastTokenRef.current === expoToken) return;
+      await registerPushToken({
+        token,
+        expoToken,
+        platform: Platform.OS,
+        deviceId: Constants.deviceId ?? Constants.deviceName ?? undefined,
+      });
+      if (__DEV__) {
+        console.log("Push registration: token stored");
+      }
+      lastTokenRef.current = expoToken;
+    };
+
+    void register().catch((error) => {
+      console.warn("Push registration failed", error);
+    });
+    return () => {
+      active = false;
+    };
+  }, [token, user?.id]);
+
+  return null;
 }
 
 const styles = StyleSheet.create({

@@ -42,6 +42,11 @@
       "compileSdkVersion": 35,
       "targetSdkVersion": 35,
       "buildToolsVersion": "35.0.0",
+      "notification": {
+        "icon": "ic_notification",
+        "color": "#10B981"
+      },
+      "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyC1h1NFLFz7SPauw85Udh0O1CBlN5bqOek"
@@ -62,6 +67,12 @@
       "config": {
         "googleMapsApiKey": "AIzaSyC1h1NFLFz7SPauw85Udh0O1CBlN5bqOek"
       }
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "5eb5fe9d-294f-43ef-9c93-db911b93eb12"
+      }
+    },
+    "owner": "andrewsyl"
   }
 }

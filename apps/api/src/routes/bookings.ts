@@ -5,6 +5,8 @@ import {
   pool,
   updateBookingStatus,
   updateBookingStatusByPaymentIntent,
+  insertEventLog,
+  markBookingRefundedByPaymentIntent,
   listUserBookings,
   getListingWithHostAccount,
   findUserById,
@@ -12,12 +14,19 @@ import {
   cancelBookingWithRefund,
   getBookingForRefund,
   getBookingForExtension,
+  getBookingNotificationTargets,
+  getBookingNotificationTargetsByCheckoutSession,
+  getBookingNotificationTargetsByPaymentIntent,
+  deleteScheduledNotificationsByBooking,
+  insertScheduledNotification,
+  listPushTokensByUserIds,
   updateBookingExtension,
   checkInBooking,
   updateBookingWindow,
 } from "../lib/db.js";
 import { createCheckoutSession, stripe } from "../lib/stripe.js";
 import { sendBookingEmail } from "../lib/email.js";
+import { sendPushNotification } from "../lib/notifications.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createRateLimiter } from "../middleware/rateLimit.js";
 import "../loadEnv.js";
@@ -30,7 +39,7 @@ const bookingLimiter = createRateLimiter({
   keyGenerator: (req) => req.user?.userId ?? req.ip ?? "unknown",
 });
 
-const bookingSchema = z.object({
+const bookingSchemaBase = z.object({
   listingId: z.string().uuid(),
   from: z.string().datetime(),
   to: z.string().datetime(),
@@ -47,7 +56,20 @@ const bookingSchema = z.object({
     .nullable(),
 });
 
-const paymentIntentSchema = bookingSchema.pick({
+const bookingSchema = bookingSchemaBase.superRefine((value, ctx) => {
+  const start = Date.parse(value.from);
+  const end = Date.parse(value.to);
+  if (Number.isNaN(start) || Number.isNaN(end)) return;
+  if (end <= start) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["to"],
+      message: "End time must be after start time",
+    });
+  }
+});
+
+const paymentIntentSchema = bookingSchemaBase.pick({
   listingId: true,
   from: true,
   to: true,
@@ -56,6 +78,166 @@ const paymentIntentSchema = bookingSchema.pick({
   platformFeePercent: true,
   vehiclePlate: true,
 });
+
+function formatBookingWindow(start: Date, end: Date) {
+  const startText = start.toLocaleString("en-IE", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const endText = end.toLocaleString("en-IE", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${startText} → ${endText}`;
+}
+
+async function hasBookingOverlap({
+  listingId,
+  bookingId,
+  startTime,
+  endTime,
+}: {
+  listingId: string;
+  bookingId: string;
+  startTime: Date;
+  endTime: Date;
+}) {
+  const overlap = await pool.query(
+    `
+    SELECT 1 FROM bookings
+    WHERE listing_id = $1
+      AND id <> $2
+      AND (status IS NULL OR status <> 'canceled')
+      AND tstzrange(start_time, end_time, '[)') && tstzrange($3::timestamptz, $4::timestamptz, '[)')
+    LIMIT 1
+    `,
+    [listingId, bookingId, startTime, endTime]
+  );
+  return overlap.rowCount && overlap.rowCount > 0;
+}
+
+async function sendBookingStatusPush({
+  bookingId,
+  driverId,
+  hostId,
+  listingTitle,
+  startTime,
+  endTime,
+  status,
+}: {
+  bookingId: string;
+  driverId: string;
+  hostId: string;
+  listingTitle: string;
+  startTime: Date;
+  endTime: Date;
+  status: "confirmed" | "canceled";
+}) {
+  const tokens = await listPushTokensByUserIds([driverId, hostId]);
+  if (!tokens.length) return;
+
+  const byUser = new Map<string, string[]>();
+  for (const token of tokens) {
+    const list = byUser.get(token.user_id) ?? [];
+    list.push(token.expo_token);
+    byUser.set(token.user_id, list);
+  }
+
+  const windowText = formatBookingWindow(startTime, endTime);
+  const driverTokens = byUser.get(driverId) ?? [];
+  const hostTokens = byUser.get(hostId) ?? [];
+
+  if (driverTokens.length) {
+    await sendPushNotification({
+      tokens: driverTokens,
+      title: status === "confirmed" ? "Booking confirmed" : "Booking canceled",
+      body: `${listingTitle} · ${windowText}`,
+      data: { bookingId, status, role: "driver" },
+    });
+  }
+
+  if (hostTokens.length) {
+    await sendPushNotification({
+      tokens: hostTokens,
+      title: status === "confirmed" ? "New booking confirmed" : "Booking canceled",
+      body: `${listingTitle} · ${windowText}`,
+      data: { bookingId, status, role: "host" },
+    });
+  }
+}
+
+async function sendPaymentReceivedPush({
+  bookingId,
+  hostId,
+  listingTitle,
+}: {
+  bookingId: string;
+  hostId: string;
+  listingTitle: string;
+}) {
+  const tokens = await listPushTokensByUserIds([hostId]);
+  const hostTokens = tokens
+    .filter((token) => token.user_id === hostId)
+    .map((token) => token.expo_token);
+  if (!hostTokens.length) return;
+
+  await sendPushNotification({
+    tokens: hostTokens,
+    title: "Payment received",
+    body: `${listingTitle} booking payment received.`,
+    data: { bookingId, status: "confirmed", role: "host" },
+  });
+}
+
+async function scheduleBookingNotifications({
+  bookingId,
+  driverId,
+  startTime,
+  endTime,
+}: {
+  bookingId: string;
+  driverId: string;
+  startTime: Date;
+  endTime: Date;
+}) {
+  const now = Date.now();
+  const startSoon = new Date(startTime.getTime() - 60 * 60 * 1000);
+  // Always queue a "starting soon" reminder; if the booking is very soon, schedule it immediately.
+  const scheduledStartSoon =
+    startTime.getTime() > now + 5 * 60 * 1000
+      ? startSoon.getTime() > now + 60 * 1000
+        ? startSoon
+        : new Date(now + 60 * 1000)
+      : new Date(now + 10 * 1000);
+  await insertScheduledNotification({
+    userId: driverId,
+    bookingId,
+    type: "booking_start_soon",
+    scheduledAt: scheduledStartSoon,
+  });
+
+  const endSoon = new Date(endTime.getTime() - 30 * 60 * 1000);
+  if (endSoon.getTime() > now + 5 * 60 * 1000) {
+    await insertScheduledNotification({
+      userId: driverId,
+      bookingId,
+      type: "booking_end_soon",
+      scheduledAt: endSoon,
+    });
+  }
+
+  const reviewTime = new Date(endTime.getTime() + 60 * 60 * 1000);
+  await insertScheduledNotification({
+    userId: driverId,
+    bookingId,
+    type: "review_reminder",
+    scheduledAt: reviewTime,
+  });
+}
 
 async function getOrCreateCustomer(email: string) {
   if (!stripe) throw new Error("Stripe not configured");
@@ -168,7 +350,7 @@ router.post("/payment-intent", requireAuth, bookingLimiter, async (req, res, nex
       amount: payload.amountCents,
       currency: payload.currency,
       customer: customerId,
-      automatic_payment_methods: { enabled: true },
+      automatic_payment_methods: { enabled: true, allow_redirects: "never" },
       metadata: {
         listing_id: payload.listingId,
         driver_id: driverId,
@@ -298,7 +480,7 @@ router.post("/:id/extend-intent", requireAuth, bookingLimiter, async (req, res, 
       amount: additionalAmountCents,
       currency: booking.currency ?? "eur",
       customer: customerId,
-      automatic_payment_methods: { enabled: true },
+      automatic_payment_methods: { enabled: true, allow_redirects: "never" },
       metadata: {
         booking_id: bookingId,
         type: "extension",
@@ -573,6 +755,39 @@ router.post("/confirm", requireAuth, bookingLimiter, async (req, res, next) => {
     });
     const { paymentIntentId, status = "confirmed" } = schema.parse(req.body);
     let receiptUrl: string | null = null;
+    if (status === "confirmed") {
+      const bookingRow = await pool.query(
+        `
+        SELECT id, listing_id, start_time, end_time
+        FROM bookings
+        WHERE payment_intent_id = $1
+        LIMIT 1
+        `,
+        [paymentIntentId]
+      );
+      const booking = bookingRow.rows[0] as
+        | { id: string; listing_id: string; start_time: Date; end_time: Date }
+        | undefined;
+      if (!booking) return res.status(404).json({ message: "Booking not found" });
+      const overlapCheck = await pool.query(
+        `
+        SELECT 1 FROM bookings
+        WHERE listing_id = $1
+          AND id <> $2
+          AND (status IS NULL OR status <> 'canceled')
+          AND tstzrange(start_time, end_time, '[)') && tstzrange($3::timestamptz, $4::timestamptz, '[)')
+        LIMIT 1
+        `,
+        [booking.listing_id, booking.id, booking.start_time, booking.end_time]
+      );
+      if (overlapCheck.rowCount && overlapCheck.rowCount > 0) {
+        await updateBookingStatusByPaymentIntent({
+          paymentIntentId,
+          status: "canceled",
+        });
+        return res.status(409).json({ message: "Time slot already booked" });
+      }
+    }
     if (status === "confirmed" && stripe) {
       const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
         expand: ["charges.data.balance_transaction"],
@@ -584,6 +799,33 @@ router.post("/confirm", requireAuth, bookingLimiter, async (req, res, next) => {
     }
     const ok = await updateBookingStatusByPaymentIntent({ paymentIntentId, status, receiptUrl });
     if (!ok) return res.status(404).json({ message: "Booking not found" });
+    const targets = await getBookingNotificationTargetsByPaymentIntent(paymentIntentId);
+    if (targets) {
+      await sendBookingStatusPush({
+        bookingId: targets.booking_id,
+        driverId: targets.driver_id,
+        hostId: targets.host_id,
+        listingTitle: targets.listing_title,
+        startTime: new Date(targets.start_time),
+        endTime: new Date(targets.end_time),
+        status,
+      });
+      if (status === "confirmed") {
+        await sendPaymentReceivedPush({
+          bookingId: targets.booking_id,
+          hostId: targets.host_id,
+          listingTitle: targets.listing_title,
+        });
+        await scheduleBookingNotifications({
+          bookingId: targets.booking_id,
+          driverId: targets.driver_id,
+          startTime: new Date(targets.start_time),
+          endTime: new Date(targets.end_time),
+        });
+      } else {
+        await deleteScheduledNotificationsByBooking(targets.booking_id);
+      }
+    }
     res.json({ ok: true });
   } catch (error) {
     next(error);
@@ -614,6 +856,19 @@ router.post("/:id/cancel", requireAuth, bookingLimiter, async (req, res, next) =
       : await cancelBookingByDriver({ bookingId, driverId: userId });
 
     if (!ok) return res.status(400).json({ message: "Booking cannot be canceled" });
+    const targets = await getBookingNotificationTargets(bookingId);
+    if (targets) {
+      await sendBookingStatusPush({
+        bookingId: targets.booking_id,
+        driverId: targets.driver_id,
+        hostId: targets.host_id,
+        listingTitle: targets.listing_title,
+        startTime: new Date(targets.start_time),
+        endTime: new Date(targets.end_time),
+        status: "canceled",
+      });
+      await deleteScheduledNotificationsByBooking(targets.booking_id);
+    }
     res.json({ ok: true, refunded: Boolean(refundId) });
   } catch (error) {
     next(error);
@@ -651,22 +906,107 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
   try {
     const event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
 
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as any;
-    let receiptUrl: string | null = null;
-    if (stripe && session.payment_intent) {
-      const intent = await stripe.paymentIntents.retrieve(session.payment_intent as string, {
-        expand: ["charges.data.balance_transaction"],
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as any;
+      const paymentIntentId = session.payment_intent as string;
+      const bookingRow = await pool.query(
+        `
+        SELECT id, listing_id, start_time, end_time
+        FROM bookings
+        WHERE checkout_session_id = $1
+        LIMIT 1
+        `,
+        [session.id]
+      );
+      const booking = bookingRow.rows[0] as
+        | { id: string; listing_id: string; start_time: Date; end_time: Date }
+        | undefined;
+      if (booking) {
+        const conflict = await hasBookingOverlap({
+          listingId: booking.listing_id,
+          bookingId: booking.id,
+          startTime: booking.start_time,
+          endTime: booking.end_time,
+        });
+        if (conflict) {
+          const conflictPayload = {
+            bookingId: booking.id,
+            listingId: booking.listing_id,
+            paymentIntentId,
+            source: "checkout.session.completed",
+          };
+          console.warn("Booking conflict on checkout.session.completed", conflictPayload);
+          await insertEventLog({
+            eventType: "booking_conflict",
+            payload: conflictPayload,
+          });
+          if (stripe && paymentIntentId) {
+            const refund = await stripe.refunds.create({
+              payment_intent: paymentIntentId,
+            });
+            await markBookingRefundedByPaymentIntent({
+              paymentIntentId,
+              refundId: refund.id,
+            });
+          }
+          await updateBookingStatus({
+            checkoutSessionId: session.id,
+            status: "canceled",
+            paymentIntentId,
+          });
+          const conflictTargets = await getBookingNotificationTargetsByCheckoutSession(session.id);
+          if (conflictTargets) {
+            await sendBookingStatusPush({
+              bookingId: conflictTargets.booking_id,
+              driverId: conflictTargets.driver_id,
+              hostId: conflictTargets.host_id,
+              listingTitle: conflictTargets.listing_title,
+              startTime: new Date(conflictTargets.start_time),
+              endTime: new Date(conflictTargets.end_time),
+              status: "canceled",
+            });
+            await deleteScheduledNotificationsByBooking(conflictTargets.booking_id);
+          }
+          return res.json({ received: true, conflict: true });
+        }
+      }
+      let receiptUrl: string | null = null;
+      if (stripe && session.payment_intent) {
+        const intent = await stripe.paymentIntents.retrieve(session.payment_intent as string, {
+          expand: ["charges.data.balance_transaction"],
+        });
+        receiptUrl = intent.charges?.data?.[0]?.receipt_url ?? null;
+      }
+      await updateBookingStatus({
+        checkoutSessionId: session.id,
+        status: "confirmed",
+        paymentIntentId: session.payment_intent as string,
+        receiptUrl,
       });
-      receiptUrl = intent.charges?.data?.[0]?.receipt_url ?? null;
+      const targets = await getBookingNotificationTargetsByCheckoutSession(session.id);
+      if (targets) {
+        await sendBookingStatusPush({
+          bookingId: targets.booking_id,
+          driverId: targets.driver_id,
+          hostId: targets.host_id,
+          listingTitle: targets.listing_title,
+          startTime: new Date(targets.start_time),
+          endTime: new Date(targets.end_time),
+          status: "confirmed",
+        });
+        await sendPaymentReceivedPush({
+          bookingId: targets.booking_id,
+          hostId: targets.host_id,
+          listingTitle: targets.listing_title,
+        });
+        await scheduleBookingNotifications({
+          bookingId: targets.booking_id,
+          driverId: targets.driver_id,
+          startTime: new Date(targets.start_time),
+          endTime: new Date(targets.end_time),
+        });
+      }
     }
-    await updateBookingStatus({
-      checkoutSessionId: session.id,
-      status: "confirmed",
-      paymentIntentId: session.payment_intent as string,
-      receiptUrl,
-    });
-  }
 
     if (event.type === "checkout.session.expired" || event.type === "checkout.session.async_payment_failed") {
       const session = event.data.object as any;
@@ -675,16 +1015,113 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
         status: "canceled",
         paymentIntentId: session.payment_intent as string,
       });
+      const targets = await getBookingNotificationTargetsByCheckoutSession(session.id);
+      if (targets) {
+        await sendBookingStatusPush({
+          bookingId: targets.booking_id,
+          driverId: targets.driver_id,
+          hostId: targets.host_id,
+          listingTitle: targets.listing_title,
+          startTime: new Date(targets.start_time),
+          endTime: new Date(targets.end_time),
+          status: "canceled",
+        });
+        await deleteScheduledNotificationsByBooking(targets.booking_id);
+      }
     }
 
-  if (event.type === "payment_intent.succeeded") {
-    const intent = event.data.object as any;
-    await updateBookingStatusByPaymentIntent({
-      paymentIntentId: intent.id,
-      status: "confirmed",
-      receiptUrl: intent.charges?.data?.[0]?.receipt_url ?? null,
-    });
-  }
+    if (event.type === "payment_intent.succeeded") {
+      const intent = event.data.object as any;
+      const paymentIntentId = intent.id as string;
+      const bookingRow = await pool.query(
+        `
+        SELECT id, listing_id, start_time, end_time
+        FROM bookings
+        WHERE payment_intent_id = $1
+        LIMIT 1
+        `,
+        [paymentIntentId]
+      );
+      const booking = bookingRow.rows[0] as
+        | { id: string; listing_id: string; start_time: Date; end_time: Date }
+        | undefined;
+      if (booking) {
+        const conflict = await hasBookingOverlap({
+          listingId: booking.listing_id,
+          bookingId: booking.id,
+          startTime: booking.start_time,
+          endTime: booking.end_time,
+        });
+        if (conflict) {
+          const conflictPayload = {
+            bookingId: booking.id,
+            listingId: booking.listing_id,
+            paymentIntentId,
+            source: "payment_intent.succeeded",
+          };
+          console.warn("Booking conflict on payment_intent.succeeded", conflictPayload);
+          await insertEventLog({
+            eventType: "booking_conflict",
+            payload: conflictPayload,
+          });
+          if (stripe && paymentIntentId) {
+            const refund = await stripe.refunds.create({
+              payment_intent: paymentIntentId,
+            });
+            await markBookingRefundedByPaymentIntent({
+              paymentIntentId,
+              refundId: refund.id,
+            });
+          }
+          await updateBookingStatusByPaymentIntent({
+            paymentIntentId,
+            status: "canceled",
+          });
+          const conflictTargets = await getBookingNotificationTargetsByPaymentIntent(paymentIntentId);
+          if (conflictTargets) {
+            await sendBookingStatusPush({
+              bookingId: conflictTargets.booking_id,
+              driverId: conflictTargets.driver_id,
+              hostId: conflictTargets.host_id,
+              listingTitle: conflictTargets.listing_title,
+              startTime: new Date(conflictTargets.start_time),
+              endTime: new Date(conflictTargets.end_time),
+              status: "canceled",
+            });
+            await deleteScheduledNotificationsByBooking(conflictTargets.booking_id);
+          }
+          return res.json({ received: true, conflict: true });
+        }
+      }
+      await updateBookingStatusByPaymentIntent({
+        paymentIntentId,
+        status: "confirmed",
+        receiptUrl: intent.charges?.data?.[0]?.receipt_url ?? null,
+      });
+      const targets = await getBookingNotificationTargetsByPaymentIntent(paymentIntentId);
+      if (targets) {
+        await sendBookingStatusPush({
+          bookingId: targets.booking_id,
+          driverId: targets.driver_id,
+          hostId: targets.host_id,
+          listingTitle: targets.listing_title,
+          startTime: new Date(targets.start_time),
+          endTime: new Date(targets.end_time),
+          status: "confirmed",
+        });
+        await sendPaymentReceivedPush({
+          bookingId: targets.booking_id,
+          hostId: targets.host_id,
+          listingTitle: targets.listing_title,
+        });
+        await scheduleBookingNotifications({
+          bookingId: targets.booking_id,
+          driverId: targets.driver_id,
+          startTime: new Date(targets.start_time),
+          endTime: new Date(targets.end_time),
+        });
+      }
+    }
 
     if (event.type === "payment_intent.payment_failed" || event.type === "payment_intent.canceled") {
       const intent = event.data.object as any;
@@ -692,6 +1129,19 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
         paymentIntentId: intent.id,
         status: "canceled",
       });
+      const targets = await getBookingNotificationTargetsByPaymentIntent(intent.id);
+      if (targets) {
+        await sendBookingStatusPush({
+          bookingId: targets.booking_id,
+          driverId: targets.driver_id,
+          hostId: targets.host_id,
+          listingTitle: targets.listing_title,
+          startTime: new Date(targets.start_time),
+          endTime: new Date(targets.end_time),
+          status: "canceled",
+        });
+        await deleteScheduledNotificationsByBooking(targets.booking_id);
+      }
     }
 
     res.json({ received: true });

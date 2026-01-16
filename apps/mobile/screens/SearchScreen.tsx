@@ -99,6 +99,14 @@ const formatTimeLabel = (date: Date) => `${pad2(date.getHours())}:${pad2(date.ge
 
 const formatDateTimeLabel = (date: Date) => `${formatDateLabel(date)} · ${formatTimeLabel(date)}`;
 
+const snapTo5Minutes = (date: Date) => {
+  const next = new Date(date);
+  const minutes = next.getMinutes();
+  const snapped = Math.round(minutes / 5) * 5;
+  next.setMinutes(snapped, 0, 0);
+  return next;
+};
+
 export function SearchScreen({ navigation }: Props) {
   const today = useMemo(() => {
     const now = new Date();
@@ -480,11 +488,19 @@ export function SearchScreen({ navigation }: Props) {
       setSelectedId(null);
       setSearchSheetOpen(false);
       void (async () => {
+        const deletedListingId = await AsyncStorage.getItem("deletedListingId");
+        if (deletedListingId) {
+          setResults((prev) => prev.filter((listing) => listing.id !== deletedListingId));
+          await AsyncStorage.removeItem("deletedListingId");
+        }
         const refreshToken = await AsyncStorage.getItem("searchRefreshToken");
         if (!refreshToken) return;
         await AsyncStorage.removeItem("searchRefreshToken");
         setShowSearchArea(false);
         setPendingSearch(null);
+        setSelectedId(null);
+        setResults([]);
+        setLoading(true);
         void runSearch();
       })();
     }, [runSearch])
@@ -1113,9 +1129,9 @@ export function SearchScreen({ navigation }: Props) {
                     date={draftDate ?? (pickerField === "start" ? startAt : endAt)}
                     mode="datetime"
                     androidVariant="iosClone"
-                    minuteInterval={1}
+                    minuteInterval={5}
                     textColor="#101828"
-                    onDateChange={(date) => setDraftDate(date)}
+                    onDateChange={(date) => setDraftDate(snapTo5Minutes(date))}
                   />
                   {pickerField === "end" ? (
                     <View style={styles.durationRow}>
@@ -1140,12 +1156,13 @@ export function SearchScreen({ navigation }: Props) {
               date={draftDate ?? (pickerField === "start" ? startAt : endAt)}
               mode="datetime"
               androidVariant="iosClone"
-              minuteInterval={1}
+              minuteInterval={5}
               textColor="#101828"
               onConfirm={(date) => {
                 setPickerVisible(false);
-                setDraftDate(date);
-                applyPickedDate(date);
+                const snapped = snapTo5Minutes(date);
+                setDraftDate(snapped);
+                applyPickedDate(snapped);
               }}
               onCancel={() => {
                 setPickerVisible(false);
