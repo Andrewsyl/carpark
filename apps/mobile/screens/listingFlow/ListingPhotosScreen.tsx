@@ -17,6 +17,7 @@ import { getListingImageUploadUrl } from "../../api";
 import { useAuth } from "../../auth";
 import { useListingFlow } from "./context";
 import { StepProgress } from "./StepProgress";
+import { colors, spacing, textStyles } from "../../styles/theme";
 
 type FlowStackParamList = {
   ListingPhotos: undefined;
@@ -174,61 +175,45 @@ export function ListingPhotosScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
   },
   content: {
-    padding: 18,
+    padding: spacing.screenX,
     paddingBottom: 160,
     paddingTop: 0,
   },
-  kicker: {
-    color: "#00d4aa",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  },
+  kicker: textStyles.kicker,
   title: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 22,
     fontWeight: "700",
     marginTop: 6,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
     lineHeight: 20,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   field: {
     marginTop: 16,
   },
   label: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "700",
     marginBottom: 6,
     letterSpacing: 0.5,
     textTransform: "uppercase",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   input: {
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   previewRow: {
     alignItems: "center",
@@ -247,14 +232,14 @@ const styles = StyleSheet.create({
   },
   uploadButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 12,
     marginBottom: 10,
     minHeight: 44,
     justifyContent: "center",
   },
   uploadButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 14,
     fontWeight: "700",
   },
@@ -266,19 +251,19 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   removeButtonText: {
-    color: "#b42318",
+    color: colors.danger,
     fontSize: 12,
     fontWeight: "700",
   },
   footer: {
-    backgroundColor: "#ffffff",
-    borderTopColor: "#e5e7eb",
+    backgroundColor: colors.cardBg,
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     padding: 16,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 14,
     paddingVertical: 14,
   },
@@ -286,11 +271,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 15,
     fontWeight: "700",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   secondaryButton: {
     alignItems: "center",
@@ -298,17 +281,15 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: "#00d4aa",
+    borderColor: colors.accent,
   },
   secondaryButtonText: {
-    color: "#00d4aa",
+    color: colors.accent,
     fontSize: 13,
     fontWeight: "600",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   errorText: {
-    color: "#b42318",
+    color: colors.danger,
     fontSize: 12,
     fontWeight: "600",
     marginTop: 10,

@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
+import { colors, radius } from "../../styles/theme";
 
 type Props = {
   current: number;
@@ -33,31 +34,27 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   label: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.6,
     textTransform: "uppercase",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   percent: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontSize: 11,
     fontWeight: "700",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   bar: {
-    backgroundColor: "#e5e7eb",
-    borderRadius: 999,
+    backgroundColor: colors.border,
+    borderRadius: radius.pill,
     height: 4,
     marginTop: 8,
     overflow: "hidden",
   },
   barFill: {
-    backgroundColor: "#00d4aa",
-    borderRadius: 999,
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
     height: "100%",
   },
 });

@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { CardField, useStripe } from "@stripe/stripe-react-native";
+import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import {
   createPaymentMethodSetupIntent,
   deletePaymentMethod,
@@ -287,11 +288,11 @@ export function PaymentsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
+    backgroundColor: colors.appBg,
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     paddingBottom: 32,
     paddingTop: 24,
   },
@@ -304,35 +305,27 @@ const styles = StyleSheet.create({
   loadingBadge: {
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.92)",
-    borderRadius: 16,
+    borderRadius: radius.card,
     flexDirection: "row",
     gap: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
+    ...cardShadow,
   },
   header: {
     marginBottom: 16,
   },
   kicker: {
-    color: "#10b981",
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 1,
-    textTransform: "uppercase",
+    ...textStyles.kicker,
   },
   title: {
-    color: "#111827",
-    fontSize: 30,
-    fontWeight: "700",
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: "800",
     marginTop: 6,
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 15,
     marginTop: 6,
   },
@@ -348,37 +341,33 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   muted: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginBottom: 12,
   },
   loadingText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
   },
   section: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     marginBottom: 18,
     overflow: "hidden",
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
+    ...cardShadow,
   },
   sectionHeader: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 10,
     marginTop: 8,
   },
   poweredBy: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontSize: 12,
     fontWeight: "600",
     textAlign: "center",
@@ -386,7 +375,7 @@ const styles = StyleSheet.create({
   },
   sectionHeaderRow: {
     alignItems: "center",
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
     borderBottomWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -394,13 +383,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   sectionTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
   addButton: {
-    backgroundColor: "#10b981",
-    borderRadius: 999,
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
@@ -410,14 +399,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   addCardPanel: {
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
     borderBottomWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 12,
   },
   addCardLabel: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 13,
     fontWeight: "600",
   },
@@ -425,22 +414,22 @@ const styles = StyleSheet.create({
     height: 48,
   },
   cardField: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
-    color: "#111827",
+    color: colors.text,
     fontSize: 15,
   },
   saveButton: {
     alignItems: "center",
-    backgroundColor: "#10b981",
+    backgroundColor: colors.accent,
     borderRadius: 10,
     minHeight: 44,
     paddingVertical: 12,
   },
   saveButtonDisabled: {
-    backgroundColor: "#cbd5e1",
+    backgroundColor: colors.textSoft,
   },
   saveButtonText: {
     color: "#ffffff",
@@ -449,7 +438,7 @@ const styles = StyleSheet.create({
   },
   row: {
     alignItems: "center",
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: 12,
@@ -460,17 +449,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rowTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 15,
     fontWeight: "600",
   },
   rowSubtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 2,
   },
   rowMeta: {
-    color: "#9ca3af",
+    color: colors.textSoft,
     fontSize: 11,
     marginTop: 4,
   },
@@ -479,14 +468,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   rowActionButton: {
-    borderColor: "#e5e7eb",
-    borderRadius: 999,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
     borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   rowActionText: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 11,
     fontWeight: "600",
   },
@@ -511,7 +500,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   emptyText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
   },
   emptyState: {

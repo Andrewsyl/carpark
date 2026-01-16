@@ -4,16 +4,21 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useStripe } from "@stripe/stripe-react-native";
 import * as Notifications from "expo-notifications";
+import DatePicker from "react-native-date-picker";
+import { Ionicons } from "@expo/vector-icons";
+import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import {
   confirmBookingPayment,
   createBookingPaymentIntent,
@@ -22,9 +27,30 @@ import {
 import { useAuth } from "../auth";
 import { logError, logInfo } from "../logger";
 import { getNotificationImageAttachment } from "../notifications";
+import { BookingProgressBar } from "../components/BookingProgressBar";
 import type { ListingDetail, RootStackParamList } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingSummary">;
+
+const formatDateLabel = (date: Date) =>
+  date.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+
+const formatTimeLabel = (date: Date) =>
+  date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+const formatDateTimeLabel = (date: Date) => `${formatDateLabel(date)} · ${formatTimeLabel(date)}`;
+
+const snapTo5Minutes = (date: Date) => {
+  const next = new Date(date);
+  const minutes = next.getMinutes();
+  const snapped = Math.round(minutes / 5) * 5;
+  next.setMinutes(snapped, 0, 0);
+  return next;
+};
 
 export function BookingSummaryScreen({ navigation, route }: Props) {
   const { id, from, to } = route.params;
@@ -40,6 +66,11 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
   const [paymentFailed, setPaymentFailed] = useState(false);
   const [paymentFailureMessage, setPaymentFailureMessage] = useState<string | null>(null);
   const [vehiclePlate, setVehiclePlate] = useState("");
+  const [startAt, setStartAt] = useState(() => new Date(from));
+  const [endAt, setEndAt] = useState(() => new Date(to));
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerField, setPickerField] = useState<"start" | "end">("start");
+  const [draftDate, setDraftDate] = useState<Date | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -85,8 +116,13 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
     }, [bookingBusy, bookingConfirmed, navigation])
   );
 
-  const start = useMemo(() => new Date(from), [from]);
-  const end = useMemo(() => new Date(to), [to]);
+  useEffect(() => {
+    setStartAt(new Date(from));
+    setEndAt(new Date(to));
+  }, [from, to]);
+
+  const start = useMemo(() => startAt, [startAt]);
+  const end = useMemo(() => endAt, [endAt]);
   const durationHours = useMemo(() => {
     const ms = Math.max(0, end.getTime() - start.getTime());
     return Math.max(1, Math.ceil(ms / (1000 * 60 * 60)));
@@ -98,6 +134,28 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
     const total = listing.price_per_day * days;
     return { days, total, totalCents: Math.round(total * 100) };
   }, [durationHours, listing]);
+
+  const openPicker = (field: "start" | "end") => {
+    setPickerField(field);
+    const current = field === "start" ? startAt : endAt;
+    setDraftDate(current);
+    setPickerVisible(true);
+  };
+
+  const applyPickedDate = (next: Date) => {
+    if (pickerField === "start") {
+      let nextEnd = endAt;
+      if (next > endAt) {
+        const bumped = new Date(next);
+        bumped.setHours(bumped.getHours() + 2);
+        nextEnd = bumped;
+        setEndAt(bumped);
+      }
+      setStartAt(next);
+      return;
+    }
+    setEndAt(next);
+  };
 
   const scheduleBookingReminders = useCallback(async () => {
     if (!listing) return;
@@ -141,11 +199,15 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
     setPaymentFailureMessage(null);
     let didConfirm = false;
     try {
-      logInfo("Booking started", { listingId: listing.id, from, to });
+      logInfo("Booking started", {
+        listingId: listing.id,
+        from: startAt.toISOString(),
+        to: endAt.toISOString(),
+      });
       const payment = await createBookingPaymentIntent({
         listingId: listing.id,
-        from,
-        to,
+        from: startAt.toISOString(),
+        to: endAt.toISOString(),
         amountCents: priceSummary.totalCents,
         vehiclePlate: vehiclePlate.trim() ? vehiclePlate.trim() : undefined,
         token,
@@ -273,24 +335,18 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <View style={styles.topBar}>
-        <Pressable
-          style={styles.backButton}
-          onPress={() =>
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: "Search" }],
-              })
-            )
-          }
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.headerBackButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           disabled={bookingBusy || bookingConfirmed}
         >
-          <Text style={styles.backLabel}>Back</Text>
-        </Pressable>
-        <Text style={styles.topTitle}>Booking summary</Text>
-        <View style={styles.backButton} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Booking summary</Text>
       </View>
+      <BookingProgressBar currentStep={bookingBusy || confirmingBooking ? 3 : 2} />
       {loadingListing ? (
         <View style={styles.centered}>
           <ActivityIndicator size="small" color="#00d4aa" />
@@ -314,13 +370,17 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
               <Text style={styles.locationSubtitle}>{listing.address}</Text>
             </View>
             <View style={styles.detailList}>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>START</Text>
-                <Text style={styles.detailValue}>{start.toLocaleString()}</Text>
-              </View>
-              <View style={[styles.detailRow, styles.detailRowBorder]}>
-                <Text style={styles.detailLabel}>END</Text>
-                <Text style={styles.detailValue}>{end.toLocaleString()}</Text>
+              <Text style={styles.detailLabel}>TIME</Text>
+              <View style={styles.dateRow}>
+                <Pressable style={styles.dateTimePill} onPress={() => openPicker("start")}>
+                  <Text style={styles.dateTimeText}>{formatDateTimeLabel(start)}</Text>
+                </Pressable>
+                <View style={styles.dateArrow}>
+                  <Text style={styles.dateArrowText}>→</Text>
+                </View>
+                <Pressable style={styles.dateTimePill} onPress={() => openPicker("end")}>
+                  <Text style={styles.dateTimeText}>{formatDateTimeLabel(end)}</Text>
+                </Pressable>
               </View>
               <View style={[styles.detailRow, styles.detailRowBorder]}>
                 <Text style={styles.detailLabel}>DURATION</Text>
@@ -329,16 +389,23 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
             </View>
             <View style={styles.inputBlock}>
               <Text style={styles.inputLabel}>Vehicle plate (optional)</Text>
-              <TextInput
-                value={vehiclePlate}
-                onChangeText={(value) => setVehiclePlate(value.toUpperCase().replace(/\s+/g, " "))}
-                placeholder="e.g. 12-D-12345"
-                placeholderTextColor="#94a3b8"
-                autoCapitalize="characters"
-                autoCorrect={false}
-                maxLength={12}
-                style={styles.inputField}
-              />
+              <View style={styles.plateRow}>
+                <View style={styles.plateCountry}>
+                  <Text style={styles.plateCountryText}>IRL</Text>
+                </View>
+                <TextInput
+                  value={vehiclePlate}
+                  onChangeText={(value) =>
+                    setVehiclePlate(value.toUpperCase().replace(/\s+/g, " "))
+                  }
+                  placeholder="12-D-12345"
+                  placeholderTextColor="#9ca3af"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  maxLength={12}
+                  style={styles.plateInput}
+                />
+              </View>
               <Text style={styles.inputHint}>Share your plate with the host for easy access.</Text>
             </View>
             {priceSummary ? (
@@ -432,6 +499,46 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
           </View>
         </View>
       ) : null}
+      {pickerVisible ? (
+        <Modal transparent animationType="fade" visible>
+          <Pressable
+            style={styles.pickerBackdrop}
+            onPress={() => {
+              setPickerVisible(false);
+              setDraftDate(null);
+            }}
+          >
+            <Pressable style={styles.pickerSheet} onPress={() => undefined}>
+              <View style={styles.pickerHeader}>
+                <Text style={styles.pickerTitle}>
+                  {pickerField === "start" ? "Start" : "End"}
+                </Text>
+                <Pressable
+                  style={styles.pickerDone}
+                  onPress={() => {
+                    setPickerVisible(false);
+                    setDraftDate(null);
+                  }}
+                >
+                  <Text style={styles.pickerDoneText}>Done</Text>
+                </Pressable>
+              </View>
+              <DatePicker
+                date={draftDate ?? (pickerField === "start" ? start : end)}
+                mode="datetime"
+                androidVariant="iosClone"
+                minuteInterval={5}
+                textColor={colors.accent}
+                onDateChange={(date) => {
+                  const snapped = snapTo5Minutes(date);
+                  setDraftDate(snapped);
+                  applyPickedDate(snapped);
+                }}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
+      ) : null}
       {bookingConfirmed ? <View style={styles.successOverlay} pointerEvents="none" /> : null}
     </SafeAreaView>
   );
@@ -439,34 +546,27 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: colors.appBg,
     flex: 1,
   },
-  topBar: {
+  header: {
     alignItems: "center",
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingTop: 8,
+    paddingHorizontal: spacing.screenX,
+    paddingVertical: 12,
   },
-  backButton: {
-    alignItems: "center",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  headerBackButton: {
+    padding: 8,
+    marginRight: 8,
   },
-  backLabel: {
-    color: "#0f172a",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  topTitle: {
-    color: "#0f172a",
-    fontSize: 16,
-    fontWeight: "700",
+  headerTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "600",
+    flex: 1,
   },
   content: {
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     paddingBottom: 140,
     paddingTop: 12,
   },
@@ -477,58 +577,54 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   title: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 20,
     fontWeight: "800",
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
     textAlign: "center",
   },
   muted: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 8,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
     marginTop: 16,
-    padding: 20,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
+    padding: spacing.card,
+    ...cardShadow,
   },
   cardTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 20,
     fontWeight: "700",
   },
   sectionBody: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 10,
     lineHeight: 18,
   },
   noticeCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.cardBg,
     borderColor: "#fee2e2",
-    borderRadius: 16,
+    borderRadius: radius.card,
     borderWidth: 1,
     marginTop: 16,
-    padding: 16,
+    padding: spacing.card,
   },
   noticeTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
   },
   noticeText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 6,
     lineHeight: 18,
@@ -537,12 +633,12 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   locationTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
   locationSubtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 4,
   },
@@ -558,17 +654,43 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   detailRowBorder: {
-    borderTopColor: "#e5e7eb",
+    borderTopColor: colors.border,
     borderTopWidth: 1,
   },
+  dateRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  dateTimePill: {
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderRadius: 999,
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  dateTimeText: {
+    color: "#101828",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  dateArrow: {
+    paddingHorizontal: 8,
+  },
+  dateArrowText: {
+    color: colors.textMuted,
+    fontSize: 16,
+  },
   detailLabel: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
   },
   detailValue: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 13,
     fontWeight: "600",
     textAlign: "right",
@@ -577,30 +699,95 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   inputLabel: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
   },
   inputField: {
-    backgroundColor: "#f3f4f6",
+    backgroundColor: colors.appBg,
     borderRadius: 12,
-    color: "#111827",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "600",
     marginTop: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
+  plateRow: {
+    flexDirection: "row",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    overflow: "hidden",
+    backgroundColor: "#ffffff",
+    marginTop: 8,
+  },
+  plateCountry: {
+    width: 54,
+    backgroundColor: "#1d4ed8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  plateCountryText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+  plateInput: {
+    flex: 1,
+    color: "#111827",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
   inputHint: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 6,
+  },
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(17, 24, 39, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  pickerSheet: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+    width: "100%",
+  },
+  pickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  pickerTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  pickerDone: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  pickerDoneText: {
+    color: colors.accent,
+    fontWeight: "700",
   },
   totalRow: {
     alignItems: "center",
     backgroundColor: "#ecfdf3",
-    borderTopColor: "#e5e7eb",
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -626,11 +813,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 2,
+    ...cardShadow,
   },
   paymentOptionDark: {
     backgroundColor: "#111827",
@@ -640,7 +823,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0f172a",
   },
   paymentOptionActiveLight: {
-    borderColor: "#10b981",
+    borderColor: colors.accent,
     backgroundColor: "#ecfdf3",
   },
   paymentOptionTextDark: {
@@ -654,12 +837,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   paymentOptionText: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
   },
   paymentOptionHint: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 4,
   },
@@ -668,12 +851,12 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderTopColor: "#e5e7eb",
+    backgroundColor: colors.cardBg,
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     paddingVertical: 14,
     shadowColor: "#0f172a",
     shadowOffset: { width: 0, height: -6 },
@@ -682,25 +865,25 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   bottomPrice: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 26,
     fontWeight: "700",
   },
   bottomMeta: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 2,
   },
   bottomButton: {
     alignItems: "center",
-    backgroundColor: "#10b981",
+    backgroundColor: colors.accent,
     borderRadius: 12,
     minHeight: 44,
     paddingHorizontal: 24,
     paddingVertical: 12,
   },
   bottomButtonDisabled: {
-    backgroundColor: "#cbd5e1",
+    backgroundColor: colors.textSoft,
   },
   bottomButtonText: {
     color: "#ffffff",
@@ -711,7 +894,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   bottomStatus: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 11,
     marginTop: 6,
   },
@@ -723,31 +906,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   successCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 18,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
     paddingHorizontal: 24,
     paddingVertical: 20,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 6,
+    ...cardShadow,
   },
   successTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 18,
     fontWeight: "800",
     textAlign: "center",
   },
   successBody: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
     textAlign: "center",
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 12,
     marginTop: 16,
     paddingHorizontal: 20,

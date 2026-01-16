@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useListingFlow } from "./context";
 import { StepProgress } from "./StepProgress";
+import { colors, radius, spacing, textStyles } from "../../styles/theme";
 
 type FlowStackParamList = {
   ListingLocation: undefined;
@@ -174,38 +175,32 @@ export function ListingLocationScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
     flex: 1,
   },
   header: {
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 12,
   },
-  kicker: {
-    color: "#00d4aa",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
+  kicker: textStyles.kicker,
   title: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 22,
     fontWeight: "700",
     marginTop: 6,
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
   },
   searchShell: {
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     marginTop: 12,
   },
   searchField: {
     alignItems: "center",
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     flexDirection: "row",
@@ -214,45 +209,45 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   searchInput: {
-    color: "#0f172a",
+    color: colors.text,
     flex: 1,
     fontSize: 14,
   },
   clearButton: {
     alignItems: "center",
-    backgroundColor: "#eef2f7",
-    borderRadius: 999,
+    backgroundColor: colors.appBg,
+    borderRadius: radius.pill,
     height: 24,
     justifyContent: "center",
     width: 24,
   },
   clearButtonText: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 16,
     fontWeight: "700",
     lineHeight: 18,
   },
   suggestions: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
-    marginHorizontal: 18,
+    marginHorizontal: spacing.screenX,
     marginTop: 8,
     overflow: "hidden",
   },
   suggestionItem: {
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: colors.border,
     borderBottomWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   suggestionText: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 13,
   },
   suggestionMuted: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontSize: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -260,28 +255,28 @@ const styles = StyleSheet.create({
   mapShell: {
     flex: 1,
     marginTop: 12,
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
   },
   mapPlaceholder: {
     alignItems: "center",
-    backgroundColor: "#f1f5f9",
-    borderRadius: 16,
+    backgroundColor: colors.appBg,
+    borderRadius: radius.card,
     flex: 1,
     justifyContent: "center",
   },
   mapPlaceholderText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
   },
   footer: {
-    backgroundColor: "#ffffff",
-    borderTopColor: "#e5e7eb",
+    backgroundColor: colors.cardBg,
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     padding: 16,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 14,
     paddingVertical: 14,
   },
@@ -289,7 +284,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 15,
     fontWeight: "700",
   },

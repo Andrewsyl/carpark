@@ -18,6 +18,7 @@ import { LIGHT_MAP_STYLE } from "../../components/mapStyles";
 import type { RootStackParamList } from "../../types";
 import { useListingFlow } from "./context";
 import { StepProgress } from "./StepProgress";
+import { cardShadow, colors, radius, spacing, textStyles } from "../../styles/theme";
 
 type FlowStackParamList = {
   ListingReview: undefined;
@@ -377,67 +378,55 @@ export function ListingReviewScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
   },
   content: {
-    padding: 18,
+    padding: spacing.screenX,
     paddingBottom: 160,
     paddingTop: 0,
   },
-  kicker: {
-    color: "#00d4aa",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  },
+  kicker: textStyles.kicker,
   title: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 22,
     fontWeight: "700",
     marginTop: 6,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
     lineHeight: 20,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   error: {
     backgroundColor: "#fef2f2",
     borderColor: "#fecaca",
     borderRadius: 12,
     borderWidth: 1,
-    color: "#b42318",
+    color: colors.danger,
     fontSize: 12,
     marginTop: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     marginTop: 16,
     overflow: "hidden",
   },
   editCard: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     marginTop: 16,
     overflow: "hidden",
   },
   editTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
     paddingHorizontal: 16,
@@ -445,12 +434,10 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     letterSpacing: 0.5,
     textTransform: "uppercase",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   editRow: {
     alignItems: "center",
-    borderTopColor: "#e5e7eb",
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -461,18 +448,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   editLabel: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "600",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   editChevron: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontSize: 18,
     fontWeight: "700",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   mapPreview: {
     height: 160,
@@ -481,28 +464,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   row: {
-    borderTopColor: "#e5e7eb",
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   confirmRow: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
     marginTop: 18,
     padding: 14,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 1,
+    ...cardShadow,
   },
   confirmRowActive: {
-    borderColor: "#00d4aa",
+    borderColor: colors.accent,
   },
   confirmBox: {
     alignItems: "center",
@@ -515,11 +494,11 @@ const styles = StyleSheet.create({
     width: 22,
   },
   confirmBoxActive: {
-    backgroundColor: "#00d4aa",
-    borderColor: "#00d4aa",
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   confirmCheck: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 14,
     fontWeight: "700",
   },
@@ -527,35 +506,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   confirmTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
   },
   confirmSubtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 4,
   },
   label: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   value: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "600",
     marginTop: 6,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   footer: {
-    backgroundColor: "#ffffff",
-    borderTopColor: "#e5e7eb",
+    backgroundColor: colors.cardBg,
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     padding: 16,
   },
@@ -571,15 +546,11 @@ const styles = StyleSheet.create({
   },
   successCard: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderRadius: 20,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
     paddingHorizontal: 24,
     paddingVertical: 20,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    elevation: 6,
+    ...cardShadow,
     width: 240,
   },
   successAnimation: {
@@ -587,20 +558,20 @@ const styles = StyleSheet.create({
     width: 140,
   },
   successTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 18,
     fontWeight: "700",
     marginTop: 6,
   },
   successBody: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 4,
     textAlign: "center",
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 14,
     paddingVertical: 14,
   },
@@ -608,7 +579,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 15,
     fontWeight: "700",
   },
@@ -619,7 +590,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   secondaryButtonText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     fontWeight: "600",
   },

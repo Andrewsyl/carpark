@@ -10,7 +10,9 @@ import { useStripe } from "@stripe/stripe-react-native";
 import { cancelBooking, checkInBooking, confirmBookingExtension, createBookingExtensionIntent } from "../api";
 import { useAuth } from "../auth";
 import { getNotificationImageAttachment } from "../notifications";
+import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import type { RootStackParamList } from "../types";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingDetail">;
 
@@ -183,7 +185,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.topBar}>
         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backLabel}>Back</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.topTitle}>Booking</Text>
         <View style={styles.backButton} />
@@ -325,72 +327,81 @@ export function BookingDetailScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: colors.appBg,
     flex: 1,
   },
   topBar: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 8,
   },
   backButton: {
     alignItems: "center",
+    justifyContent: "center",
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  backLabel: {
-    color: "#0f172a",
-    fontSize: 12,
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  backIcon: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 14,
+    textAlign: "center",
     fontWeight: "700",
   },
   topTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
   content: {
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     paddingBottom: 32,
   },
   title: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 24,
     fontWeight: "700",
     marginTop: 12,
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     marginTop: 16,
-    padding: 20,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
+    padding: spacing.card,
+    ...cardShadow,
   },
   cardTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 20,
     fontWeight: "700",
   },
   cardSubtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
   },
   detailList: {
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     marginTop: 14,
@@ -404,17 +415,17 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   detailRowBorder: {
-    borderTopColor: "#e5e7eb",
+    borderTopColor: colors.border,
     borderTopWidth: 1,
   },
   detailLabel: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
   },
   detailValue: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 13,
     fontWeight: "600",
     textAlign: "right",
@@ -422,7 +433,7 @@ const styles = StyleSheet.create({
   totalRow: {
     alignItems: "center",
     backgroundColor: "#ecfdf3",
-    borderTopColor: "#e5e7eb",
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -458,8 +469,8 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#10b981",
-    borderRadius: 12,
+    backgroundColor: colors.accent,
+    borderRadius: radius.card,
     marginTop: 20,
     minHeight: 44,
     paddingVertical: 12,
@@ -473,26 +484,26 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   noticeCard: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 14,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     marginTop: 16,
     padding: 16,
   },
   noticeTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
   },
   noticeText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 6,
     lineHeight: 18,
   },
   helperText: {
-    color: "#10b981",
+    color: colors.accent,
     fontSize: 12,
     marginTop: 10,
     textAlign: "center",

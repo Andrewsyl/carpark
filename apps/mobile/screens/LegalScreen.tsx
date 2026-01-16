@@ -1,7 +1,9 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import type { RootStackParamList } from "../types";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Legal">;
 
@@ -17,7 +19,7 @@ export function LegalScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backLabel}>Back</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>Terms & privacy</Text>
       </View>
@@ -92,74 +94,79 @@ export function LegalScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
+    backgroundColor: colors.appBg,
   },
   header: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 12,
   },
   backButton: {
+    alignItems: "center",
+    justifyContent: "center",
+
     paddingVertical: 6,
     width: 60,
   },
-  backLabel: {
-    color: "#111827",
-    fontSize: 12,
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  backIcon: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 14,
+    textAlign: "center",
     fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
   },
   title: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 18,
     fontWeight: "700",
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingBottom: 32,
     paddingTop: 16,
   },
   sectionKicker: {
-    color: "#00d4aa",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
+    ...textStyles.kicker,
     marginTop: 12,
   },
   sectionTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 20,
     fontWeight: "700",
     marginTop: 8,
   },
   body: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 14,
     lineHeight: 22,
     marginTop: 8,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
     marginTop: 16,
-    padding: 16,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
+    padding: spacing.card,
+    ...cardShadow,
   },
   cardTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
   cardBody: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     lineHeight: 20,
     marginTop: 8,

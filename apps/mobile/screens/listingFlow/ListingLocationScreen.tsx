@@ -8,6 +8,7 @@ import { MapPin } from "../../components/MapPin";
 import { LIGHT_MAP_STYLE } from "../../components/mapStyles";
 import { useListingFlow } from "./context";
 import { StepProgress } from "./StepProgress";
+import { colors, radius, spacing, textStyles } from "../../styles/theme";
 
 type FlowStackParamList = {
   ListingLocation: undefined;
@@ -397,45 +398,33 @@ export function ListingLocationScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
     flex: 1,
   },
   header: {
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 0,
   },
-  kicker: {
-    color: "#00d4aa",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  },
+  kicker: textStyles.kicker,
   title: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 22,
     fontWeight: "700",
     marginTop: 6,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
     lineHeight: 20,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   searchShell: {
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     marginTop: 12,
   },
   searchField: {
     alignItems: "center",
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     flexDirection: "row",
@@ -444,45 +433,45 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   searchInput: {
-    color: "#0f172a",
+    color: colors.text,
     flex: 1,
     fontSize: 14,
   },
   clearButton: {
     alignItems: "center",
-    backgroundColor: "#eef2f7",
-    borderRadius: 999,
+    backgroundColor: colors.appBg,
+    borderRadius: radius.pill,
     height: 24,
     justifyContent: "center",
     width: 24,
   },
   clearButtonText: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 16,
     fontWeight: "700",
     lineHeight: 18,
   },
   suggestions: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
-    marginHorizontal: 18,
+    marginHorizontal: spacing.screenX,
     marginTop: 8,
     overflow: "hidden",
   },
   suggestionItem: {
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: colors.border,
     borderBottomWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   suggestionText: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 13,
   },
   suggestionMuted: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontSize: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -497,16 +486,16 @@ const styles = StyleSheet.create({
   },
   mapPlaceholder: {
     alignItems: "center",
-    backgroundColor: "#f8fafc",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.appBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: 24,
   },
   mapPlaceholderText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     textAlign: "center",
   },
@@ -530,7 +519,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   movePinToggleActive: {
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
   },
   movePinToggleText: {
     color: "#ffffff",
@@ -547,14 +536,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   movePinHintText: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 12,
     fontWeight: "600",
   },
   addressPrompt: {
     backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     bottom: 14,
     left: 16,
@@ -563,17 +552,17 @@ const styles = StyleSheet.create({
     right: 16,
   },
   addressPromptTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
   },
   addressPromptBody: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 6,
   },
   addressPromptValue: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 13,
     fontWeight: "600",
     marginTop: 4,
@@ -584,39 +573,39 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   addressPromptGhost: {
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     flex: 1,
     paddingVertical: 10,
   },
   addressPromptGhostText: {
-    color: "#334155",
+    color: colors.text,
     fontSize: 12,
     fontWeight: "700",
     textAlign: "center",
   },
   addressPromptPrimary: {
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 12,
     flex: 1,
     paddingVertical: 10,
   },
   addressPromptPrimaryText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 12,
     fontWeight: "700",
     textAlign: "center",
   },
   footer: {
-    backgroundColor: "#ffffff",
-    borderTopColor: "#e5e7eb",
+    backgroundColor: colors.cardBg,
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     padding: 16,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 14,
     paddingVertical: 14,
   },
@@ -624,7 +613,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#d1d5db",
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 15,
     fontWeight: "700",
   },

@@ -13,6 +13,8 @@ import { ListingFlowContext, type ListingDraft } from "./listingFlow/context";
 import { getListing, listAvailability } from "../api";
 import { useAuth } from "../auth";
 import type { RootStackParamList } from "../types";
+import { colors } from "../styles/theme";
+import { Ionicons } from "@expo/vector-icons";
 
 type FlowStackParamList = {
   ListingLocation: undefined;
@@ -160,7 +162,7 @@ export function ListingFlowScreen({ route }: Props) {
     <ListingFlowContext.Provider value={value}>
       {loading ? (
         <View style={styles.loading}>
-          <ActivityIndicator size="large" color="#0f172a" />
+          <ActivityIndicator size="large" color={colors.text} />
           <Text style={styles.loadingText}>Loading listing…</Text>
         </View>
       ) : error ? (
@@ -173,11 +175,11 @@ export function ListingFlowScreen({ route }: Props) {
             headerShown: true,
             headerBackTitleVisible: false,
             headerTitleAlign: "center",
-            headerTintColor: "#0f172a",
-            headerStyle: { backgroundColor: "#f5f7fb" },
+            headerTintColor: colors.text,
+            headerStyle: { backgroundColor: colors.appBg },
             headerShadowVisible: false,
             headerTitleStyle: {
-              color: "#0f172a",
+              color: colors.text,
               fontSize: 17,
               fontWeight: "600",
             },
@@ -195,7 +197,7 @@ export function ListingFlowScreen({ route }: Props) {
                 }}
                 style={styles.headerBack}
               >
-                <Text style={styles.headerBackText}>Back</Text>
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
               </Pressable>
             ),
           })}
@@ -245,19 +247,19 @@ export function ListingFlowScreen({ route }: Props) {
 const styles = StyleSheet.create({
   loading: {
     alignItems: "center",
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
     flex: 1,
     justifyContent: "center",
     padding: 24,
   },
   loadingText: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 14,
     fontWeight: "600",
     marginTop: 12,
   },
   errorText: {
-    color: "#b42318",
+    color: colors.danger,
     fontSize: 14,
     fontWeight: "600",
     textAlign: "center",
@@ -266,9 +268,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
-  headerBackText: {
-    color: "#0f172a",
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  headerBackCircle: {},
+  headerBackIcon: {},
 });

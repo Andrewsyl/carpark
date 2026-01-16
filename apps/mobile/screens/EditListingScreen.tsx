@@ -16,6 +16,8 @@ import { deleteListing, getListing, updateListing } from "../api";
 import { useAuth } from "../auth";
 import { Toast } from "../components/Toast";
 import type { RootStackParamList } from "../types";
+import { colors, radius, spacing } from "../styles/theme";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "EditListing">;
 
@@ -116,7 +118,7 @@ export function EditListingScreen({ navigation, route }: Props) {
       <Toast message={toast ?? ""} variant="success" visible={!!toast} />
       <View style={styles.topBar}>
         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backLabel}>Back</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.topTitle}>Edit listing</Text>
         <View style={styles.backButton} />
@@ -182,34 +184,47 @@ export function EditListingScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
     flex: 1,
   },
   topBar: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 8,
   },
   backButton: {
     alignItems: "center",
-    borderRadius: 999,
+    justifyContent: "center",
+    borderRadius: radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  backLabel: {
-    color: "#0f172a",
-    fontSize: 12,
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  backIcon: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 14,
+    textAlign: "center",
     fontWeight: "700",
   },
   topTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
   content: {
-    padding: 18,
+    padding: spacing.screenX,
   },
   field: {
     marginTop: 14,
@@ -222,29 +237,29 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   label: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 6,
   },
   input: {
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 14,
     marginTop: 20,
     paddingVertical: 14,
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 15,
     fontWeight: "700",
   },
@@ -255,7 +270,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   deleteButtonText: {
-    color: "#b42318",
+    color: colors.danger,
     fontSize: 13,
     fontWeight: "700",
   },
@@ -269,7 +284,7 @@ const styles = StyleSheet.create({
     borderColor: "#fecaca",
     borderRadius: 12,
     borderWidth: 1,
-    color: "#b42318",
+    color: colors.danger,
     fontSize: 12,
     marginBottom: 12,
     paddingHorizontal: 12,

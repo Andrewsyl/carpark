@@ -8,6 +8,7 @@ import { useAuth } from "../../auth";
 import type { RootStackParamList } from "../../types";
 import { useListingFlow } from "./context";
 import { StepProgress } from "./StepProgress";
+import { cardShadow, colors, radius, spacing, textStyles } from "../../styles/theme";
 
 type FlowStackParamList = {
   ListingReview: undefined;
@@ -201,27 +202,21 @@ export function ListingReviewScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
   },
   content: {
-    padding: 18,
+    padding: spacing.screenX,
     paddingBottom: 160,
   },
-  kicker: {
-    color: "#00d4aa",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
+  kicker: textStyles.kicker,
   title: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 22,
     fontWeight: "700",
     marginTop: 6,
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
   },
@@ -230,16 +225,16 @@ const styles = StyleSheet.create({
     borderColor: "#fecaca",
     borderRadius: 12,
     borderWidth: 1,
-    color: "#b42318",
+    color: colors.danger,
     fontSize: 12,
     marginTop: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     marginTop: 16,
     overflow: "hidden",
@@ -249,37 +244,33 @@ const styles = StyleSheet.create({
   },
   mapPlaceholder: {
     alignItems: "center",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: colors.appBg,
     flex: 1,
     justifyContent: "center",
   },
   mapPlaceholderText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
   },
   row: {
-    borderTopColor: "#e5e7eb",
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   confirmRow: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
     marginTop: 18,
     padding: 14,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 1,
+    ...cardShadow,
   },
   confirmRowActive: {
-    borderColor: "#00d4aa",
+    borderColor: colors.accent,
   },
   confirmBox: {
     alignItems: "center",
@@ -292,11 +283,11 @@ const styles = StyleSheet.create({
     width: 22,
   },
   confirmBoxActive: {
-    backgroundColor: "#00d4aa",
-    borderColor: "#00d4aa",
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   confirmCheck: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 14,
     fontWeight: "700",
   },
@@ -304,36 +295,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   confirmTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
   },
   confirmSubtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 4,
   },
   label: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
   },
   value: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "600",
     marginTop: 6,
   },
   footer: {
-    backgroundColor: "#ffffff",
-    borderTopColor: "#e5e7eb",
+    backgroundColor: colors.cardBg,
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     padding: 16,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 14,
     paddingVertical: 14,
   },
@@ -341,7 +332,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 15,
     fontWeight: "700",
   },
@@ -352,7 +343,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   secondaryButtonText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     fontWeight: "600",
   },

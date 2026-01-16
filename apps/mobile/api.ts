@@ -41,6 +41,7 @@ export async function searchListings(params: SearchParams) {
   query.set("radiusKm", params.radiusKm);
   query.set("from", params.from);
   query.set("to", params.to);
+  if (params.includeUnavailable) query.set("includeUnavailable", "true");
   if (params.priceMin) query.set("priceMin", params.priceMin);
   if (params.priceMax) query.set("priceMax", params.priceMax);
   if (params.coveredParking) query.set("coveredParking", "true");
@@ -59,6 +60,7 @@ export async function searchListings(params: SearchParams) {
     title: space.title,
     address: space.address,
     price_per_day: space.price_per_day ?? space.pricePerDay,
+    is_available: space.is_available ?? space.isAvailable ?? null,
     rating: space.rating,
     rating_count: space.rating_count ?? space.ratingCount,
     availability_text: space.availability_text ?? space.availability,
@@ -73,8 +75,21 @@ export async function searchListings(params: SearchParams) {
   }));
 }
 
-export async function getListing(id: string) {
-  const response = await fetch(`${baseUrl}/api/listings/${id}`);
+export async function getListing(
+  id: string,
+  params?: {
+    from?: string;
+    to?: string;
+  }
+) {
+  const query = new URLSearchParams();
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  const queryString = query.toString();
+  const url = queryString
+    ? `${baseUrl}/api/listings/${id}?${queryString}`
+    : `${baseUrl}/api/listings/${id}`;
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Listing failed (${response.status})`);
   }
@@ -83,6 +98,7 @@ export async function getListing(id: string) {
   return {
     ...listing,
     price_per_day: listing.price_per_day ?? listing.pricePerDay,
+    is_available: listing.is_available ?? listing.isAvailable ?? null,
     rating_count: listing.rating_count ?? listing.ratingCount,
     availability_text: listing.availability_text ?? listing.availability,
     amenities: listing.amenities ?? null,

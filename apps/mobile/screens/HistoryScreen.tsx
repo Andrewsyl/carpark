@@ -5,7 +5,9 @@ import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text
 import { SafeAreaView } from "react-native-safe-area-context";
 import { listMyBookings, type BookingSummary } from "../api";
 import { useAuth } from "../auth";
+import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import type { RootStackParamList } from "../types";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "History">;
 
@@ -111,7 +113,7 @@ export function HistoryScreen({ navigation, route }: Props) {
             )
           }
         >
-          <Text style={styles.backLabel}>Back</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.topTitle}>Bookings</Text>
         <View style={styles.backButton} />
@@ -265,101 +267,103 @@ export function HistoryScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: colors.appBg,
     flex: 1,
   },
   topBar: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 8,
   },
   backButton: {
     alignItems: "center",
+    justifyContent: "center",
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  backLabel: {
-    color: "#0f172a",
-    fontSize: 12,
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  backIcon: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 14,
+    textAlign: "center",
     fontWeight: "700",
   },
   topTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: spacing.screenX,
+    paddingTop: spacing.screenY,
   },
   kicker: {
-    color: "#10b981",
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
+    ...textStyles.kicker,
   },
   title: {
-    color: "#111827",
-    fontSize: 28,
-    fontWeight: "700",
+    ...textStyles.title,
     marginTop: 8,
   },
   subtitle: {
-    color: "#6b7280",
-    fontSize: 14,
+    ...textStyles.subtitle,
     marginTop: 8,
   },
   successBanner: {
     backgroundColor: "#d1fae5",
-    borderRadius: 12,
-    marginHorizontal: 20,
+    borderRadius: radius.card,
+    marginHorizontal: spacing.screenX,
     marginBottom: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingVertical: 16,
   },
   successTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "600",
   },
   successBody: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 14,
     marginTop: 6,
   },
   mapCtaBanner: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
     flexDirection: "row",
     justifyContent: "space-between",
-    marginHorizontal: 20,
+    marginHorizontal: spacing.screenX,
     marginBottom: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingVertical: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...cardShadow,
   },
   mapCtaTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
   },
   mapCtaBody: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 4,
   },
   mapCtaButton: {
-    backgroundColor: "#10b981",
-    borderRadius: 999,
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
@@ -369,10 +373,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   segment: {
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
     borderBottomWidth: 1,
     flexDirection: "row",
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 8,
   },
   segmentTab: {
@@ -382,20 +386,20 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   segmentTabActive: {
-    borderBottomColor: "#10b981",
+    borderBottomColor: colors.accent,
     borderBottomWidth: 2,
   },
   segmentText: {
-    color: "#9ca3af",
+    color: colors.textSoft,
     fontSize: 14,
     fontWeight: "700",
     textAlign: "center",
   },
   segmentTextActive: {
-    color: "#111827",
+    color: colors.text,
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingBottom: 32,
   },
   loadingOverlay: {
@@ -407,42 +411,30 @@ const styles = StyleSheet.create({
   loadingBadge: {
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.92)",
-    borderRadius: 16,
+    borderRadius: radius.card,
     flexDirection: "row",
     gap: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
+    ...cardShadow,
   },
   list: {
     gap: 16,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
+    padding: spacing.card,
+    ...cardShadow,
   },
   bookingCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
+    padding: spacing.card,
+    ...cardShadow,
   },
   bookingTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 18,
     fontWeight: "700",
   },
@@ -460,7 +452,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   statusConfirmed: {
-    backgroundColor: "#10b981",
+    backgroundColor: colors.accent,
   },
   statusPending: {
     backgroundColor: "#f59e0b",
@@ -484,12 +476,12 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   bookingAddress: {
-    color: "#9ca3af",
+    color: colors.textSoft,
     fontSize: 14,
     marginTop: 4,
   },
   bookingTime: {
-    color: "#9ca3af",
+    color: colors.textSoft,
     fontSize: 14,
     marginTop: 8,
   },
@@ -500,18 +492,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   bookingPrice: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 20,
     fontWeight: "700",
     marginTop: 12,
   },
   cardTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 18,
     fontWeight: "700",
   },
   cardBody: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 14,
     marginTop: 6,
   },

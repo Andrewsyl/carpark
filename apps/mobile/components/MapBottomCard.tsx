@@ -16,6 +16,7 @@ type MapBottomCardProps = {
   reviewCount: number;
   walkTime: string;
   price: string;
+  isAvailable?: boolean;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
   onReserve: () => void;
@@ -31,6 +32,7 @@ export function MapBottomCard({
   reviewCount,
   walkTime,
   price,
+  isAvailable = true,
   isFavorite,
   onToggleFavorite,
   onReserve,
@@ -118,8 +120,14 @@ export function MapBottomCard({
             </View>
           </View>
         </Pressable>
-        <Pressable style={styles.cta} onPress={onReserve}>
-          <Text style={styles.ctaText}>Reserve for {price}</Text>
+        <Pressable
+          style={[styles.cta, !isAvailable && styles.ctaDisabled]}
+          onPress={onReserve}
+          disabled={!isAvailable}
+        >
+          <Text style={[styles.ctaText, !isAvailable && styles.ctaTextDisabled]}>
+            {isAvailable ? `Reserve for ${price}` : "Sold out"}
+          </Text>
         </Pressable>
       </View>
     </Animated.View>
@@ -250,5 +258,11 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 14,
     fontWeight: "600",
+  },
+  ctaDisabled: {
+    backgroundColor: "#e5e7eb",
+  },
+  ctaTextDisabled: {
+    color: "#6b7280",
   },
 });

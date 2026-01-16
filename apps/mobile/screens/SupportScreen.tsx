@@ -4,7 +4,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { sendSupportMessage } from "../api";
 import { useAuth } from "../auth";
+import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import type { RootStackParamList } from "../types";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Support">;
 
@@ -120,7 +122,7 @@ export function SupportScreen({ navigation }: Props) {
           </View>
 
           <Pressable style={styles.ghostButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.ghostButtonText}>Back</Text>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </Pressable>
         </ScrollView>
         <Modal transparent visible={subjectOpen} animationType="fade" onRequestClose={() => setSubjectOpen(false)}>
@@ -153,11 +155,11 @@ export function SupportScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingBottom: 32,
     paddingTop: 24,
   },
@@ -165,58 +167,50 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   kicker: {
-    color: "#00d4aa",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
+    ...textStyles.kicker,
   },
   title: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 28,
     fontWeight: "800",
     marginTop: 6,
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 14,
     marginTop: 6,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 18,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
-    padding: 18,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 2,
+    borderColor: colors.border,
+    padding: spacing.card,
+    ...cardShadow,
   },
   field: {
     marginBottom: 14,
   },
   label: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 6,
   },
   input: {
-    backgroundColor: "#f9fafb",
-    borderColor: "#e5e7eb",
+    backgroundColor: colors.appBg,
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     paddingHorizontal: 12,
     paddingVertical: 12,
     textAlignVertical: "top",
   },
   select: {
-    backgroundColor: "#f9fafb",
-    borderColor: "#e5e7eb",
+    backgroundColor: colors.appBg,
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 12,
@@ -226,16 +220,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   selectText: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "600",
   },
   selectPlaceholder: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontWeight: "500",
   },
   selectChevron: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontSize: 16,
   },
   modalBackdrop: {
@@ -247,19 +241,15 @@ const styles = StyleSheet.create({
   },
   menuSheet: {
     position: "absolute",
-    backgroundColor: "#ffffff",
-    borderRadius: 18,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
     padding: 16,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 4,
+    ...cardShadow,
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#0f172a",
+    color: colors.text,
     marginBottom: 8,
   },
   optionRow: {
@@ -271,7 +261,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0fdf8",
   },
   optionText: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "600",
   },
@@ -280,8 +270,8 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
-    borderRadius: 12,
+    backgroundColor: colors.accent,
+    borderRadius: radius.card,
     paddingVertical: 12,
     marginTop: 6,
   },
@@ -297,7 +287,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   success: {
-    color: "#00a889",
+    color: colors.accent,
     fontSize: 12,
     marginTop: 12,
     textAlign: "center",
@@ -306,9 +296,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 18,
   },
-  ghostButtonText: {
-    color: "#64748b",
-    fontSize: 12,
-    fontWeight: "600",
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  backIcon: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 14,
+    textAlign: "center",
+    fontWeight: "700",
   },
 });

@@ -178,6 +178,153 @@ export async function findAvailableSpaces(input: SpaceSearchInput) {
   }
 }
 
+export async function findSpacesWithAvailability(input: SpaceSearchInput) {
+  const { lat, lng, radiusKm, from, to } = input;
+  const availabilityCheck = `
+    NOT EXISTS (
+      SELECT 1 FROM bookings b
+      WHERE b.listing_id = listings.id
+      AND (b.status IS NULL OR b.status <> 'canceled')
+      AND tstzrange(b.start_time, b.end_time, '[)') && tstzrange($4::timestamptz, $5::timestamptz, '[)')
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM listing_availability a
+      WHERE a.listing_id = listings.id
+        AND a.kind = 'blocked'
+        AND (
+          (a.repeat_weekdays IS NULL AND tstzrange(a.starts_at, a.ends_at, '[)') && tstzrange($4::timestamptz, $5::timestamptz, '[)'))
+          OR (
+            a.repeat_weekdays IS NOT NULL
+            AND (a.repeat_until IS NULL OR a.repeat_until >= $4::date)
+            AND EXISTS (
+              SELECT 1
+              FROM generate_series(date_trunc('day', $4::timestamptz), date_trunc('day', $5::timestamptz), interval '1 day') d
+              WHERE extract(dow FROM d) = ANY(a.repeat_weekdays)
+                AND tstzrange(d + (a.starts_at::time), d + (a.ends_at::time), '[)') && tstzrange($4::timestamptz, $5::timestamptz, '[)')
+            )
+          )
+        )
+    )
+    AND (
+      NOT EXISTS (SELECT 1 FROM listing_availability o WHERE o.listing_id = listings.id AND o.kind = 'open')
+      OR EXISTS (
+        SELECT 1 FROM listing_availability o
+        WHERE o.listing_id = listings.id
+          AND o.kind = 'open'
+          AND (
+            (o.repeat_weekdays IS NULL AND tstzrange(o.starts_at, o.ends_at, '[)') && tstzrange($4::timestamptz, $5::timestamptz, '[)'))
+            OR (
+              o.repeat_weekdays IS NOT NULL
+              AND (o.repeat_until IS NULL OR o.repeat_until >= $4::date)
+              AND EXISTS (
+                SELECT 1
+                FROM generate_series(date_trunc('day', $4::timestamptz), date_trunc('day', $5::timestamptz), interval '1 day') d
+                WHERE extract(dow FROM d) = ANY(o.repeat_weekdays)
+                  AND tstzrange(d + (o.starts_at::time), d + (o.ends_at::time), '[)') && tstzrange($4::timestamptz, $5::timestamptz, '[)')
+              )
+            )
+          )
+      )
+    )
+  `;
+  const baseQuery = `
+    SELECT
+      id,
+      title,
+      address,
+      price_per_day,
+      rating,
+      rating_count,
+      availability_text,
+      (${availabilityCheck}) AS is_available,
+      ST_X(geom) AS longitude,
+      ST_Y(geom) AS latitude,
+      ST_Distance(
+        geom::geography,
+        ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+      ) AS distance_m
+    FROM listings
+    WHERE ST_DWithin(
+      geom::geography,
+      ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+      $3
+    )
+    AND status <> 'archived'
+    ORDER BY distance_m ASC
+    LIMIT 50;
+  `;
+
+  const legacyQuery = `
+    SELECT
+      id,
+      title,
+      address,
+      price_per_day,
+      rating,
+      rating_count,
+      availability_text,
+      (${availabilityCheck}) AS is_available,
+      ST_X(geom) AS longitude,
+      ST_Y(geom) AS latitude,
+      ST_Distance(
+        geom::geography,
+        ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+      ) AS distance_m
+    FROM listings
+    WHERE ST_DWithin(
+      geom::geography,
+      ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+      $3
+    )
+    AND status <> 'archived'
+    ORDER BY distance_m ASC
+    LIMIT 50;
+  `;
+
+  const params = [lng, lat, radiusKm * 1000, from, to];
+  try {
+    const result = await pool.query(
+      baseQuery.replace(
+        "availability_text,",
+        "availability_text, image_urls,"
+      ),
+      params
+    );
+    return result.rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      address: row.address,
+      pricePerDay: row.price_per_day,
+      rating: Number(row.rating ?? 5),
+      ratingCount: Number(row.rating_count ?? 0),
+      availability: row.availability_text,
+      imageUrls: row.image_urls ?? [],
+      distanceKm: Math.round((row.distance_m / 1000) * 10) / 10,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      isAvailable: row.is_available,
+    }));
+  } catch (err: any) {
+    if (err?.code !== "42703" && err?.code !== "42P01") throw err;
+    const legacy = legacyQuery.replace("rating_count,", "");
+    const result = await pool.query(legacy, params);
+    return result.rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      address: row.address,
+      pricePerDay: row.price_per_day,
+      rating: Number(row.rating ?? 5),
+      ratingCount: Number(row.rating_count ?? 0),
+      availability: row.availability_text,
+      imageUrls: [],
+      distanceKm: Math.round((row.distance_m / 1000) * 10) / 10,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      isAvailable: row.is_available,
+    }));
+  }
+}
+
 export type NewListing = {
   title: string;
   address: string;
@@ -702,6 +849,105 @@ export async function getListingById(listingId: string) {
     ratingCount: Number(row.rating_count ?? 0),
     latitude: row.latitude,
     longitude: row.longitude,
+  };
+}
+
+export async function getListingByIdWithAvailability(
+  listingId: string,
+  from: string,
+  to: string
+) {
+  const availabilityCheck = `
+    NOT EXISTS (
+      SELECT 1 FROM bookings b
+      WHERE b.listing_id = listings.id
+      AND (b.status IS NULL OR b.status <> 'canceled')
+      AND tstzrange(b.start_time, b.end_time, '[)') && tstzrange($2::timestamptz, $3::timestamptz, '[)')
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM listing_availability a
+      WHERE a.listing_id = listings.id
+        AND a.kind = 'blocked'
+        AND (
+          (a.repeat_weekdays IS NULL AND tstzrange(a.starts_at, a.ends_at, '[)') && tstzrange($2::timestamptz, $3::timestamptz, '[)'))
+          OR (
+            a.repeat_weekdays IS NOT NULL
+            AND (a.repeat_until IS NULL OR a.repeat_until >= $2::date)
+            AND EXISTS (
+              SELECT 1
+              FROM generate_series(date_trunc('day', $2::timestamptz), date_trunc('day', $3::timestamptz), interval '1 day') d
+              WHERE extract(dow FROM d) = ANY(a.repeat_weekdays)
+                AND tstzrange(d + (a.starts_at::time), d + (a.ends_at::time), '[)') && tstzrange($2::timestamptz, $3::timestamptz, '[)')
+            )
+          )
+        )
+    )
+    AND (
+      NOT EXISTS (SELECT 1 FROM listing_availability o WHERE o.listing_id = listings.id AND o.kind = 'open')
+      OR EXISTS (
+        SELECT 1 FROM listing_availability o
+        WHERE o.listing_id = listings.id
+          AND o.kind = 'open'
+          AND (
+            (o.repeat_weekdays IS NULL AND tstzrange(o.starts_at, o.ends_at, '[)') && tstzrange($2::timestamptz, $3::timestamptz, '[)'))
+            OR (
+              o.repeat_weekdays IS NOT NULL
+              AND (o.repeat_until IS NULL OR o.repeat_until >= $2::date)
+              AND EXISTS (
+                SELECT 1
+                FROM generate_series(date_trunc('day', $2::timestamptz), date_trunc('day', $3::timestamptz), interval '1 day') d
+                WHERE extract(dow FROM d) = ANY(o.repeat_weekdays)
+                  AND tstzrange(d + (o.starts_at::time), d + (o.ends_at::time), '[)') && tstzrange($2::timestamptz, $3::timestamptz, '[)')
+              )
+            )
+          )
+      )
+    )
+  `;
+  const result = await pool.query(
+    `
+    SELECT
+      id,
+      title,
+      address,
+      price_per_day,
+      availability_text,
+      image_urls,
+      amenities,
+      access_code,
+      permission_declared,
+      host_id,
+      rating,
+      rating_count,
+      (${availabilityCheck}) AS is_available,
+      ST_X(geom) AS longitude,
+      ST_Y(geom) AS latitude
+    FROM listings
+    WHERE id = $1
+      AND status <> 'archived'
+    LIMIT 1
+    `,
+    [listingId, from, to]
+  );
+
+  if (!result.rowCount) return null;
+  const row = result.rows[0];
+  return {
+    id: row.id,
+    title: row.title,
+    address: row.address,
+    pricePerDay: row.price_per_day,
+    availability: row.availability_text,
+    amenities: row.amenities ?? [],
+    imageUrls: row.image_urls ?? [],
+    accessCode: row.access_code ?? null,
+    permissionDeclared: row.permission_declared ?? false,
+    hostId: row.host_id,
+    rating: Number(row.rating ?? 5),
+    ratingCount: Number(row.rating_count ?? 0),
+    latitude: row.latitude,
+    longitude: row.longitude,
+    isAvailable: row.is_available,
   };
 }
 

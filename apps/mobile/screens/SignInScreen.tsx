@@ -16,7 +16,9 @@ import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-si
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../auth";
 import { requestEmailVerification } from "../api";
+import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import type { RootStackParamList } from "../types";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
 
@@ -289,7 +291,8 @@ export function SignInScreen({ navigation }: Props) {
               style={styles.ghostButton}
               onPress={() => navigation.replace("Search")}
             >
-              <Text style={styles.ghostButtonText}>Back to search</Text>
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+              <Text style={styles.ghostButtonText}>Search</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -309,53 +312,41 @@ export function SignInScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingBottom: 32,
-    paddingTop: 24,
+    paddingTop: spacing.screenY,
   },
   header: {
     alignItems: "flex-start",
-    marginBottom: 18,
+    marginBottom: spacing.gap,
   },
-  kicker: {
-    color: "#00d4aa",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-  },
+  kicker: textStyles.kicker,
   title: {
-    color: "#0f172a",
+    ...textStyles.title,
     fontSize: 30,
-    fontWeight: "800",
     marginTop: 6,
   },
   subtitle: {
-    color: "#6b7280",
-    fontSize: 14,
+    ...textStyles.subtitle,
     marginTop: 6,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 18,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
-    padding: 18,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 2,
+    padding: spacing.card,
+    ...cardShadow,
   },
   field: {
     marginBottom: 12,
   },
   label: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 6,
@@ -366,23 +357,23 @@ const styles = StyleSheet.create({
     marginTop: -4,
   },
   forgotText: {
-    color: "#00d4aa",
+    color: colors.accent,
     fontSize: 13,
     fontWeight: "600",
   },
   input: {
     backgroundColor: "#f9fafb",
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     paddingHorizontal: 12,
     paddingVertical: Platform.OS === "ios" ? 12 : 10,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 12,
     marginTop: 6,
     paddingVertical: 12,
@@ -394,7 +385,7 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     alignItems: "center",
-    borderColor: "#d0d5dd",
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     marginTop: 10,
@@ -404,7 +395,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   secondaryButtonText: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
   },
@@ -422,19 +413,19 @@ const styles = StyleSheet.create({
   },
   legalText: {
     flex: 1,
-    color: "#475569",
+    color: colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },
   legalNote: {
     marginTop: 10,
-    color: "#64748b",
+    color: colors.textMuted,
     fontSize: 12,
     lineHeight: 18,
     textAlign: "center",
   },
   legalLink: {
-    color: "#00d4aa",
+    color: colors.accent,
     fontWeight: "600",
   },
   dividerLine: {
@@ -449,26 +440,26 @@ const styles = StyleSheet.create({
   },
   oauthButton: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     marginTop: 10,
     paddingVertical: 12,
   },
   oauthButtonText: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
   },
   error: {
-    color: "#b42318",
+    color: colors.danger,
     fontSize: 12,
     marginTop: 12,
     textAlign: "center",
   },
   notice: {
-    color: "#00a889",
+    color: colors.accent,
     fontSize: 12,
     marginTop: 10,
     textAlign: "center",
@@ -484,12 +475,31 @@ const styles = StyleSheet.create({
   },
   ghostButton: {
     alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
     marginTop: 14,
   },
   ghostButtonText: {
     color: "#64748b",
     fontSize: 12,
     fontWeight: "600",
+  },
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  backIcon: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 14,
+    textAlign: "center",
+    fontWeight: "700",
   },
   successOverlay: {
     ...StyleSheet.absoluteFillObject,

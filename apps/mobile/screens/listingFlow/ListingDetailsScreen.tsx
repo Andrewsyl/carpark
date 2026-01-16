@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path, Rect } from "react-native-svg";
 import { useListingFlow } from "./context";
 import { StepProgress } from "./StepProgress";
+import { colors, radius, spacing, textStyles } from "../../styles/theme";
 
 type FlowStackParamList = {
   ListingDetails: undefined;
@@ -16,7 +17,7 @@ const spaceTypes = ["Driveway", "Garage", "Car park", "Private road"];
 const accessOptions = ["Gated", "Permit required", "EV charging"];
 
 const SpaceTypeIcon = ({ type, active }: { type: string; active: boolean }) => {
-  const stroke = active ? "#00d4aa" : "#94a3b8";
+  const stroke = active ? colors.accent : colors.textSoft;
   const fill = active ? "#e6f9f5" : "#f1f5f9";
   switch (type) {
     case "Driveway":
@@ -144,37 +145,25 @@ export function ListingDetailsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
   },
   content: {
-    padding: 18,
+    padding: spacing.screenX,
     paddingBottom: 140,
     paddingTop: 0,
   },
-  kicker: {
-    color: "#00d4aa",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  },
+  kicker: textStyles.kicker,
   title: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 22,
     fontWeight: "700",
     marginTop: 6,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
     lineHeight: 20,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   grid: {
     flexDirection: "row",
@@ -183,15 +172,15 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 2,
     flexBasis: "48%",
     padding: 16,
   },
   cardActive: {
-    borderColor: "#00d4aa",
+    borderColor: colors.accent,
   },
   cardRow: {
     alignItems: "center",
@@ -200,7 +189,7 @@ const styles = StyleSheet.create({
   },
   cardIcon: {
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.appBg,
     borderRadius: 10,
     height: 36,
     justifyContent: "center",
@@ -210,44 +199,38 @@ const styles = StyleSheet.create({
     backgroundColor: "#e6f9f5",
   },
   cardTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "600",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   sectionTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.5,
     marginTop: 24,
     textTransform: "uppercase",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   input: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
     borderRadius: 14,
     borderWidth: 1,
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     marginTop: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   footer: {
-    backgroundColor: "#ffffff",
-    borderTopColor: "#e5e7eb",
+    backgroundColor: colors.cardBg,
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     padding: 16,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 14,
     paddingVertical: 14,
   },
@@ -255,10 +238,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 15,
     fontWeight: "700",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
 });

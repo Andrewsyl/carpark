@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { StepProgress } from "./StepProgress";
 import { useListingFlow } from "./context";
+import { colors, radius, spacing, textStyles } from "../../styles/theme";
 
 type FlowStackParamList = {
   ListingStreetView: undefined;
@@ -135,44 +136,32 @@ export function ListingStreetViewScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
     flex: 1,
   },
   header: {
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 0,
   },
-  kicker: {
-    color: "#00d4aa",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  },
+  kicker: textStyles.kicker,
   title: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 22,
     fontWeight: "700",
     marginTop: 6,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
     lineHeight: 20,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   viewer: {
     marginTop: 16,
-    marginHorizontal: 18,
-    borderRadius: 18,
+    marginHorizontal: spacing.screenX,
+    borderRadius: radius.card,
     overflow: "hidden",
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     borderWidth: 1,
     height: 320,
   },
@@ -181,27 +170,25 @@ const styles = StyleSheet.create({
   },
   webFallback: {
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.appBg,
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: 16,
   },
   webFallbackText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     textAlign: "center",
     lineHeight: 20,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   footer: {
     marginTop: "auto",
-    padding: 18,
+    padding: spacing.screenX,
     gap: 10,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 14,
     paddingVertical: 14,
   },
@@ -209,23 +196,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 15,
     fontWeight: "700",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   secondaryButton: {
     alignItems: "center",
-    backgroundColor: "#eef2f7",
+    backgroundColor: colors.appBg,
     borderRadius: 14,
     paddingVertical: 14,
   },
   secondaryButtonText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 14,
     fontWeight: "600",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
 });

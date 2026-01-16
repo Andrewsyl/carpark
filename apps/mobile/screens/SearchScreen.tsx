@@ -28,6 +28,7 @@ import MapSection from "../components/MapSection";
 import { MapBottomCard } from "../components/MapBottomCard";
 import { LIGHT_MAP_STYLE } from "../components/mapStyles";
 import { searchListings } from "../api";
+import { cardShadow, colors, radius, spacing } from "../styles/theme";
 import { logError, logInfo } from "../logger";
 import type {
   ListingSummary,
@@ -202,6 +203,7 @@ export function SearchScreen({ navigation }: Props) {
         radiusKm,
         from,
         to,
+        includeUnavailable: true,
       };
       if (priceMin.trim()) next.priceMin = priceMin.trim();
       if (priceMax.trim()) next.priceMax = priceMax.trim();
@@ -264,7 +266,13 @@ export function SearchScreen({ navigation }: Props) {
         const spaces = await searchListings(params);
         setResults(spaces);
         setSelectedId((prev) => {
-          if (prev && spaces.some((listing) => listing.id === prev)) return prev;
+          if (
+            prev &&
+            spaces.some(
+              (listing) => listing.id === prev && listing.is_available !== false
+            )
+          )
+            return prev;
           return null;
         });
       } catch (err) {
@@ -779,6 +787,7 @@ export function SearchScreen({ navigation }: Props) {
             reviewCount={selectedListing.rating_count ?? 0}
             walkTime="14 min"
             price={`€${selectedListing.price_per_day}`}
+            isAvailable={selectedListing.is_available !== false}
             isFavorite={isFavorite(selectedListing.id)}
             onToggleFavorite={() => toggle(selectedListing)}
             onPress={() => navigation.navigate("Listing", { id: selectedListing.id, from, to })}
@@ -1189,7 +1198,7 @@ const styles = StyleSheet.create({
   },
   mapPlaceholder: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.appBg,
   },
   mapLoadingOverlay: {
     alignItems: "center",
@@ -1212,15 +1221,15 @@ const styles = StyleSheet.create({
     width: 84,
   },
   mapLoadingText: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
     marginTop: -8,
   },
   overlay: {
-    left: 16,
+    left: spacing.screenX,
     position: "absolute",
-    right: 16,
+    right: spacing.screenX,
     top: 10,
   },
   overlayHeader: {
@@ -1230,14 +1239,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   overlayTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 18,
     fontWeight: "800",
   },
   profileButton: {
     alignItems: "center",
-    backgroundColor: "#0f172a",
-    borderRadius: 999,
+    backgroundColor: colors.text,
+    borderRadius: radius.pill,
     height: 32,
     justifyContent: "center",
     width: 32,
@@ -1248,17 +1257,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   searchGroup: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e4e7ec",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    shadowColor: "#101828",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    elevation: 6,
+    ...cardShadow,
   },
   searchBar: {
     alignItems: "center",
@@ -1266,20 +1271,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   searchInput: {
-    color: "#101828",
+    color: colors.text,
     flex: 1,
     fontSize: 14,
   },
   clearButton: {
     alignItems: "center",
-    backgroundColor: "#f2f4f7",
-    borderRadius: 999,
+    backgroundColor: colors.appBg,
+    borderRadius: radius.pill,
     height: 22,
     justifyContent: "center",
     width: 22,
   },
   clearButtonText: {
-    color: "#667085",
+    color: colors.textMuted,
     fontSize: 16,
     fontWeight: "700",
     lineHeight: 18,
@@ -1312,7 +1317,7 @@ const styles = StyleSheet.create({
     width: 86,
   },
   searchLoadingText: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -1323,35 +1328,35 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   filtersToggle: {
-    backgroundColor: "#f2f4f7",
-    borderRadius: 999,
+    backgroundColor: colors.appBg,
+    borderRadius: radius.pill,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
   filtersToggleActive: {
-    backgroundColor: "#e0edff",
+    backgroundColor: "#e8fff8",
   },
   filtersToggleText: {
-    color: "#344054",
+    color: colors.text,
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
   },
   filtersToggleTextActive: {
-    color: "#175cd3",
+    color: colors.accent,
   },
   clearFilters: {
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
   clearFiltersText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
   },
   filtersPanel: {
-    backgroundColor: "#ffffff",
-    padding: 20,
+    backgroundColor: colors.cardBg,
+    padding: spacing.screenX,
     paddingTop: 24,
     height: "100%",
   },
@@ -1382,25 +1387,25 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   filtersCloseText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
   },
   filtersTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 20,
     fontWeight: "700",
   },
   filtersSubtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     fontWeight: "500",
     marginBottom: 16,
   },
   filtersSection: {
-    backgroundColor: "#f8fafc",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.appBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     marginBottom: 14,
     paddingHorizontal: 14,
@@ -1415,16 +1420,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 6,
   },
   input: {
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
-    color: "#111827",
+    color: colors.text,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
@@ -1435,16 +1440,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   chip: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 999,
+    backgroundColor: colors.appBg,
+    borderRadius: radius.pill,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   chipActive: {
-    backgroundColor: "#10b981",
+    backgroundColor: colors.accent,
   },
   chipText: {
-    color: "#475569",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
     textTransform: "capitalize",
@@ -1459,13 +1464,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   switchLabel: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 13,
     fontWeight: "600",
   },
   applyButton: {
     alignItems: "center",
-    backgroundColor: "#10b981",
+    backgroundColor: colors.accent,
     borderRadius: 12,
     minHeight: 44,
     paddingVertical: 10,
@@ -1476,15 +1481,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   suggestions: {
-    backgroundColor: "#ffffff",
-    borderColor: "#eaecf0",
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     marginTop: 8,
     overflow: "hidden",
   },
   searchOverlay: {
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.cardBg,
     bottom: 0,
     left: 0,
     position: "absolute",
@@ -1497,10 +1502,10 @@ const styles = StyleSheet.create({
   },
   searchHeader: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.screenX,
     paddingBottom: 12,
   },
   searchHeaderTitle: {
@@ -1520,20 +1525,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   searchHeaderInput: {
-    backgroundColor: "#00d4aa",
-    paddingHorizontal: 16,
+    backgroundColor: colors.accent,
+    paddingHorizontal: spacing.screenX,
     paddingBottom: 16,
   },
   searchOverlayInputShell: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.cardBg,
     borderRadius: 12,
     flexDirection: "row",
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   searchOverlayInput: {
-    color: "#101828",
+    color: colors.text,
     fontSize: 14,
     flex: 1,
   },

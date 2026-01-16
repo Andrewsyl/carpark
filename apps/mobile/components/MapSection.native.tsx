@@ -15,6 +15,7 @@ type ListingResult = {
   title: string;
   address: string;
   price_per_day: number;
+  is_available?: boolean | null;
   latitude?: number | null;
   longitude?: number | null;
 };
@@ -88,7 +89,10 @@ export default function MapSection({
   const pinLabelById = useMemo(
     () =>
       nextResults.reduce<Record<string, string>>((acc, listing) => {
-        acc[listing.id] = `€${formatPinPrice(listing.price_per_day)}`;
+        acc[listing.id] =
+          listing.is_available === false
+            ? "Sold out"
+            : `€${formatPinPrice(listing.price_per_day)}`;
         return acc;
       }, {}),
     [nextResults]

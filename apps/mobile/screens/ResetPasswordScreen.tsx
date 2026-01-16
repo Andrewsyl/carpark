@@ -14,6 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { requestPasswordReset, resetPassword } from "../api";
 import type { RootStackParamList } from "../types";
+import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ResetPassword">;
 
@@ -184,7 +186,7 @@ export function ResetPasswordScreen({ navigation }: Props) {
           </View>
 
           <Pressable style={styles.ghostButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.ghostButtonText}>Back</Text>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -195,62 +197,49 @@ export function ResetPasswordScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingBottom: 32,
-    paddingTop: 24,
+    paddingTop: spacing.screenY,
   },
   header: {
-    marginBottom: 18,
+    marginBottom: spacing.gap,
   },
-  kicker: {
-    color: "#00d4aa",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-  },
+  kicker: textStyles.kicker,
   title: {
-    color: "#0f172a",
-    fontSize: 28,
-    fontWeight: "800",
+    ...textStyles.title,
     marginTop: 6,
   },
   subtitle: {
-    color: "#6b7280",
-    fontSize: 14,
+    ...textStyles.subtitle,
     marginTop: 6,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 18,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
-    padding: 18,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 2,
+    borderColor: colors.border,
+    padding: spacing.card,
+    ...cardShadow,
   },
   field: {
     marginBottom: 14,
   },
   label: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 6,
   },
   input: {
-    backgroundColor: "#f9fafb",
-    borderColor: "#e5e7eb",
+    backgroundColor: colors.appBg,
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -263,52 +252,65 @@ const styles = StyleSheet.create({
   linkButton: {
     flex: 1,
     borderRadius: 12,
-    backgroundColor: "#0f172a",
+    backgroundColor: colors.text,
     paddingVertical: 12,
     alignItems: "center",
   },
   linkButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontWeight: "700",
   },
   primaryButton: {
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 4,
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 16,
     fontWeight: "700",
   },
   secondaryButton: {
     borderRadius: 12,
-    backgroundColor: "#f1f5f9",
+    backgroundColor: colors.appBg,
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: "center",
   },
   secondaryButtonText: {
-    color: "#0f172a",
+    color: colors.text,
     fontWeight: "600",
   },
   ghostButton: {
     alignItems: "center",
     marginTop: 20,
   },
-  ghostButtonText: {
-    color: "#0f172a",
-    fontWeight: "600",
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  backIcon: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 14,
+    textAlign: "center",
+    fontWeight: "700",
   },
   error: {
-    color: "#ef4444",
+    color: colors.danger,
     fontSize: 13,
     marginTop: 12,
   },
   notice: {
-    color: "#16a34a",
+    color: colors.accent,
     fontSize: 13,
     marginTop: 12,
   },

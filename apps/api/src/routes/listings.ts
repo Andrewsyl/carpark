@@ -3,9 +3,11 @@ import { z } from "zod";
 import {
   createListing,
   findAvailableSpaces,
+  findSpacesWithAvailability,
   deleteListing,
   listListingsByHost,
   getListingById,
+  getListingByIdWithAvailability,
   findUserById,
   updateListingForHost,
   getListingHostId,
@@ -104,6 +106,7 @@ const searchSchema = z
     radiusKm: z.coerce.number().min(0.1).max(50).default(5),
     from: z.string().datetime(),
     to: z.string().datetime(),
+    includeUnavailable: z.coerce.boolean().optional().default(false),
   })
   .superRefine((value, ctx) => {
     const start = Date.parse(value.from);
@@ -121,7 +124,9 @@ const searchSchema = z
 router.get("/search", searchLimiter, async (req, res, next) => {
   try {
     const query = searchSchema.parse(req.query);
-    const results = await findAvailableSpaces(query);
+    const results = query.includeUnavailable
+      ? await findSpacesWithAvailability(query)
+      : await findAvailableSpaces(query);
     res.json({ spaces: results });
   } catch (error) {
     next(error);
@@ -131,7 +136,16 @@ router.get("/search", searchLimiter, async (req, res, next) => {
 router.get("/:id", async (req, res, next) => {
   try {
     const listingId = z.string().uuid().parse(req.params.id);
-    const listing = await getListingById(listingId);
+    const query = z
+      .object({
+        from: z.string().datetime().optional(),
+        to: z.string().datetime().optional(),
+      })
+      .parse(req.query);
+    const listing =
+      query.from && query.to
+        ? await getListingByIdWithAvailability(listingId, query.from, query.to)
+        : await getListingById(listingId);
     if (!listing) return res.status(404).json({ message: "Listing not found" });
     res.json({ listing });
   } catch (error) {

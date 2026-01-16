@@ -40,6 +40,7 @@ export type ListingSummary = {
   title: string;
   address: string;
   price_per_day: number;
+  is_available?: boolean | null;
   rating?: number | null;
   rating_count?: number | null;
   availability_text?: string | null;
@@ -58,6 +59,7 @@ export type ListingDetail = ListingSummary & {
   amenities?: string[] | null;
   access_code?: string | null;
   accessCode?: string | null;
+  is_available?: boolean | null;
   permission_declared?: boolean | null;
   permissionDeclared?: boolean | null;
 };
@@ -71,6 +73,7 @@ export type SearchParams = {
   radiusKm: string;
   from: string;
   to: string;
+  includeUnavailable?: boolean;
   priceMin?: string;
   priceMax?: string;
   coveredParking?: boolean;

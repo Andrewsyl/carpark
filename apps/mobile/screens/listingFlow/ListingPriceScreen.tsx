@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useListingFlow } from "./context";
 import { StepProgress } from "./StepProgress";
+import { cardShadow, colors, radius, spacing, textStyles } from "../../styles/theme";
 
 type FlowStackParamList = {
   ListingPrice: undefined;
@@ -160,10 +161,10 @@ export function ListingPriceScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: colors.appBg,
   },
   content: {
-    padding: 24,
+    padding: spacing.screenX,
     paddingBottom: 160,
     paddingTop: 0,
   },
@@ -176,13 +177,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   heroBadge: {
-    backgroundColor: "#111827",
-    borderRadius: 999,
+    backgroundColor: colors.text,
+    borderRadius: radius.pill,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   heroBadgeText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.5,
@@ -190,17 +191,9 @@ const styles = StyleSheet.create({
     fontFamily:
       'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
-  kicker: {
-    color: "#00d4aa",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  },
+  kicker: textStyles.kicker,
   title: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 28,
     fontWeight: "700",
     marginTop: 8,
@@ -208,7 +201,7 @@ const styles = StyleSheet.create({
       'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 15,
     marginTop: 8,
     lineHeight: 24,
@@ -216,18 +209,14 @@ const styles = StyleSheet.create({
       'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   priceCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.cardBg,
     borderRadius: 20,
     marginTop: 24,
     padding: 24,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    ...cardShadow,
   },
   priceLabel: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.6,
@@ -241,20 +230,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   pricePill: {
-    backgroundColor: "#0f172a",
-    borderRadius: 999,
+    backgroundColor: colors.text,
+    borderRadius: radius.pill,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
   pricePillText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 12,
     fontWeight: "700",
     fontFamily:
       'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   helperText: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 13,
     fontWeight: "600",
     marginTop: 10,
@@ -268,7 +257,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   rateTile: {
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#f3f4f6",
     borderRadius: 16,
     flex: 1,
     padding: 16,
@@ -282,7 +271,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ecfdf5",
   },
   rateLabel: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.5,
@@ -292,7 +281,7 @@ const styles = StyleSheet.create({
   },
   rateInput: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.cardBg,
     borderRadius: 14,
     flexDirection: "row",
     gap: 8,
@@ -301,14 +290,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   ratePrefix: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
     fontFamily:
       'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   rateValue: {
-    color: "#0f172a",
+    color: colors.text,
     flex: 1,
     fontSize: 20,
     fontWeight: "700",
@@ -317,7 +306,7 @@ const styles = StyleSheet.create({
       'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   rateHint: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 10,
     fontFamily:
@@ -330,7 +319,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   nudgeText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     flex: 1,
     fontSize: 13,
     lineHeight: 20,
@@ -339,13 +328,13 @@ const styles = StyleSheet.create({
       'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   insightPill: {
-    backgroundColor: "#0f172a",
-    borderRadius: 999,
+    backgroundColor: colors.text,
+    borderRadius: radius.pill,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   insightLabel: {
-    color: "#9ca3af",
+    color: colors.textSoft,
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 0.6,
@@ -354,7 +343,7 @@ const styles = StyleSheet.create({
       'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   insightValue: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 14,
     fontWeight: "700",
     marginTop: 2,
@@ -363,7 +352,7 @@ const styles = StyleSheet.create({
   },
   recommendRow: {
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.appBg,
     borderRadius: 16,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -372,7 +361,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   recommendLabel: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.5,
@@ -381,15 +370,15 @@ const styles = StyleSheet.create({
       'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   recommendValue: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
     fontFamily:
       'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   footer: {
-    backgroundColor: "#ffffff",
-    paddingHorizontal: 24,
+    backgroundColor: colors.cardBg,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 16,
     paddingBottom: 24,
     shadowColor: "#000000",
@@ -400,7 +389,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 20,
     borderTopColor: "rgba(255, 255, 255, 0.4)",
     borderTopWidth: 1,
@@ -414,7 +403,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 15,
     fontWeight: "700",
     fontFamily:

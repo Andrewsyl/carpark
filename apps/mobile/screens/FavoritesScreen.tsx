@@ -3,7 +3,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useAuth } from "../auth";
 import { useFavorites } from "../favorites";
+import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import type { RootStackParamList } from "../types";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Favorites">;
 
@@ -29,7 +31,7 @@ export function FavoritesScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>Back</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>Favourites</Text>
         <View style={styles.backButton} />
@@ -71,13 +73,13 @@ export function FavoritesScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 8,
   },
   backButton: {
@@ -86,29 +88,42 @@ const styles = StyleSheet.create({
     minWidth: 44,
     paddingVertical: 6,
   },
-  backText: {
-    color: "#0f172a",
-    fontSize: 12,
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  backIcon: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 14,
+    textAlign: "center",
     fontWeight: "700",
   },
   title: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 20,
     fontWeight: "800",
   },
   content: {
-    padding: 20,
+    padding: spacing.screenX,
     gap: 12,
   },
   row: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
     gap: 12,
+    ...cardShadow,
   },
   icon: {
     backgroundColor: "#e6f9f5",
@@ -120,12 +135,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rowTitle: {
-    color: "#1a1f2e",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "600",
   },
   rowSubtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 2,
   },
@@ -135,12 +150,12 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 14,
     textAlign: "center",
   },
   helper: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontSize: 12,
     marginTop: 6,
   },
@@ -157,13 +172,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   muted: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontSize: 12,
     textAlign: "center",
   },
   primaryButton: {
-    backgroundColor: "#00d4aa",
-    borderRadius: 12,
+    backgroundColor: colors.accent,
+    borderRadius: radius.card,
     paddingHorizontal: 16,
     paddingVertical: 10,
     marginTop: 14,

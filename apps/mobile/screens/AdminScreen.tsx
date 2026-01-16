@@ -12,6 +12,8 @@ import {
 } from "../api";
 import { useAuth } from "../auth";
 import type { RootStackParamList } from "../types";
+import { cardShadow, colors, radius, spacing } from "../styles/theme";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Admin">;
 
@@ -126,7 +128,7 @@ export function AdminScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.topBar}>
         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backLabel}>Back</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.topTitle}>Admin</Text>
         <View style={styles.backButton} />
@@ -203,76 +205,90 @@ export function AdminScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
   },
   topBar: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 8,
   },
   backButton: {
     alignItems: "center",
-    borderRadius: 999,
+    justifyContent: "center",
+    borderRadius: radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  backLabel: {
-    color: "#0f172a",
-    fontSize: 12,
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  backIcon: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 14,
+    textAlign: "center",
     fontWeight: "700",
   },
   topTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
   tabs: {
     flexDirection: "row",
     gap: 12,
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 12,
   },
   tabButton: {
     flex: 1,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     paddingVertical: 10,
     alignItems: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.cardBg,
   },
   tabButtonActive: {
-    backgroundColor: "#111827",
-    borderColor: "#111827",
+    backgroundColor: colors.text,
+    borderColor: colors.text,
   },
   tabText: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 13,
     fontWeight: "700",
   },
   tabTextActive: {
-    color: "#ffffff",
+    color: colors.cardBg,
   },
   content: {
-    padding: 18,
+    padding: spacing.screenX,
     gap: 12,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
-    padding: 16,
+    borderColor: colors.border,
+    padding: spacing.card,
+    ...cardShadow,
   },
   cardTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 15,
     fontWeight: "700",
   },
   cardMeta: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 6,
   },
@@ -283,15 +299,15 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   actionButton: {
-    backgroundColor: "#f8fafc",
-    borderColor: "#e2e8f0",
+    backgroundColor: colors.appBg,
+    borderColor: colors.border,
     borderRadius: 10,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   actionText: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -300,14 +316,14 @@ const styles = StyleSheet.create({
     borderColor: "#fecaca",
     borderRadius: 12,
     borderWidth: 1,
-    color: "#b42318",
+    color: colors.danger,
     fontSize: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     textAlign: "center",
   },
   muted: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontSize: 12,
     textAlign: "center",
   },

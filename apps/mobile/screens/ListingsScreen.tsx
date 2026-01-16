@@ -15,6 +15,8 @@ import {
 } from "../api";
 import { useAuth } from "../auth";
 import type { ListingSummary, RootStackParamList } from "../types";
+import { cardShadow, colors, radius, spacing } from "../styles/theme";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Listings">;
 
@@ -125,7 +127,7 @@ export function ListingsScreen({ navigation }: Props) {
             }
           }}
         >
-          <Text style={styles.backLabel}>Back</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.topTitle}>Your listings</Text>
         <Pressable
@@ -256,55 +258,69 @@ export function ListingsScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
     flex: 1,
   },
   topBar: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 8,
   },
   backButton: {
     alignItems: "center",
-    borderRadius: 999,
+    justifyContent: "center",
+    borderRadius: radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   actionButton: {
     alignItems: "center",
-    borderRadius: 10,
+    borderRadius: radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  backLabel: {
-    color: "#0f172a",
-    fontSize: 12,
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  backIcon: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 14,
+    textAlign: "center",
     fontWeight: "700",
   },
   topTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
   content: {
-    padding: 18,
+    padding: spacing.screenX,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
-    padding: 16,
+    padding: spacing.card,
+    ...cardShadow,
   },
   cardTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
   cardBody: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
   },
@@ -313,32 +329,28 @@ const styles = StyleSheet.create({
     borderColor: "#fecaca",
     borderRadius: 12,
     borderWidth: 1,
-    color: "#b42318",
+    color: colors.danger,
     fontSize: 12,
     marginBottom: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   muted: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginBottom: 10,
   },
   earningsCard: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     marginBottom: 16,
-    padding: 18,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 2,
+    padding: spacing.card,
+    ...cardShadow,
   },
   earningsTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 10,
@@ -349,67 +361,63 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   earningsRowStrong: {
-    borderTopColor: "#e5e7eb",
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     marginTop: 12,
     paddingTop: 12,
   },
   earningsHint: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 6,
   },
   earningsLabel: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
   },
   earningsValue: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
   },
   earningsLabelStrong: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
   },
   earningsValueStrong: {
-    color: "#047857",
+    color: colors.accent,
     fontSize: 16,
     fontWeight: "700",
   },
   payoutCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
     marginTop: 16,
-    padding: 16,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 2,
+    padding: spacing.card,
+    ...cardShadow,
   },
   payoutTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
   payoutBody: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
     marginTop: 6,
   },
   list: {
-    gap: 12,
+    gap: spacing.gap,
   },
   listCard: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
@@ -422,14 +430,14 @@ const styles = StyleSheet.create({
   },
   listPlaceholder: {
     alignItems: "center",
-    backgroundColor: "#e5e7eb",
+    backgroundColor: colors.border,
     borderRadius: 12,
     height: 72,
     justifyContent: "center",
     width: 96,
   },
   listPlaceholderText: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontSize: 11,
     fontWeight: "600",
   },
@@ -443,30 +451,30 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   listTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
   },
   listMeta: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
   },
   deleteButton: {
     backgroundColor: "#fef2f2",
     borderColor: "#fecaca",
-    borderRadius: 999,
+    borderRadius: radius.pill,
     borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   deleteButtonText: {
-    color: "#b42318",
+    color: colors.danger,
     fontSize: 11,
     fontWeight: "700",
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 12,
     marginTop: 14,
     paddingVertical: 10,
@@ -475,12 +483,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#a7f3d0",
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 13,
     fontWeight: "700",
   },
   actionText: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 12,
     fontWeight: "700",
   },

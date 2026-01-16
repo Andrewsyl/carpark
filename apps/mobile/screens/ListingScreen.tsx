@@ -18,6 +18,8 @@ import ImageViewer from "react-native-image-zoom-viewer";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import LottieView from "lottie-react-native";
+import DatePicker from "react-native-date-picker";
+import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import { useStripe } from "@stripe/stripe-react-native";
 import * as Notifications from "expo-notifications";
 import {
@@ -31,8 +33,29 @@ import { useAuth } from "../auth";
 import { useFavorites } from "../favorites";
 import { logError, logInfo } from "../logger";
 import type { ListingDetail, RootStackParamList } from "../types";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Listing">;
+
+const formatDateLabel = (date: Date) =>
+  date.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+
+const formatTimeLabel = (date: Date) =>
+  date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+const formatDateTimeLabel = (date: Date) => `${formatDateLabel(date)} · ${formatTimeLabel(date)}`;
+
+const snapTo5Minutes = (date: Date) => {
+  const next = new Date(date);
+  const minutes = next.getMinutes();
+  const snapped = Math.round(minutes / 5) * 5;
+  next.setMinutes(snapped, 0, 0);
+  return next;
+};
 
 const getFeatureIconType = (label: string) => {
   const normalized = label.toLowerCase();
@@ -124,6 +147,11 @@ export function ListingScreen({ navigation, route }: Props) {
   const [reviews, setReviews] = useState<ListingReview[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [navigatingToBooking, setNavigatingToBooking] = useState(false);
+  const [startAt, setStartAt] = useState(() => new Date(from));
+  const [endAt, setEndAt] = useState(() => new Date(to));
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerField, setPickerField] = useState<"start" | "end">("start");
+  const [draftDate, setDraftDate] = useState<Date | null>(null);
   const streetViewLocation =
     listing?.latitude && listing?.longitude
       ? `${listing.latitude},${listing.longitude}`
@@ -134,7 +162,10 @@ export function ListingScreen({ navigation, route }: Props) {
       setLoading(true);
       setError(null);
       try {
-        const data = await getListing(id);
+        const data = await getListing(id, {
+          from: startAt.toISOString(),
+          to: endAt.toISOString(),
+        });
         setListing(data);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Listing failed";
@@ -144,7 +175,12 @@ export function ListingScreen({ navigation, route }: Props) {
       }
     };
     void load();
-  }, [id]);
+  }, [id, startAt, endAt]);
+
+  useEffect(() => {
+    setStartAt(new Date(from));
+    setEndAt(new Date(to));
+  }, [from, to]);
 
   useEffect(() => {
     let active = true;
@@ -170,19 +206,33 @@ export function ListingScreen({ navigation, route }: Props) {
 
   const priceSummary = useMemo(() => {
     if (!listing) return null;
-    const start = new Date(from);
-    const end = new Date(to);
-    const ms = Math.max(0, end.getTime() - start.getTime());
+    const ms = Math.max(0, endAt.getTime() - startAt.getTime());
     const days = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
     const total = listing.price_per_day * days;
     return { days, total, totalCents: Math.round(total * 100) };
-  }, [listing, from, to]);
+  }, [listing, startAt, endAt]);
 
-  const formattedRange = useMemo(() => {
-    const start = new Date(from);
-    const end = new Date(to);
-    return `${start.toLocaleDateString()} • ${start.toLocaleTimeString()} - ${end.toLocaleTimeString()}`;
-  }, [from, to]);
+  const openPicker = (field: "start" | "end") => {
+    setPickerField(field);
+    const current = field === "start" ? startAt : endAt;
+    setDraftDate(current);
+    setPickerVisible(true);
+  };
+
+  const applyPickedDate = (next: Date) => {
+    if (pickerField === "start") {
+      let nextEnd = endAt;
+      if (next > endAt) {
+        const bumped = new Date(next);
+        bumped.setHours(bumped.getHours() + 2);
+        nextEnd = bumped;
+        setEndAt(bumped);
+      }
+      setStartAt(next);
+      return;
+    }
+    setEndAt(next);
+  };
 
   const imageUrls = useMemo(() => {
     if (listing?.image_urls?.length) return listing.image_urls;
@@ -257,7 +307,7 @@ export function ListingScreen({ navigation, route }: Props) {
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.topBar}>
         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backLabel}>Back</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.topTitle}>Listing</Text>
         <View style={styles.backButton} />
@@ -368,7 +418,17 @@ export function ListingScreen({ navigation, route }: Props) {
               </View>
               <View style={styles.timeRow}>
                 <Text style={styles.timeLabel}>Selected times</Text>
-                <Text style={styles.timeValue}>{formattedRange}</Text>
+                <View style={styles.dateRow}>
+                  <Pressable style={styles.dateTimePill} onPress={() => openPicker("start")}>
+                    <Text style={styles.dateTimeText}>{formatDateTimeLabel(startAt)}</Text>
+                  </Pressable>
+                  <View style={styles.dateArrow}>
+                    <Text style={styles.dateArrowText}>→</Text>
+                  </View>
+                  <Pressable style={styles.dateTimePill} onPress={() => openPicker("end")}>
+                    <Text style={styles.dateTimeText}>{formatDateTimeLabel(endAt)}</Text>
+                  </Pressable>
+                </View>
               </View>
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionTitle}>About this space</Text>
@@ -505,12 +565,21 @@ export function ListingScreen({ navigation, route }: Props) {
                 <Text style={styles.bottomPrice}>€{priceSummary.total.toFixed(2)}</Text>
                 <Text style={styles.bottomMeta}>{priceSummary.days} day(s)</Text>
               </View>
+              {listing?.is_available === false ? (
+                <Pressable style={[styles.bottomButton, styles.bottomButtonDisabled]} disabled>
+                  <Text style={styles.bottomButtonDisabledText}>Sold out</Text>
+                </Pressable>
+              ) : (
               <Pressable
                 style={styles.bottomButton}
                 onPress={() => {
                   if (navigatingToBooking) return;
                   setNavigatingToBooking(true);
-                  navigation.navigate("BookingSummary", { id, from, to });
+                  navigation.navigate("BookingSummary", {
+                    id,
+                    from: startAt.toISOString(),
+                    to: endAt.toISOString(),
+                  });
                   setTimeout(() => setNavigatingToBooking(false), 800);
                 }}
                 disabled={authLoading}
@@ -519,7 +588,48 @@ export function ListingScreen({ navigation, route }: Props) {
                   {navigatingToBooking ? "Opening..." : "Reserve"}
                 </Text>
               </Pressable>
+              )}
             </View>
+          ) : null}
+          {pickerVisible ? (
+            <Modal transparent animationType="fade" visible>
+              <Pressable
+                style={styles.pickerBackdrop}
+                onPress={() => {
+                  setPickerVisible(false);
+                  setDraftDate(null);
+                }}
+              >
+                <Pressable style={styles.pickerSheet} onPress={() => undefined}>
+                  <View style={styles.pickerHeader}>
+                    <Text style={styles.pickerTitle}>
+                      {pickerField === "start" ? "Start" : "End"}
+                    </Text>
+                    <Pressable
+                      style={styles.pickerDone}
+                      onPress={() => {
+                        setPickerVisible(false);
+                        setDraftDate(null);
+                      }}
+                    >
+                      <Text style={styles.pickerDoneText}>Done</Text>
+                    </Pressable>
+                  </View>
+                  <DatePicker
+                    date={draftDate ?? (pickerField === "start" ? startAt : endAt)}
+                    mode="datetime"
+                    androidVariant="iosClone"
+                    minuteInterval={5}
+                    textColor={colors.accent}
+                    onDateChange={(date) => {
+                      const snapped = snapTo5Minutes(date);
+                      setDraftDate(snapped);
+                      applyPickedDate(snapped);
+                    }}
+                  />
+                </Pressable>
+              </Pressable>
+            </Modal>
           ) : null}
           <Modal visible={showImageViewer} transparent animationType="fade">
             <View style={styles.viewerBackdrop}>
@@ -552,27 +662,42 @@ export function ListingScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
     flex: 1,
   },
   topBar: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingVertical: 10,
   },
   backButton: {
+    alignItems: "center",
+    justifyContent: "center",
+
     paddingVertical: 6,
     width: 56,
   },
-  backLabel: {
-    color: "#0f172a",
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  backIcon: {
+    color: colors.text,
     fontSize: 14,
+    lineHeight: 14,
+    textAlign: "center",
     fontWeight: "700",
   },
   topTitle: {
-    color: "#101828",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
     letterSpacing: 0.3,
@@ -584,7 +709,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingBottom: 140,
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
   },
   hero: {
     overflow: "hidden",
@@ -596,12 +721,12 @@ const styles = StyleSheet.create({
   },
   heroPlaceholder: {
     alignItems: "center",
-    backgroundColor: "#e4e7ec",
+    backgroundColor: colors.border,
     height: 240,
     justifyContent: "center",
   },
   heroPlaceholderText: {
-    color: "#667085",
+    color: colors.textMuted,
   },
   heroOverlay: {
     flexDirection: "row",
@@ -628,7 +753,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   heroFavTextActive: {
-    color: "#00d4aa",
+    color: colors.accent,
   },
   heroFavLottie: {
     position: "absolute",
@@ -651,7 +776,7 @@ const styles = StyleSheet.create({
     width: 6,
   },
   dotActive: {
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.cardBg,
     width: 16,
   },
   heroPillDark: {
@@ -672,23 +797,23 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   heroPillTextDark: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 12,
     fontWeight: "700",
   },
   sheet: {
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.cardBg,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     marginTop: -28,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 20,
   },
   titleCard: {
     gap: 8,
   },
   title: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 26,
     fontWeight: "800",
     letterSpacing: 0.2,
@@ -699,13 +824,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   addressDot: {
-    backgroundColor: "#94a3b8",
+    backgroundColor: colors.textSoft,
     borderRadius: 999,
     height: 6,
     width: 6,
   },
   address: {
-    color: "#667085",
+    color: colors.textMuted,
     fontSize: 13,
   },
   headerBlock: {
@@ -719,8 +844,8 @@ const styles = StyleSheet.create({
   },
   metricPill: {
     alignItems: "center",
-    backgroundColor: "#f8fafc",
-    borderColor: "#e2e8f0",
+    backgroundColor: colors.appBg,
+    borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
     flexDirection: "row",
@@ -729,12 +854,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   metricText: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
   },
   metricIcon: {
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 999,
     height: 8,
     width: 8,
@@ -751,8 +876,8 @@ const styles = StyleSheet.create({
     width: 8,
   },
   timeRow: {
-    backgroundColor: "#ffffff",
-    borderColor: "#00d4aa",
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     marginTop: 12,
@@ -760,17 +885,39 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   timeLabel: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontSize: 11,
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
-  timeValue: {
-    color: "#0f172a",
-    fontSize: 13,
+  dateRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 10,
+  },
+  dateTimePill: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  dateTimeText: {
+    color: "#101828",
+    fontSize: 12,
     fontWeight: "600",
-    marginTop: 4,
+  },
+  dateArrow: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 16,
+  },
+  dateArrowText: {
+    color: "#94a3b8",
+    fontSize: 14,
+    fontWeight: "700",
   },
   chipRow: {
     flexDirection: "row",
@@ -780,8 +927,8 @@ const styles = StyleSheet.create({
   },
   metaStrip: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderColor: "#e2e8f0",
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     flexDirection: "row",
@@ -791,31 +938,27 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   metaStripText: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
   },
   metaDivider: {
-    backgroundColor: "#e2e8f0",
+    backgroundColor: colors.border,
     height: 12,
     width: 1,
   },
   chip: {
-    backgroundColor: "#ffffff",
-    borderRadius: 999,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.pill,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 2,
+    ...cardShadow,
   },
   chipStrong: {
-    backgroundColor: "#0f172a",
+    backgroundColor: colors.text,
   },
   chipText: {
-    color: "#1f2937",
+    color: colors.text,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -823,9 +966,9 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   sectionCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 18,
-    borderColor: "#e2e8f0",
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
+    borderColor: colors.border,
     borderWidth: 1,
     marginTop: 12,
     padding: 16,
@@ -852,7 +995,7 @@ const styles = StyleSheet.create({
   },
   featureIcon: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.cardBg,
     borderColor: "#b8efe3",
     borderRadius: 10,
     borderWidth: 1,
@@ -861,12 +1004,12 @@ const styles = StyleSheet.create({
     width: 28,
   },
   featureText: {
-    color: "#344054",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
   },
   sectionTitle: {
-    color: "#101828",
+    color: colors.text,
     fontSize: 13,
     fontWeight: "700",
   },
@@ -887,7 +1030,7 @@ const styles = StyleSheet.create({
     width: 52,
   },
   hostInitials: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -896,12 +1039,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   hostName: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 15,
     fontWeight: "700",
   },
   hostSub: {
-    color: "#64748b",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -911,13 +1054,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   hostDetailLabel: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
   },
   hostDetailValue: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -926,7 +1069,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   reviewItem: {
-    borderTopColor: "#e2e8f0",
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     paddingTop: 10,
   },
@@ -936,22 +1079,22 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   reviewRating: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 12,
     fontWeight: "700",
   },
   reviewDate: {
-    color: "#94a3b8",
+    color: colors.textSoft,
     fontSize: 11,
     fontWeight: "600",
   },
   reviewBody: {
-    color: "#475467",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 6,
   },
   sectionBody: {
-    color: "#475467",
+    color: colors.textMuted,
     marginTop: 6,
   },
   summaryRow: {
@@ -960,36 +1103,32 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   summaryValue: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 18,
     fontWeight: "800",
   },
   ctaCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 20,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
     marginTop: 18,
     padding: 18,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 3,
+    ...cardShadow,
   },
   ctaTitle: {
-    color: "#101828",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 12,
   },
   input: {
-    borderColor: "#d0d5dd",
+    borderColor: colors.border,
     borderRadius: 14,
     borderWidth: 1,
-    color: "#101828",
+    color: colors.text,
     marginBottom: 10,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.appBg,
   },
   authButtons: {
     flexDirection: "row",
@@ -998,7 +1137,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 14,
     flex: 1,
     paddingVertical: 14,
@@ -1009,13 +1148,13 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     alignItems: "center",
-    backgroundColor: "#eef2f7",
+    backgroundColor: colors.appBg,
     borderRadius: 14,
     flex: 1,
     paddingVertical: 14,
   },
   secondaryButtonText: {
-    color: "#344054",
+    color: colors.textMuted,
     fontWeight: "600",
   },
   error: {
@@ -1023,7 +1162,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   readMore: {
-    color: "#00d4aa",
+    color: colors.accent,
     fontSize: 12,
     fontWeight: "700",
     marginTop: 8,
@@ -1036,7 +1175,7 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.cardBg,
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 16,
@@ -1052,24 +1191,67 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   bottomPrice: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 28,
     fontWeight: "800",
   },
   bottomMeta: {
-    color: "#64748b",
+    color: colors.textMuted,
     fontSize: 14,
     marginTop: 4,
   },
   bottomButton: {
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
     borderRadius: 10,
     paddingHorizontal: 40,
     paddingVertical: 14,
   },
+  bottomButtonDisabled: {
+    backgroundColor: "#e5e7eb",
+  },
   bottomButtonText: {
     color: "#ffffff",
     fontSize: 16,
+    fontWeight: "700",
+  },
+  bottomButtonDisabledText: {
+    color: "#6b7280",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(17, 24, 39, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  pickerSheet: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+    width: "100%",
+  },
+  pickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  pickerTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  pickerDone: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  pickerDoneText: {
+    color: colors.accent,
     fontWeight: "700",
   },
   viewerBackdrop: {

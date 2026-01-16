@@ -6,7 +6,9 @@ import { MaterialIcons } from "@expo/vector-icons";
 import * as Notifications from "expo-notifications";
 import { deleteAccount, requestEmailVerification } from "../api";
 import { useAuth } from "../auth";
+import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import type { RootStackParamList } from "../types";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
 
@@ -138,7 +140,8 @@ export function ProfileScreen({ navigation }: Props) {
             <Text style={styles.primaryButtonText}>Sign in</Text>
           </Pressable>
           <Pressable style={styles.ghostButton} onPress={() => navigation.navigate("Search")}>
-            <Text style={styles.ghostButtonText}>Back to search</Text>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Text style={styles.ghostButtonText}>Search</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -423,11 +426,11 @@ export function ProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fb",
+    backgroundColor: colors.appBg,
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.screenX,
     paddingBottom: 32,
     paddingTop: 24,
   },
@@ -435,20 +438,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   kicker: {
-    color: "#00d4aa",
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 1,
-    textTransform: "uppercase",
+    ...textStyles.kicker,
   },
   title: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 34,
-    fontWeight: "700",
+    fontWeight: "800",
     marginTop: 6,
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 16,
     marginTop: 6,
   },
@@ -475,15 +474,16 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   section: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     marginBottom: 18,
     overflow: "hidden",
+    ...cardShadow,
   },
   sectionLabel: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
     letterSpacing: 1,
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   sectionHeader: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 22,
     fontWeight: "700",
     marginBottom: 10,
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   },
   row: {
     alignItems: "center",
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: 12,
@@ -508,21 +508,21 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   rowPressed: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.appBg,
   },
   toggleTrack: {
-    backgroundColor: "#e2e8f0",
-    borderRadius: 999,
+    backgroundColor: colors.border,
+    borderRadius: radius.pill,
     height: 26,
     padding: 3,
     width: 48,
   },
   toggleTrackActive: {
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.accent,
   },
   toggleKnob: {
-    backgroundColor: "#ffffff",
-    borderRadius: 999,
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.pill,
     height: 20,
     width: 20,
   },
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rowTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     color: "#b42318",
   },
   rowSubtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 14,
     marginTop: 2,
   },
@@ -579,8 +579,8 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#00d4aa",
-    borderRadius: 12,
+    backgroundColor: colors.accent,
+    borderRadius: radius.card,
     marginTop: 16,
     paddingVertical: 12,
     width: "100%",
@@ -592,11 +592,30 @@ const styles = StyleSheet.create({
   },
   ghostButton: {
     alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
     marginTop: 12,
   },
   ghostButtonText: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
+  },
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  backIcon: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 14,
+    textAlign: "center",
+    fontWeight: "700",
   },
 });

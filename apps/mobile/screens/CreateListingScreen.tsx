@@ -14,6 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { createListing } from "../api";
 import { useAuth } from "../auth";
 import type { RootStackParamList } from "../types";
+import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CreateListing">;
 
@@ -74,7 +76,7 @@ export function CreateListingScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.topBar}>
         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backLabel}>Back</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.topTitle}>List a space</Text>
         <View style={styles.backButton} />
@@ -186,7 +188,7 @@ export function CreateListingScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.appBg,
     flex: 1,
   },
   flex: {
@@ -196,59 +198,62 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.screenX,
     paddingTop: 8,
   },
   backButton: {
     alignItems: "center",
-    borderRadius: 999,
+    justifyContent: "center",
+    borderRadius: radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  backLabel: {
-    color: "#0f172a",
-    fontSize: 12,
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  backIcon: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 14,
+    textAlign: "center",
     fontWeight: "700",
   },
   topTitle: {
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
   content: {
-    padding: 18,
+    padding: spacing.screenX,
     paddingBottom: 120,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e2e8f0",
-    borderRadius: 18,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
-    padding: 16,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 2,
+    padding: spacing.card,
+    ...cardShadow,
   },
-  kicker: {
-    color: "#2563eb",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
+  kicker: textStyles.kicker,
   subtitle: {
-    color: "#64748b",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
   },
   notice: {
-    backgroundColor: "#eff6ff",
-    borderColor: "#bfdbfe",
+    backgroundColor: "#ecfeff",
+    borderColor: "#99f6e4",
     borderRadius: 12,
     borderWidth: 1,
-    color: "#1d4ed8",
+    color: colors.text,
     fontSize: 12,
     marginTop: 10,
     paddingHorizontal: 12,
@@ -259,7 +264,7 @@ const styles = StyleSheet.create({
     borderColor: "#fecaca",
     borderRadius: 12,
     borderWidth: 1,
-    color: "#b42318",
+    color: colors.danger,
     fontSize: 12,
     marginTop: 10,
     paddingHorizontal: 12,
@@ -272,16 +277,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    color: "#475569",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 6,
   },
   input: {
-    borderColor: "#e2e8f0",
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
-    color: "#0f172a",
+    color: colors.text,
     fontSize: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -291,19 +296,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   footer: {
-    backgroundColor: "#f8fafc",
-    borderTopColor: "#e2e8f0",
+    backgroundColor: colors.appBg,
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     padding: 16,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#2fa84f",
+    backgroundColor: colors.accent,
     borderRadius: 14,
     paddingVertical: 14,
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 15,
     fontWeight: "700",
   },

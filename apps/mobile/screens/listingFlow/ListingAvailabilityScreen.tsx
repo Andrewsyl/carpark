@@ -5,6 +5,7 @@ import DatePicker from "react-native-date-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useListingFlow } from "./context";
 import { StepProgress } from "./StepProgress";
+import { cardShadow, colors, radius, spacing, textStyles } from "../../styles/theme";
 
 type FlowStackParamList = {
   ListingAvailability: undefined;
@@ -335,91 +336,65 @@ export function ListingAvailabilityScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
+    backgroundColor: colors.appBg,
   },
   content: {
-    padding: 18,
+    padding: spacing.screenX,
     paddingBottom: 140,
     paddingTop: 0,
   },
-  kicker: {
-    color: "#10b981",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  },
+  kicker: textStyles.kicker,
   title: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 22,
     fontWeight: "700",
     marginTop: 6,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   subtitle: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
     lineHeight: 20,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   optionCard: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     marginTop: 12,
     padding: 16,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
+    ...cardShadow,
   },
   optionCardActive: {
-    borderColor: "#10b981",
+    borderColor: colors.accent,
     borderWidth: 2,
   },
   optionTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 15,
     fontWeight: "700",
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   optionBody: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 6,
     lineHeight: 18,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   sectionCard: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 16,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
     marginTop: 12,
     padding: 16,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
+    ...cardShadow,
   },
   sectionTitle: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 13,
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   toggleRow: {
     alignItems: "center",
@@ -428,27 +403,27 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   toggleChip: {
-    backgroundColor: "#f8fafc",
-    borderColor: "#e5e7eb",
-    borderRadius: 999,
+    backgroundColor: colors.appBg,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
   toggleChipActive: {
-    backgroundColor: "#10b981",
-    borderColor: "#10b981",
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   toggleChipText: {
-    color: "#475569",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "700",
   },
   toggleChipTextActive: {
-    color: "#ffffff",
+    color: colors.cardBg,
   },
   toggleHint: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -458,8 +433,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   timePill: {
-    backgroundColor: "#f8fafc",
-    borderColor: "#e5e7eb",
+    backgroundColor: colors.appBg,
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     flex: 1,
@@ -467,21 +442,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   timePillLabel: {
-    color: "#6b7280",
+    color: colors.textMuted,
     fontSize: 11,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   timePillValue: {
-    color: "#111827",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "700",
     marginTop: 6,
-    fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   chipRow: {
     flexDirection: "row",
@@ -490,40 +461,40 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   chip: {
-    backgroundColor: "#f8fafc",
-    borderColor: "#e5e7eb",
-    borderRadius: 999,
+    backgroundColor: colors.appBg,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   chipActive: {
-    backgroundColor: "#10b981",
-    borderColor: "#10b981",
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   chipText: {
-    color: "#475569",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
   },
   chipTextActive: {
-    color: "#ffffff",
+    color: colors.cardBg,
   },
   warningText: {
-    color: "#b42318",
+    color: colors.danger,
     fontSize: 12,
     fontWeight: "600",
     marginTop: 10,
   },
   footer: {
-    backgroundColor: "#ffffff",
-    borderTopColor: "#e5e7eb",
+    backgroundColor: colors.cardBg,
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     padding: 16,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#10b981",
+    backgroundColor: colors.accent,
     borderRadius: 14,
     minHeight: 44,
     paddingVertical: 14,
@@ -532,7 +503,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.cardBg,
     fontSize: 15,
     fontWeight: "700",
   },
