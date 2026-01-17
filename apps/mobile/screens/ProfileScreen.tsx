@@ -155,7 +155,6 @@ export function ProfileScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.kicker}>Profile</Text>
           <Text style={styles.title}>Account settings</Text>
           <Text style={styles.subtitle}>Manage your account info, verification, and security.</Text>
         </View>
@@ -439,9 +438,6 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 16,
-  },
-  kicker: {
-    ...textStyles.kicker,
   },
   title: {
     color: colors.text,

@@ -206,7 +206,7 @@ export default function MapSection({
           if (!pinImage) return null;
           return (
             <Marker
-              key={`${listing.id}-${isSelected ? "selected" : "default"}`}
+              key={`marker-${listing.id}-${isSelected ? "sel" : "def"}-${PIN_STYLE_VERSION}`}
               coordinate={{
                 latitude: listing.latitude as number,
                 longitude: listing.longitude as number,
@@ -214,9 +214,12 @@ export default function MapSection({
               tracksViewChanges={false}
               anchor={{ x: 0.5, y: 1 }}
               centerOffset={{ x: 0, y: 0 }}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              onPress={() => onSelect?.(listing.id)}
-              zIndex={isSelected ? 2 : 1}
+              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                onSelect?.(listing.id);
+              }}
+              zIndex={isSelected ? 1000 : listing.id.charCodeAt(0)}
               image={{ uri: pinImage }}
             />
           );

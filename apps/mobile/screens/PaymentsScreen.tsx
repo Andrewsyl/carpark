@@ -165,7 +165,6 @@ export function PaymentsScreen() {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.kicker}>Profile</Text>
           <Text style={styles.title}>Payments</Text>
           <Text style={styles.subtitle}>Manage cards and review your booking charges.</Text>
         </View>
@@ -314,9 +313,6 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 16,
-  },
-  kicker: {
-    ...textStyles.kicker,
   },
   title: {
     color: colors.text,

@@ -1,61 +1,110 @@
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
-export function PricePin({ label, selected }: { label?: string; selected?: boolean }) {
+interface ParkingPinProps {
+  price: number;
+  isSelected?: boolean;
+  onPress?: () => void;
+}
+
+export function ParkingPin({ price, isSelected = false, onPress }: ParkingPinProps) {
+  const scale = useSharedValue(1);
+  const pulseScale = useSharedValue(1);
+  const pulseOpacity = useSharedValue(0.6);
+
+  useEffect(() => {
+    // Initial scale-in animation
+    scale.value = withSpring(1, { damping: 10 });
+
+    // Pulse animation for selected state
+    if (isSelected) {
+      pulseScale.value = withRepeat(withTiming(1.5, { duration: 1500 }), -1, false);
+      pulseOpacity.value = withRepeat(
+        withSequence(withTiming(0.6, { duration: 0 }), withTiming(0, { duration: 1500 })),
+        -1,
+        false
+      );
+    } else {
+      pulseScale.value = 1;
+      pulseOpacity.value = 0;
+    }
+  }, [isSelected]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+    opacity: pulseOpacity.value,
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1.1);
+    setTimeout(() => {
+      scale.value = withSpring(1);
+    }, 100);
+  };
+
+  const label = `€${price}`;
+
   return (
-    <View style={styles.container} pointerEvents="box-none">
-      <View style={styles.hitArea} />
-      <View style={styles.pinWrapper}>
+    <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
+      <Animated.View style={[styles.container, animatedStyle]}>
+        {/* Pulse effect for selected */}
+        {isSelected && <Animated.View style={[styles.pulse, pulseStyle]} />}
+
         {/* Main pin container */}
-        {selected ? (
+        {isSelected ? (
           <LinearGradient
             colors={["#10b981", "#14b8a6"]} // emerald-500 to teal-600
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={[styles.pinContainer, styles.selectedContainer]}
           >
-            <Text style={styles.selectedText}>{label ?? ""}</Text>
+            <Text style={styles.selectedText}>{label}</Text>
           </LinearGradient>
         ) : (
           <View style={[styles.pinContainer, styles.unselectedContainer]}>
             <View style={styles.border} />
-            <Text style={styles.unselectedText}>{label ?? ""}</Text>
+            <Text style={styles.unselectedText}>{label}</Text>
           </View>
         )}
 
         {/* Triangle pointer with border */}
         <View style={styles.triangleWrapper}>
           {/* Border triangle (larger, underneath) */}
-          {!selected && (
+          {!isSelected && (
             <View style={styles.triangleBorder} />
           )}
           {/* Main triangle */}
           <View
             style={[
               styles.triangle,
-              selected ? styles.triangleSelected : styles.triangleUnselected,
+              isSelected ? styles.triangleSelected : styles.triangleUnselected,
             ]}
           />
         </View>
-      </View>
-    </View>
+      </Animated.View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: "center",
-    position: "relative",
-  },
-  hitArea: {
-    position: "absolute",
-    width: 64,
-    height: 64,
-    top: -16,
-    left: -16,
-    zIndex: -1,
-  },
-  pinWrapper: {
     alignItems: "center",
   },
   pinContainer: {
@@ -135,5 +184,14 @@ const styles = StyleSheet.create({
   },
   triangleUnselected: {
     borderTopColor: "#ffffff",
+  },
+  pulse: {
+    position: "absolute",
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    backgroundColor: "#34d399", // emerald-400
+    borderRadius: 999,
   },
 });

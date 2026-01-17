@@ -73,7 +73,7 @@ export function SignInScreen({ navigation }: Props) {
     setNotice(null);
     try {
       await login(trimmed, password);
-      navigation.replace("Profile");
+      navigation.replace("Tabs", { screen: "Search" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -109,7 +109,7 @@ export function SignInScreen({ navigation }: Props) {
           ? "Account created. Verify your email to continue."
           : "Account created. Check your email to verify."
       );
-      navigation.replace("Profile");
+      navigation.replace("Tabs", { screen: "Search" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign up failed");
     } finally {
@@ -244,7 +244,7 @@ export function SignInScreen({ navigation }: Props) {
                   await loginWithOAuth("google", idToken);
                   setAuthSuccess("Signed in with Google");
                   successTimerRef.current = setTimeout(() => {
-                    navigation.replace("Profile");
+                    navigation.replace("Tabs", { screen: "Search" });
                   }, 900);
                 } catch (err) {
                   const errorCode =

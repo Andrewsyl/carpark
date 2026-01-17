@@ -67,7 +67,6 @@ export function SupportScreen({ navigation }: Props) {
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Text style={styles.kicker}>Support</Text>
             <Text style={styles.title}>Contact us</Text>
             <Text style={styles.subtitle}>
               We will reply to {user?.email ?? "your email"} as soon as we can.
@@ -165,9 +164,6 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 18,
-  },
-  kicker: {
-    ...textStyles.kicker,
   },
   title: {
     color: colors.text,

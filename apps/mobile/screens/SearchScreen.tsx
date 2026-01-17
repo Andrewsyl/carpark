@@ -92,10 +92,25 @@ const ordinalSuffix = (value: number) => {
   }
 };
 
-const formatDateLabel = (date: Date) =>
-  `${weekdayNames[date.getDay()]} ${date.getDate()}${ordinalSuffix(date.getDate())} ${
+const formatDateLabel = (date: Date) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dateToCheck = new Date(date);
+  dateToCheck.setHours(0, 0, 0, 0);
+  
+  if (dateToCheck.getTime() === today.getTime()) {
+    return "Today";
+  }
+  if (dateToCheck.getTime() === tomorrow.getTime()) {
+    return "Tomorrow";
+  }
+  
+  return `${weekdayNames[date.getDay()]} ${date.getDate()}${ordinalSuffix(date.getDate())} ${
     monthNames[date.getMonth()]
   }`;
+};
 
 const formatTimeLabel = (date: Date) => `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 
@@ -186,8 +201,8 @@ export function SearchScreen({ navigation }: Props) {
   const mapRegion = {
     latitude: Number.isFinite(parsedLat) ? parsedLat : 53.3498,
     longitude: Number.isFinite(parsedLng) ? parsedLng : -6.2603,
-    latitudeDelta: usingDefaultCenter ? 0.012 : 0.06,
-    longitudeDelta: usingDefaultCenter ? 0.012 : 0.06,
+    latitudeDelta: 0.025, // Wider area view
+    longitudeDelta: 0.025,
   };
   const ignoreNextRegionChangeRef = useRef(false);
   const lastSearchCenterRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -296,6 +311,10 @@ export function SearchScreen({ navigation }: Props) {
 
   const handleMapReady = () => {
     setMapReady(true);
+    // Auto-search the visible area when map first loads (JustPark style)
+    if (!results.length && !loading) {
+      void runSearch();
+    }
   };
 
   useEffect(() => {
@@ -487,10 +506,16 @@ export function SearchScreen({ navigation }: Props) {
       ? `https://maps.googleapis.com/maps/api/streetview?size=240x240&location=${selectedListing.latitude},${selectedListing.longitude}&key=${mapsKey}`
       : null);
 
-  const handleSelectListing = (id: string) => {
+  const handleSelectListing = useCallback((id: string) => {
     ignoreNextRegionChangeRef.current = true;
-    setSelectedId(id);
-  };
+    setSelectedId((current) => {
+      // Force re-render even if same ID
+      if (current === id) {
+        return id;
+      }
+      return id;
+    });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -623,7 +648,8 @@ export function SearchScreen({ navigation }: Props) {
         Math.cos(toRad(nextRegion.latitude)) *
         Math.sin(dLng / 2) ** 2;
     const distanceM = 2 * R * Math.asin(Math.sqrt(a));
-    if (distanceM < 350) return;
+    // Reduced threshold from 350m to 200m for more responsive "Search this area" (JustPark style)
+    if (distanceM < 200) return;
 
     const nextLat = nextRegion.latitude.toFixed(6);
     const nextLng = nextRegion.longitude.toFixed(6);
@@ -719,6 +745,7 @@ export function SearchScreen({ navigation }: Props) {
               ]}
               onPress={() => setShowFilters((prev) => !prev)}
               accessibilityLabel="Filters"
+              android_ripple={null}
             >
               <Ionicons
                 name="options-outline"
@@ -730,16 +757,26 @@ export function SearchScreen({ navigation }: Props) {
               ) : null}
             </Pressable>
           <View style={styles.dateRow}>
-            <Pressable style={styles.dateTimePill} onPress={() => openPicker("start")}>
-              <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
-              <Text style={styles.dateTimeText}>{formatDateTimeLabel(startAt)}</Text>
+            <Pressable 
+              style={styles.dateTimePill} 
+              onPress={() => openPicker("start")}
+              android_ripple={null}
+            >
+              <Ionicons name="calendar-outline" size={13} color={colors.accent} />
+              <Text style={styles.dateTimeText} numberOfLines={1} ellipsizeMode="tail">
+                {formatDateTimeLabel(startAt)}
+              </Text>
             </Pressable>
-            <View style={styles.dateArrow}>
-              <Text style={styles.dateArrowText}>→</Text>
-            </View>
-            <Pressable style={styles.dateTimePill} onPress={() => openPicker("end")}>
-              <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-              <Text style={styles.dateTimeText}>{formatDateTimeLabel(endAt)}</Text>
+            <Ionicons name="arrow-forward" size={12} color={colors.textMuted} />
+            <Pressable 
+              style={styles.dateTimePill} 
+              onPress={() => openPicker("end")}
+              android_ripple={null}
+            >
+              <Ionicons name="calendar-outline" size={13} color={colors.accent} />
+              <Text style={styles.dateTimeText} numberOfLines={1} ellipsizeMode="tail">
+                {formatDateTimeLabel(endAt)}
+              </Text>
             </Pressable>
           </View>
           </View>
@@ -848,6 +885,7 @@ export function SearchScreen({ navigation }: Props) {
                       key={size}
                       style={[styles.chip, vehicleSize === size && styles.chipActive]}
                       onPress={() => setVehicleSize(vehicleSize === size ? "" : size)}
+                      android_ripple={null}
                     >
                       <Text style={[styles.chipText, vehicleSize === size && styles.chipTextActive]}>
                         {size}
@@ -864,6 +902,7 @@ export function SearchScreen({ navigation }: Props) {
                       key={level}
                       style={[styles.chip, securityLevel === level && styles.chipActive]}
                       onPress={() => setSecurityLevel(securityLevel === level ? "" : level)}
+                      android_ripple={null}
                     >
                       <Text
                         style={[styles.chipText, securityLevel === level && styles.chipTextActive]}
@@ -1296,7 +1335,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ecfdf7",
   },
   filterFabPressed: {
-    backgroundColor: "#ffffff",
+    opacity: 1,
   },
   filterDot: {
     backgroundColor: colors.accent,
@@ -1692,33 +1731,42 @@ const styles = StyleSheet.create({
   },
   dateRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 6,
     marginTop: 12,
-    paddingTop: 4,
     alignItems: "center",
   },
   dateTimePill: {
     alignItems: "center",
-    backgroundColor: "#f8fafc",
-    borderRadius: radius.pill,
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
     flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 12,
+    gap: 4,
+    paddingHorizontal: 8,
     paddingVertical: 8,
     flex: 1,
+    minWidth: 0,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   dateTimeText: {
     color: "#101828",
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "600",
+    flex: 1,
+    flexShrink: 1,
   },
   dateArrow: {
     alignItems: "center",
     justifyContent: "center",
-    width: 16,
+    width: 12,
   },
   dateArrowText: {
-    color: "#94a3b8",
+    color: colors.textMuted,
     fontSize: 14,
     fontWeight: "700",
   },

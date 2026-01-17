@@ -1,6 +1,6 @@
 node_modules
 .next
-.env
+apps/api/.env
 .env.local
 .env.development
 .env.production
