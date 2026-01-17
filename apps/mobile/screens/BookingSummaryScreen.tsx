@@ -106,7 +106,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
         navigation.dispatch(
           CommonActions.reset({
             index: 0,
-            routes: [{ name: "Search" }],
+            routes: [{ name: "Tabs", params: { screen: "Search" } }],
           })
         );
         return true;

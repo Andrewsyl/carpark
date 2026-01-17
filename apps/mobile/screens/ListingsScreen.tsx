@@ -123,7 +123,7 @@ export function ListingsScreen({ navigation }: Props) {
             if (navigation.canGoBack()) {
               navigation.goBack();
             } else {
-              navigation.navigate("Search");
+              navigation.navigate("Tabs", { screen: "Search" });
             }
           }}
         >

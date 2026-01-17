@@ -1,4 +1,5 @@
 export type RootStackParamList = {
+  Tabs: { screen?: "Search" | "History" | "Profile" } | undefined;
   Search: undefined;
   Listing: {
     id: string;

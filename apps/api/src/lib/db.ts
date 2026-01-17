@@ -1768,6 +1768,8 @@ export async function listUserBookings(userId: string) {
       b.currency,
       l.title,
       l.address,
+      ST_X(l.geom) AS longitude,
+      ST_Y(l.geom) AS latitude,
       l.host_id,
       l.access_code
     FROM bookings b
@@ -1796,6 +1798,8 @@ export async function listUserBookings(userId: string) {
       b.currency,
       l.title,
       l.address,
+      ST_X(l.geom) AS longitude,
+      ST_Y(l.geom) AS latitude,
       l.host_id,
       l.access_code
     FROM bookings b
@@ -1822,6 +1826,8 @@ export async function listUserBookings(userId: string) {
     currency: row.currency ?? "eur",
     address: row.address,
     title: row.title,
+    latitude: row.latitude ?? null,
+    longitude: row.longitude ?? null,
     accessCode: row.access_code ?? null,
   });
 

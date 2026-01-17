@@ -1,7 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CommonActions, useFocusEffect } from "@react-navigation/native";
-import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Animated,
+  BackHandler,
+  Easing,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { listMyBookings, type BookingSummary } from "../api";
 import { useAuth } from "../auth";
@@ -19,6 +29,7 @@ export function HistoryScreen({ navigation, route }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [successVisible, setSuccessVisible] = useState(false);
   const [mapCtaVisible, setMapCtaVisible] = useState(false);
+  const tabAnim = useRef(new Animated.Value(1)).current;
 
   const loadBookings = useCallback(async () => {
     if (!token) return;
@@ -56,7 +67,7 @@ export function HistoryScreen({ navigation, route }: Props) {
         navigation.dispatch(
           CommonActions.reset({
             index: 0,
-            routes: [{ name: "Search" }],
+            routes: [{ name: "Tabs", params: { screen: "Search" } }],
           })
         );
         return true;
@@ -87,6 +98,16 @@ export function HistoryScreen({ navigation, route }: Props) {
   }, [navigation, route.params?.initialTab]);
 
   useEffect(() => {
+    tabAnim.setValue(0);
+    Animated.timing(tabAnim, {
+      toValue: 1,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [tab, tabAnim]);
+
+  useEffect(() => {
     if (!route.params?.refreshToken) return;
     void loadBookings();
     navigation.setParams({ refreshToken: undefined });
@@ -108,7 +129,7 @@ export function HistoryScreen({ navigation, route }: Props) {
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
-                routes: [{ name: "Search" }],
+                routes: [{ name: "Tabs", params: { screen: "Search" } }],
               })
             )
           }
@@ -141,7 +162,7 @@ export function HistoryScreen({ navigation, route }: Props) {
             style={styles.mapCtaButton}
             onPress={() => {
               setMapCtaVisible(false);
-              navigation.navigate("Search");
+              navigation.navigate("Tabs", { screen: "Search" });
             }}
           >
             <Text style={styles.mapCtaButtonText}>View on map</Text>
@@ -167,54 +188,70 @@ export function HistoryScreen({ navigation, route }: Props) {
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
-        {!user ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Sign in to view bookings</Text>
-            <Text style={styles.cardBody}>
-              Log in to see your upcoming reservations and past stays.
-            </Text>
-            <Pressable style={styles.primaryButton} onPress={() => navigation.navigate("SignIn")}>
-              <Text style={styles.primaryButtonText}>Sign in</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-            {loading ? (
-              <View style={styles.loadingOverlay} pointerEvents="none">
-                <View style={styles.loadingBadge}>
-                  <ActivityIndicator size="small" color="#10b981" />
-                  <Text style={styles.loadingText}>Loading bookings…</Text>
+        <Animated.View
+          style={[
+            styles.tabContent,
+            {
+              opacity: tabAnim,
+              transform: [
+                {
+                  translateY: tabAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [8, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          {!user ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Sign in to view bookings</Text>
+              <Text style={styles.cardBody}>
+                Log in to see your upcoming reservations and past stays.
+              </Text>
+              <Pressable style={styles.primaryButton} onPress={() => navigation.navigate("SignIn")}>
+                <Text style={styles.primaryButtonText}>Sign in</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <>
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+              {loading ? (
+                <View style={styles.loadingOverlay} pointerEvents="none">
+                  <View style={styles.loadingBadge}>
+                    <ActivityIndicator size="small" color="#10b981" />
+                    <Text style={styles.loadingText}>Loading bookings…</Text>
+                  </View>
                 </View>
-              </View>
-            ) : null}
-            {visible.length === 0 ? (
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>
-                  {tab === "upcoming" ? "No upcoming bookings" : "No past bookings"}
-                </Text>
-                <Text style={styles.cardBody}>
-                  {tab === "upcoming"
-                    ? "Find a space and your next reservation will show up here."
-                    : "Completed reservations will appear here once you’ve booked a space."}
-                </Text>
-                {tab === "upcoming" ? (
-                  <Pressable
-                    style={styles.primaryButton}
-                    onPress={() => navigation.navigate("Search")}
-                  >
-                    <Text style={styles.primaryButtonText}>Find parking</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : (
-              <View style={styles.list}>
-                {visible.map((booking) => {
-                  const start = new Date(booking.startTime);
-                  const end = new Date(booking.endTime);
-                  const isRefunded = booking.refundStatus === "succeeded";
-                  const statusLabel = isRefunded ? "refunded" : booking.status;
-                  const refundedAt = booking.refundedAt ? new Date(booking.refundedAt) : null;
+              ) : null}
+              {visible.length === 0 ? (
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>
+                    {tab === "upcoming" ? "No upcoming bookings" : "No past bookings"}
+                  </Text>
+                  <Text style={styles.cardBody}>
+                    {tab === "upcoming"
+                      ? "Find a space and your next reservation will show up here."
+                      : "Completed reservations will appear here once you’ve booked a space."}
+                  </Text>
+                  {tab === "upcoming" ? (
+                    <Pressable
+                      style={styles.primaryButton}
+                      onPress={() => navigation.navigate("Tabs", { screen: "Search" })}
+                    >
+                      <Text style={styles.primaryButtonText}>Find parking</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : (
+                <View style={styles.list}>
+                  {visible.map((booking) => {
+                    const start = new Date(booking.startTime);
+                    const end = new Date(booking.endTime);
+                    const isRefunded = booking.refundStatus === "succeeded";
+                    const statusLabel = isRefunded ? "refunded" : booking.status;
+                    const refundedAt = booking.refundedAt ? new Date(booking.refundedAt) : null;
                   return (
                     <Pressable
                       key={booking.id}
@@ -254,12 +291,13 @@ export function HistoryScreen({ navigation, route }: Props) {
                       ) : null}
                       <Text style={styles.bookingPrice}>€{(booking.amountCents / 100).toFixed(2)}</Text>
                     </Pressable>
-                  );
-                })}
-              </View>
-            )}
-          </>
-        )}
+                    );
+                  })}
+                </View>
+              )}
+            </>
+          )}
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -378,6 +416,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingHorizontal: spacing.screenX,
     paddingTop: 8,
+  },
+  tabContent: {
+    flexGrow: 1,
   },
   segmentTab: {
     alignItems: "center",

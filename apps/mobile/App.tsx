@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Animated,
+  Easing,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import * as Notifications from "expo-notifications";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { StatusBar } from "expo-status-bar";
 import Constants from "expo-constants";
 import { StripeProvider } from "@stripe/stripe-react-native";
@@ -29,22 +38,38 @@ import { SupportScreen } from "./screens/SupportScreen";
 import { AdminScreen } from "./screens/AdminScreen";
 import type { RootStackParamList } from "./types";
 import { registerPushToken } from "./api";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import LottieView from "lottie-react-native";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator();
 
 export default function App() {
-  const [splashVisible, setSplashVisible] = useState(Platform.OS === "android");
+  const [showStartupAnim, setShowStartupAnim] = useState(true);
   const [launchComplete, setLaunchComplete] = useState(true);
   const splashOpacity = useRef(new Animated.Value(1)).current;
+  const carOpacity = useRef(new Animated.Value(0)).current;
+  const overlayOpacity = useRef(new Animated.Value(1)).current;
+  const animationFinishedRef = useRef(false);
 
   useEffect(() => {
-    if (!splashVisible) return;
-    const timer = setTimeout(() => {
-      splashOpacity.setValue(1);
-      setSplashVisible(false);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [splashOpacity, splashVisible]);
+    Animated.parallel([
+      Animated.timing(splashOpacity, {
+        toValue: 0,
+        duration: 520,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(carOpacity, {
+        toValue: 1,
+        duration: 520,
+        delay: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [carOpacity, splashOpacity]);
 
   useEffect(() => {
     Notifications.setNotificationHandler({
@@ -82,24 +107,22 @@ export default function App() {
           <FavoritesProvider>
             <AppLaunchContext.Provider value={appLaunchValue}>
               <NavigationContainer>
-                <Stack.Navigator screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="Search" component={SearchScreen} />
-                <Stack.Screen name="Listing" component={ListingScreen} />
-                <Stack.Screen name="BookingSummary" component={BookingSummaryScreen} />
-                <Stack.Screen name="SignIn" component={SignInScreen} />
-                <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-                  <Stack.Screen name="Profile" component={ProfileScreen} />
+                <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Tabs">
+                  <Stack.Screen name="Tabs" component={MainTabs} />
+                  <Stack.Screen name="Listing" component={ListingScreen} />
+                  <Stack.Screen name="BookingSummary" component={BookingSummaryScreen} />
+                  <Stack.Screen name="SignIn" component={SignInScreen} />
+                  <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
                   <Stack.Screen name="Legal" component={LegalScreen} />
-                <Stack.Screen name="History" component={HistoryScreen} />
-                <Stack.Screen name="Favorites" component={FavoritesScreen} />
-                <Stack.Screen name="Payments" component={PaymentsScreen} />
-                <Stack.Screen name="Settings" component={SettingsScreen} />
-                <Stack.Screen name="Listings" component={ListingsScreen} />
-                <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
-                <Stack.Screen name="Review" component={ReviewScreen} />
-                <Stack.Screen name="Support" component={SupportScreen} />
-                <Stack.Screen name="Admin" component={AdminScreen} />
-                <Stack.Screen name="CreateListingFlow" component={ListingFlowScreen} />
+                  <Stack.Screen name="History" component={HistoryScreen} />
+                  <Stack.Screen name="Favorites" component={FavoritesScreen} />
+                  <Stack.Screen name="Payments" component={PaymentsScreen} />
+                  <Stack.Screen name="Settings" component={SettingsScreen} />
+                  <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
+                  <Stack.Screen name="Review" component={ReviewScreen} />
+                  <Stack.Screen name="Support" component={SupportScreen} />
+                  <Stack.Screen name="Admin" component={AdminScreen} />
+                  <Stack.Screen name="CreateListingFlow" component={ListingFlowScreen} />
                   <Stack.Screen name="EditListing" component={EditListingScreen} />
                 </Stack.Navigator>
               </NavigationContainer>
@@ -110,12 +133,93 @@ export default function App() {
           </FavoritesProvider>
         </AuthProvider>
       </StripeProvider>
-      {splashVisible ? (
-        <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]}>
-          <Image source={require("./assets/splash.png")} style={styles.splashImage} />
+      {showStartupAnim ? (
+        <Animated.View style={[styles.splashOverlay, { opacity: overlayOpacity }]}>
+          <Animated.View style={[styles.startupLayer, { opacity: splashOpacity }]}>
+            <LottieView
+              source={require("./assets/car.json")}
+              autoPlay={false}
+              loop={false}
+              progress={0}
+              style={styles.carAnimation}
+            />
+          </Animated.View>
+          <Animated.View style={[styles.startupLayer, { opacity: carOpacity }]}>
+            <LottieView
+              source={require("./assets/car.json")}
+              autoPlay
+              loop={false}
+              style={styles.carAnimation}
+              onAnimationFinish={() => {
+                if (animationFinishedRef.current) return;
+                animationFinishedRef.current = true;
+                Animated.timing(overlayOpacity, {
+                  toValue: 0,
+                  duration: 280,
+                  easing: Easing.out(Easing.cubic),
+                  useNativeDriver: true,
+                }).start(() => setShowStartupAnim(false));
+              }}
+            />
+          </Animated.View>
         </Animated.View>
       ) : null}
     </View>
+  );
+}
+
+function MainTabs() {
+  const insets = useSafeAreaInsets();
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: "#00d4aa",
+        tabBarInactiveTintColor: "#9ca3af",
+        tabBarStyle: {
+          borderTopColor: "#e5e7eb",
+          borderTopWidth: 1,
+          height: 64 + Math.max(0, insets.bottom - 4),
+          paddingBottom: Math.max(10, insets.bottom),
+          paddingTop: 6,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "600",
+        },
+      }}
+    >
+      <Tab.Screen
+        name="Search"
+        component={SearchScreen}
+        options={{
+          tabBarLabel: "Search",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="search" size={size ?? 22} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="History"
+        component={HistoryScreen}
+        options={{
+          tabBarLabel: "Bookings",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar" size={size ?? 22} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: "Account",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size ?? 22} color={color} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
   );
 }
 
@@ -247,10 +351,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 999,
   },
-  splashImage: {
-    height: "60%",
-    width: "60%",
-    resizeMode: "contain",
+  startupLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  carAnimation: {
+    height: 220,
+    width: 220,
   },
   legalOverlay: {
     ...StyleSheet.absoluteFillObject,

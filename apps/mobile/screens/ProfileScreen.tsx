@@ -114,7 +114,7 @@ export function ProfileScreen({ navigation }: Props) {
             try {
               await deleteAccount(token);
               await logout();
-              navigation.navigate("Search");
+              navigation.navigate("Tabs", { screen: "Search" });
             } catch (err) {
               setError(err instanceof Error ? err.message : "Could not delete account");
             } finally {
@@ -139,7 +139,10 @@ export function ProfileScreen({ navigation }: Props) {
           <Pressable style={styles.primaryButton} onPress={() => navigation.navigate("SignIn")}>
             <Text style={styles.primaryButtonText}>Sign in</Text>
           </Pressable>
-          <Pressable style={styles.ghostButton} onPress={() => navigation.navigate("Search")}>
+          <Pressable
+            style={styles.ghostButton}
+            onPress={() => navigation.navigate("Tabs", { screen: "Search" })}
+          >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
             <Text style={styles.ghostButtonText}>Search</Text>
           </Pressable>

@@ -667,6 +667,8 @@ export type BookingSummary = {
   currency: string;
   title: string;
   address: string;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export async function listMyBookings(token: string) {

@@ -651,7 +651,10 @@ export function SearchScreen({ navigation }: Props) {
             initialRegion={mapRegion}
             results={results}
             style={styles.map}
-            mapPadding={{ bottom: 180 + insets.bottom + 16 }}
+            mapPadding={{
+              top: insets.top + 120,
+              bottom: 180 + insets.bottom + 16,
+            }}
             provider="google"
             customMapStyle={LIGHT_MAP_STYLE}
             onSelect={handleSelectListing}
@@ -678,18 +681,8 @@ export function SearchScreen({ navigation }: Props) {
             </View>
           </View>
         ) : null}
-        <View style={[styles.overlay, { top: insets.top + 10 }]}>
-          <View style={styles.overlayHeader}>
-            <Text style={styles.overlayTitle}>Find parking</Text>
-            <Pressable
-              style={styles.profileButton}
-              onPress={() => navigation.navigate(user ? "Profile" : "SignIn")}
-            >
-              <Text style={styles.profileButtonText}>
-                {user?.email?.charAt(0)?.toUpperCase() ?? "P"}
-              </Text>
-            </Pressable>
-          </View>
+        <View style={[styles.overlay, { top: insets.top + 18 }]}>
+          <View style={styles.overlayHeader} />
           <View style={styles.searchGroup}>
             <Pressable
               style={styles.searchBar}
@@ -791,7 +784,7 @@ export function SearchScreen({ navigation }: Props) {
             isFavorite={isFavorite(selectedListing.id)}
             onToggleFavorite={() => toggle(selectedListing)}
             onPress={() => navigation.navigate("Listing", { id: selectedListing.id, from, to })}
-            bottomOffset={insets.bottom + 16}
+            bottomOffset={Math.max(6, insets.bottom - 6)}
             horizontalInset={16}
             onReserve={() => navigation.navigate("Listing", { id: selectedListing.id, from, to })}
           />
@@ -1233,28 +1226,7 @@ const styles = StyleSheet.create({
     top: 10,
   },
   overlayHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  overlayTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  profileButton: {
-    alignItems: "center",
-    backgroundColor: colors.text,
-    borderRadius: radius.pill,
-    height: 32,
-    justifyContent: "center",
-    width: 32,
-  },
-  profileButtonText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "700",
+    marginBottom: 4,
   },
   searchGroup: {
     backgroundColor: colors.cardBg,

@@ -1,6 +1,6 @@
 import { CommonActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -43,6 +43,23 @@ export function BookingDetailScreen({ navigation, route }: Props) {
   const receiptUrl = booking.receiptUrl ?? null;
   const vehiclePlate = booking.vehiclePlate?.trim();
   const accessCode = booking.accessCode?.trim();
+  const destination =
+    typeof booking.latitude === "number" && typeof booking.longitude === "number"
+      ? `${booking.latitude},${booking.longitude}`
+      : booking.address;
+  const staticMapUrl =
+    typeof booking.latitude === "number" && typeof booking.longitude === "number"
+      ? `https://maps.googleapis.com/maps/api/staticmap?center=${booking.latitude},${booking.longitude}&zoom=16&size=600x300&markers=color:0x10B981|${booking.latitude},${booking.longitude}&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""}`
+      : null;
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+    destination
+  )}`;
+  const handleOpenMaps = () => {
+    Alert.alert("Open Google Maps", "Open directions to this space?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Open", onPress: () => Linking.openURL(mapsUrl) },
+    ]);
+  };
   const showAccessCode = accessCode && localStatus === "confirmed";
   const minExtendTime = new Date(end.getTime() + 5 * 60 * 1000);
   const graceEndsAt = new Date(start.getTime() + 15 * 60 * 1000);
@@ -193,6 +210,15 @@ export function BookingDetailScreen({ navigation, route }: Props) {
       <ScrollView contentContainerStyle={styles.content} ref={scrollRef}>
         <Text style={styles.title}>{booking.title}</Text>
         <Text style={styles.subtitle}>{booking.address}</Text>
+        {staticMapUrl ? (
+          <Pressable style={styles.mapPreview} onPress={handleOpenMaps}>
+            <Image source={{ uri: staticMapUrl }} style={styles.mapImage} resizeMode="cover" />
+          </Pressable>
+        ) : null}
+        <Pressable style={styles.mapButton} onPress={handleOpenMaps}>
+          <Ionicons name="navigate" size={16} color={colors.accent} />
+          <Text style={styles.mapButtonText}>Open in Google Maps</Text>
+        </Pressable>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Booking details</Text>
@@ -380,6 +406,28 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
     marginTop: 6,
+  },
+  mapButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  mapPreview: {
+    borderRadius: 16,
+    overflow: "hidden",
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  mapImage: {
+    width: "100%",
+    height: 140,
+  },
+  mapButtonText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: "600",
   },
   card: {
     backgroundColor: colors.cardBg,

@@ -662,7 +662,7 @@ router.post("/:id/change-intent", requireAuth, bookingLimiter, async (req, res, 
       amount: additionalAmountCents,
       currency: booking.currency ?? "eur",
       customer: customerId,
-      automatic_payment_methods: { enabled: true },
+      automatic_payment_methods: { enabled: true, allow_redirects: "never" },
       metadata: {
         booking_id: bookingId,
         type: "change",
