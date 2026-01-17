@@ -132,7 +132,7 @@ export function ProfileScreen({ navigation }: Props) {
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <SafeAreaView style={styles.container} edges={["top"]}>
         <View style={styles.emptyState}>
           <Text style={styles.title}>Account settings</Text>
           <Text style={styles.subtitle}>Sign in to manage your profile and security.</Text>
@@ -152,7 +152,7 @@ export function ProfileScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.kicker}>Profile</Text>
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: spacing.screenX,
-    paddingBottom: 32,
+    paddingBottom: 0,
     paddingTop: 24,
   },
   header: {

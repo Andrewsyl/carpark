@@ -40,6 +40,7 @@ const styles = StyleSheet.create({
   },
   topBar: {
     alignItems: "center",
+    backgroundColor: colors.headerTint,
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: spacing.screenX,

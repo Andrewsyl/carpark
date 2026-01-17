@@ -1,21 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CommonActions, useFocusEffect } from "@react-navigation/native";
-import {
-  ActivityIndicator,
-  Animated,
-  BackHandler,
-  Easing,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Animated, BackHandler, Easing, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { listMyBookings, type BookingSummary } from "../api";
 import { useAuth } from "../auth";
 import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
+import { BookingCard } from "../components/BookingCard";
 import type { RootStackParamList } from "../types";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -30,6 +21,8 @@ export function HistoryScreen({ navigation, route }: Props) {
   const [successVisible, setSuccessVisible] = useState(false);
   const [mapCtaVisible, setMapCtaVisible] = useState(false);
   const tabAnim = useRef(new Animated.Value(1)).current;
+  const segmentWidth = useRef(0);
+  const segmentAnim = useRef(new Animated.Value(0)).current;
 
   const loadBookings = useCallback(async () => {
     if (!token) return;
@@ -108,6 +101,16 @@ export function HistoryScreen({ navigation, route }: Props) {
   }, [tab, tabAnim]);
 
   useEffect(() => {
+    const target = tab === "upcoming" ? 0 : 1;
+    Animated.spring(segmentAnim, {
+      toValue: target,
+      useNativeDriver: true,
+      friction: 7,
+      tension: 80,
+    }).start();
+  }, [segmentAnim, tab]);
+
+  useEffect(() => {
     if (!route.params?.refreshToken) return;
     void loadBookings();
     navigation.setParams({ refreshToken: undefined });
@@ -120,8 +123,17 @@ export function HistoryScreen({ navigation, route }: Props) {
   const past = bookings.filter((booking) => new Date(booking.endTime) < now);
   const visible = tab === "upcoming" ? upcoming : past;
 
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+  const formatTime = (date: Date) =>
+    date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.topBar}>
         <Pressable
           style={styles.backButton}
@@ -140,11 +152,9 @@ export function HistoryScreen({ navigation, route }: Props) {
         <View style={styles.backButton} />
       </View>
       <View style={styles.header}>
-        <Text style={styles.kicker}>Trips</Text>
-        <Text style={styles.title}>Manage your bookings</Text>
-        <Text style={styles.subtitle}>
-          Keep track of upcoming reservations and review past stays.
-        </Text>
+        <Text style={styles.kicker}>Your trips</Text>
+        <Text style={styles.title}>Bookings</Text>
+        <Text style={styles.subtitle}>Your parking stays, all in one place.</Text>
       </View>
       {successVisible ? (
         <View style={styles.successBanner}>
@@ -169,19 +179,34 @@ export function HistoryScreen({ navigation, route }: Props) {
           </Pressable>
         </View>
       ) : null}
-      <View style={styles.segment}>
-        <Pressable
-          style={[styles.segmentTab, tab === "upcoming" && styles.segmentTabActive]}
-          onPress={() => setTab("upcoming")}
-        >
+      {/* Segmented control keeps tab context visible while saving vertical space. */}
+      <View
+        style={styles.segment}
+        onLayout={(event) => {
+          segmentWidth.current = event.nativeEvent.layout.width;
+        }}
+      >
+        <Animated.View
+          style={[
+            styles.segmentIndicator,
+            {
+              transform: [
+                {
+                  translateX: segmentAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, segmentWidth.current / 2],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+        <Pressable style={styles.segmentTab} onPress={() => setTab("upcoming")}>
           <Text style={[styles.segmentText, tab === "upcoming" && styles.segmentTextActive]}>
             Upcoming
           </Text>
         </Pressable>
-        <Pressable
-          style={[styles.segmentTab, tab === "past" && styles.segmentTabActive]}
-          onPress={() => setTab("past")}
-        >
+        <Pressable style={styles.segmentTab} onPress={() => setTab("past")}>
           <Text style={[styles.segmentText, tab === "past" && styles.segmentTextActive]}>
             Past
           </Text>
@@ -218,22 +243,33 @@ export function HistoryScreen({ navigation, route }: Props) {
             <>
               {error ? <Text style={styles.error}>{error}</Text> : null}
               {loading ? (
-                <View style={styles.loadingOverlay} pointerEvents="none">
-                  <View style={styles.loadingBadge}>
-                    <ActivityIndicator size="small" color="#10b981" />
-                    <Text style={styles.loadingText}>Loading bookings…</Text>
-                  </View>
+                <View style={styles.skeletonList}>
+                  {[0, 1, 2].map((item) => (
+                    <View key={item} style={styles.skeletonCard}>
+                      <View style={styles.skeletonRow}>
+                        <View style={styles.skeletonTitle} />
+                        <View style={styles.skeletonBadge} />
+                      </View>
+                      <View style={styles.skeletonLine} />
+                      <View style={styles.skeletonMetaRow}>
+                        <View style={styles.skeletonMeta} />
+                        <View style={styles.skeletonMeta} />
+                      </View>
+                      <View style={styles.skeletonPrice} />
+                    </View>
+                  ))}
                 </View>
               ) : null}
               {visible.length === 0 ? (
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>
-                    {tab === "upcoming" ? "No upcoming bookings" : "No past bookings"}
+                <View style={styles.emptyState}>
+                  <Ionicons name="calendar-outline" size={32} color={colors.textSoft} />
+                  <Text style={styles.emptyTitle}>
+                    {tab === "upcoming" ? "No upcoming bookings yet" : "No past bookings"}
                   </Text>
-                  <Text style={styles.cardBody}>
+                  <Text style={styles.emptyBody}>
                     {tab === "upcoming"
-                      ? "Find a space and your next reservation will show up here."
-                      : "Completed reservations will appear here once you’ve booked a space."}
+                      ? "Find a space and your next trip will show up here."
+                      : "Completed reservations will appear here after your stay."}
                   </Text>
                   {tab === "upcoming" ? (
                     <Pressable
@@ -246,51 +282,43 @@ export function HistoryScreen({ navigation, route }: Props) {
                 </View>
               ) : (
                 <View style={styles.list}>
+                  {/* Cards highlight status + timing first for quick scanning. */}
                   {visible.map((booking) => {
                     const start = new Date(booking.startTime);
                     const end = new Date(booking.endTime);
                     const isRefunded = booking.refundStatus === "succeeded";
-                    const statusLabel = isRefunded ? "refunded" : booking.status;
-                    const refundedAt = booking.refundedAt ? new Date(booking.refundedAt) : null;
-                  return (
-                    <Pressable
-                      key={booking.id}
-                      style={styles.bookingCard}
-                      onPress={() => navigation.navigate("BookingDetail", { booking })}
-                    >
-                      <View
-                        style={[
-                          styles.statusPill,
-                          isRefunded && styles.statusRefunded,
-                          !isRefunded && booking.status === "confirmed" && styles.statusConfirmed,
-                          !isRefunded && booking.status === "pending" && styles.statusPending,
-                          !isRefunded && booking.status === "canceled" && styles.statusCanceled,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.statusText,
-                            isRefunded && styles.statusTextRefunded,
-                            !isRefunded && booking.status === "confirmed" && styles.statusTextConfirmed,
-                            !isRefunded && booking.status === "pending" && styles.statusTextPending,
-                            !isRefunded && booking.status === "canceled" && styles.statusTextCanceled,
-                          ]}
-                        >
-                          {statusLabel}
-                        </Text>
-                      </View>
-                      <Text style={styles.bookingTitle}>{booking.title}</Text>
-                      <Text style={styles.bookingAddress}>{booking.address}</Text>
-                      <Text style={styles.bookingTime}>
-                        {start.toLocaleDateString()} • {start.toLocaleTimeString()} – {end.toLocaleTimeString()}
-                      </Text>
-                      {isRefunded ? (
-                        <Text style={styles.bookingRefunded}>
-                          Refunded {refundedAt ? refundedAt.toLocaleDateString() : ""}
-                        </Text>
-                      ) : null}
-                      <Text style={styles.bookingPrice}>€{(booking.amountCents / 100).toFixed(2)}</Text>
-                    </Pressable>
+                    const isCompleted = tab === "past" && booking.status === "confirmed";
+                    const statusLabel = isRefunded
+                      ? "Refunded"
+                      : isCompleted
+                      ? "Completed"
+                      : booking.status === "confirmed"
+                      ? "Confirmed"
+                      : booking.status === "pending"
+                      ? "Pending"
+                      : "Cancelled";
+                    const statusTone = isRefunded
+                      ? "refunded"
+                      : isCompleted
+                      ? "completed"
+                      : booking.status === "confirmed"
+                      ? "confirmed"
+                      : booking.status === "pending"
+                      ? "pending"
+                      : "canceled";
+                    const dateLabel = formatDate(start);
+                    const timeLabel = `${formatTime(start)} – ${formatTime(end)}`;
+
+                    return (
+                      <BookingCard
+                        key={booking.id}
+                        booking={booking}
+                        statusLabel={statusLabel}
+                        statusTone={statusTone}
+                        dateLabel={dateLabel}
+                        timeLabel={timeLabel}
+                        onPress={() => navigation.navigate("BookingDetail", { booking })}
+                      />
                     );
                   })}
                 </View>
@@ -310,6 +338,7 @@ const styles = StyleSheet.create({
   },
   topBar: {
     alignItems: "center",
+    backgroundColor: colors.headerTint,
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: spacing.screenX,
@@ -341,23 +370,25 @@ const styles = StyleSheet.create({
   },
   topTitle: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
   },
   header: {
     paddingHorizontal: spacing.screenX,
     paddingTop: spacing.screenY,
+    paddingBottom: spacing.screenY,
   },
   kicker: {
     ...textStyles.kicker,
   },
   title: {
     ...textStyles.title,
-    marginTop: 8,
+    fontSize: 28,
+    marginTop: 6,
   },
   subtitle: {
     ...textStyles.subtitle,
-    marginTop: 8,
+    marginTop: 6,
   },
   successBanner: {
     backgroundColor: "#d1fae5",
@@ -411,11 +442,25 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   segment: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
+    backgroundColor: colors.cardBg,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    borderWidth: 1,
     flexDirection: "row",
-    paddingHorizontal: spacing.screenX,
-    paddingTop: 8,
+    marginHorizontal: spacing.screenX,
+    marginTop: 8,
+    overflow: "hidden",
+    padding: 2,
+  },
+  segmentIndicator: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    height: "100%",
+    left: 0,
+    position: "absolute",
+    top: 0,
+    width: "50%",
+    zIndex: 0,
   },
   tabContent: {
     flexGrow: 1,
@@ -423,41 +468,73 @@ const styles = StyleSheet.create({
   segmentTab: {
     alignItems: "center",
     flex: 1,
-    paddingBottom: 14,
-    paddingTop: 8,
-  },
-  segmentTabActive: {
-    borderBottomColor: colors.accent,
-    borderBottomWidth: 2,
+    paddingVertical: 10,
+    zIndex: 1,
   },
   segmentText: {
-    color: colors.textSoft,
+    color: colors.textMuted,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     textAlign: "center",
   },
   segmentTextActive: {
-    color: colors.text,
+    color: "#ffffff",
+    fontWeight: "700",
   },
   content: {
     paddingHorizontal: spacing.screenX,
-    paddingBottom: 32,
+    paddingTop: 16,
   },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 20,
+  skeletonList: {
+    gap: 16,
   },
-  loadingBadge: {
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.92)",
+  skeletonCard: {
+    backgroundColor: colors.cardBg,
     borderRadius: radius.card,
-    flexDirection: "row",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    padding: spacing.card,
     ...cardShadow,
+  },
+  skeletonRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  skeletonTitle: {
+    backgroundColor: "#e5e7eb",
+    borderRadius: 6,
+    height: 16,
+    width: "55%",
+  },
+  skeletonBadge: {
+    backgroundColor: "#e5e7eb",
+    borderRadius: 999,
+    height: 20,
+    width: 64,
+  },
+  skeletonLine: {
+    backgroundColor: "#e5e7eb",
+    borderRadius: 6,
+    height: 12,
+    marginTop: 12,
+    width: "70%",
+  },
+  skeletonMetaRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 12,
+  },
+  skeletonMeta: {
+    backgroundColor: "#e5e7eb",
+    borderRadius: 6,
+    height: 12,
+    width: 90,
+  },
+  skeletonPrice: {
+    backgroundColor: "#e5e7eb",
+    borderRadius: 6,
+    height: 18,
+    marginTop: 16,
+    width: 80,
   },
   list: {
     gap: 16,
@@ -468,85 +545,24 @@ const styles = StyleSheet.create({
     padding: spacing.card,
     ...cardShadow,
   },
-  bookingCard: {
+  emptyState: {
+    alignItems: "center",
     backgroundColor: colors.cardBg,
     borderRadius: radius.card,
+    gap: 8,
     padding: spacing.card,
+    textAlign: "center",
     ...cardShadow,
   },
-  bookingTitle: {
+  emptyTitle: {
     color: colors.text,
     fontSize: 18,
     fontWeight: "700",
   },
-  statusPill: {
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    position: "absolute",
-    right: 16,
-    top: 16,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  statusConfirmed: {
-    backgroundColor: colors.accent,
-  },
-  statusPending: {
-    backgroundColor: "#f59e0b",
-  },
-  statusCanceled: {
-    backgroundColor: "#6b7280",
-  },
-  statusRefunded: {
-    backgroundColor: "#3b82f6",
-  },
-  statusTextConfirmed: {
-    color: "#ffffff",
-  },
-  statusTextPending: {
-    color: "#ffffff",
-  },
-  statusTextCanceled: {
-    color: "#ffffff",
-  },
-  statusTextRefunded: {
-    color: "#ffffff",
-  },
-  bookingAddress: {
-    color: colors.textSoft,
-    fontSize: 14,
-    marginTop: 4,
-  },
-  bookingTime: {
-    color: colors.textSoft,
-    fontSize: 14,
-    marginTop: 8,
-  },
-  bookingRefunded: {
-    color: "#3b82f6",
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 8,
-  },
-  bookingPrice: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: "700",
-    marginTop: 12,
-  },
-  cardTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  cardBody: {
+  emptyBody: {
     color: colors.textMuted,
     fontSize: 14,
-    marginTop: 6,
+    textAlign: "center",
   },
   error: {
     backgroundColor: "#fef2f2",
@@ -559,22 +575,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  loadingText: {
-    color: "#6b7280",
-    fontSize: 12,
-    fontWeight: "600",
-  },
   primaryButton: {
     alignItems: "center",
     backgroundColor: "#10b981",
     borderRadius: 12,
     marginTop: 14,
-    minHeight: 44,
-    paddingVertical: 10,
+    minHeight: 48,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignSelf: "stretch",
+    justifyContent: "center",
   },
   primaryButtonText: {
     color: "#ffffff",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
   },
 });

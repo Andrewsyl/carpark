@@ -551,6 +551,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
+    backgroundColor: colors.headerTint,
     flexDirection: "row",
     paddingHorizontal: spacing.screenX,
     paddingVertical: 12,

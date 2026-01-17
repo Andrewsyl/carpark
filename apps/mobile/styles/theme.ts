@@ -1,6 +1,7 @@
 export const colors = {
   appBg: "#f5f7fb",
   cardBg: "#ffffff",
+  headerTint: "#ecfdf3",
   text: "#0f172a",
   textMuted: "#6b7280",
   textSoft: "#94a3b8",

@@ -37,6 +37,7 @@ import type {
   SecurityLevel,
   VehicleSize,
 } from "../types";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Search">;
 
@@ -689,11 +690,12 @@ export function SearchScreen({ navigation }: Props) {
               onPress={() => setSearchSheetOpen(true)}
               testID="search-bar"
             >
+              <Ionicons name="search-outline" size={18} color={colors.textSoft} />
               <TextInput
                 style={styles.searchInput}
                 value={addressQuery}
                 editable={false}
-                placeholder="Where to?"
+                placeholder="Where are you parking?"
                 placeholderTextColor="#98a2b3"
                 pointerEvents="none"
               />
@@ -709,14 +711,34 @@ export function SearchScreen({ navigation }: Props) {
                 </Pressable>
               ) : null}
             </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.filterFab,
+                showFilters && styles.filterFabActive,
+                pressed && styles.filterFabPressed,
+              ]}
+              onPress={() => setShowFilters((prev) => !prev)}
+              accessibilityLabel="Filters"
+            >
+              <Ionicons
+                name="options-outline"
+                size={18}
+                color={showFilters ? colors.accent : colors.text}
+              />
+              {(priceMin || priceMax || securityLevel || vehicleSize || coveredParking || evCharging || instantBook) ? (
+                <View style={styles.filterDot} />
+              ) : null}
+            </Pressable>
           <View style={styles.dateRow}>
             <Pressable style={styles.dateTimePill} onPress={() => openPicker("start")}>
+              <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
               <Text style={styles.dateTimeText}>{formatDateTimeLabel(startAt)}</Text>
             </Pressable>
             <View style={styles.dateArrow}>
               <Text style={styles.dateArrowText}>→</Text>
             </View>
             <Pressable style={styles.dateTimePill} onPress={() => openPicker("end")}>
+              <Ionicons name="time-outline" size={14} color={colors.textMuted} />
               <Text style={styles.dateTimeText}>{formatDateTimeLabel(endAt)}</Text>
             </Pressable>
           </View>
@@ -738,6 +760,7 @@ export function SearchScreen({ navigation }: Props) {
                 });
               }}
             >
+                <Ionicons name="refresh" size={14} color="#ffffff" />
                 <Text style={styles.searchAreaText}>Search this area</Text>
               </Pressable>
             </View>
@@ -753,23 +776,11 @@ export function SearchScreen({ navigation }: Props) {
               <Text style={styles.searchLoadingText}>Searching for spaces…</Text>
             </View>
           ) : null}
-          <View style={styles.filtersHeader}>
-            <Pressable
-              style={[styles.filtersToggle, showFilters && styles.filtersToggleActive]}
-              onPress={() => setShowFilters((prev) => !prev)}
-            >
-              <Text
-                style={[styles.filtersToggleText, showFilters && styles.filtersToggleTextActive]}
-              >
-                Filters
-              </Text>
+          {(priceMin || priceMax || securityLevel || vehicleSize || coveredParking || evCharging || instantBook) ? (
+            <Pressable style={styles.clearFilters} onPress={clearFilters}>
+              <Text style={styles.clearFiltersText}>Clear filters</Text>
             </Pressable>
-            {(priceMin || priceMax || securityLevel || vehicleSize || coveredParking || evCharging || instantBook) ? (
-              <Pressable style={styles.clearFilters} onPress={clearFilters}>
-                <Text style={styles.clearFiltersText}>Clear</Text>
-              </Pressable>
-            ) : null}
-          </View>
+          ) : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
         {selectedListing ? (
@@ -1226,26 +1237,28 @@ const styles = StyleSheet.create({
     top: 10,
   },
   overlayHeader: {
-    marginBottom: 4,
+    marginBottom: 6,
   },
   searchGroup: {
     backgroundColor: colors.cardBg,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderRadius: 18,
+    overflow: "hidden",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    position: "relative",
     ...cardShadow,
   },
   searchBar: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
+    paddingRight: 46,
   },
   searchInput: {
     color: colors.text,
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: "600",
   },
   clearButton: {
     alignItems: "center",
@@ -1260,6 +1273,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     lineHeight: 18,
+  },
+  filterFab: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: radius.pill,
+    height: 36,
+    justifyContent: "center",
+    position: "absolute",
+    right: 10,
+    top: 10,
+    width: 36,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  filterFabActive: {
+    borderColor: colors.accent,
+    borderWidth: 1,
+    backgroundColor: "#ecfdf7",
+  },
+  filterFabPressed: {
+    backgroundColor: "#ffffff",
+  },
+  filterDot: {
+    backgroundColor: colors.accent,
+    borderRadius: 4,
+    height: 8,
+    position: "absolute",
+    right: 8,
+    top: 8,
+    width: 8,
   },
   searchOverlayTrigger: {
     bottom: 0,
@@ -1318,8 +1364,13 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   clearFilters: {
-    paddingHorizontal: 8,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: radius.pill,
+    marginTop: 10,
+    paddingHorizontal: 14,
     paddingVertical: 6,
+    ...cardShadow,
   },
   clearFiltersText: {
     color: colors.textMuted,
@@ -1640,20 +1691,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   dateRow: {
-    borderTopColor: "#eef2f7",
-    borderTopWidth: 1,
     flexDirection: "row",
     gap: 8,
-    marginTop: 10,
-    paddingTop: 10,
+    marginTop: 12,
+    paddingTop: 4,
     alignItems: "center",
   },
   dateTimePill: {
+    alignItems: "center",
     backgroundColor: "#f8fafc",
-    borderRadius: 10,
-    marginTop: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    borderRadius: radius.pill,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     flex: 1,
   },
   dateTimeText: {
@@ -1664,7 +1715,6 @@ const styles = StyleSheet.create({
   dateArrow: {
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 6,
     width: 16,
   },
   dateArrowText: {
@@ -1675,11 +1725,13 @@ const styles = StyleSheet.create({
   searchAreaButton: {
     alignItems: "center",
     alignSelf: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 14,
-    height: 34,
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    flexDirection: "row",
+    gap: 8,
+    height: 38,
     marginTop: 10,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     justifyContent: "center",
     shadowColor: "#0f172a",
     shadowOffset: { width: 0, height: 6 },
@@ -1692,7 +1744,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   searchAreaText: {
-    color: "#475467",
+    color: "#ffffff",
     fontSize: 13,
     fontWeight: "700",
   },

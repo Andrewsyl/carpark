@@ -39,6 +39,7 @@ import { AdminScreen } from "./screens/AdminScreen";
 import type { RootStackParamList } from "./types";
 import { registerPushToken } from "./api";
 import { Ionicons } from "@expo/vector-icons";
+import { BottomTabButton } from "./components/BottomTabButton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LottieView from "lottie-react-native";
 
@@ -177,16 +178,22 @@ function MainTabs() {
         tabBarActiveTintColor: "#00d4aa",
         tabBarInactiveTintColor: "#9ca3af",
         tabBarStyle: {
-          borderTopColor: "#e5e7eb",
-          borderTopWidth: 1,
-          height: 64 + Math.max(0, insets.bottom - 4),
-          paddingBottom: Math.max(10, insets.bottom),
+          backgroundColor: "#ffffff",
+          borderTopWidth: 0,
+          height: 60 + insets.bottom,
+          paddingBottom: Math.max(8, insets.bottom),
           paddingTop: 6,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+          elevation: 10,
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: "600",
         },
+        tabBarButton: (props) => <BottomTabButton {...props} />,
       }}
     >
       <Tab.Screen
