@@ -56,7 +56,7 @@ const createListingSchema = z.object({
   longitude: z.number().min(-180).max(180),
   amenities: z.array(z.string().trim().max(40)).max(20).optional(),
   imageUrls: z.array(z.string().trim().url()).max(10).optional(),
-  accessCode: z.string().trim().min(2).max(40).optional(),
+  accessCode: z.string().trim().min(2).max(40).nullable().optional(),
   permissionDeclared: z.boolean().optional(),
 });
 

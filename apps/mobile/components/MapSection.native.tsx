@@ -8,7 +8,7 @@ import MapView, {
   type Region,
 } from "react-native-maps";
 import ViewShot, { type ViewShotRef } from "react-native-view-shot";
-import { PricePin } from "./PricePin";
+import { MapPricePin } from "./MapPricePin";
 
 type ListingResult = {
   id: string;
@@ -57,6 +57,7 @@ export default function MapSection({
   onMapReady,
   googleMapId,
   customMapStyle,
+  onOverlappingPins,
 }: {
   region?: MapRegion;
   initialRegion: MapRegion;
@@ -73,6 +74,7 @@ export default function MapSection({
   onMapReady?: () => void;
   googleMapId?: string;
   customMapStyle?: Array<Record<string, unknown>>;
+  onOverlappingPins?: (pins: ListingResult[]) => void;
 }) {
   const nextResults = useMemo(
     () =>
@@ -176,8 +178,10 @@ export default function MapSection({
             60,
             regionRef.latitudeDelta * METERS_PER_DEGREE_LAT * 0.03
           );
-          let closest: { id: string; distance: number } | null = null;
+          
           const list = freezeMarkers ? renderedResultsRef.current : nextResults;
+          const candidates: Array<{ listing: ListingResult; distance: number }> = [];
+          
           list.forEach((listing) => {
             if (typeof listing.latitude !== "number" || typeof listing.longitude !== "number")
               return;
@@ -185,12 +189,23 @@ export default function MapSection({
               lat: listing.latitude,
               lng: listing.longitude,
             });
-            if (dist > thresholdM) return;
-            if (!closest || dist < closest.distance) {
-              closest = { id: listing.id, distance: dist };
+            if (dist <= thresholdM) {
+              candidates.push({ listing, distance: dist });
             }
           });
-          if (closest) onSelect(closest.id);
+          
+          if (candidates.length === 0) {
+            onSelect(null as any);
+            return;
+          }
+          
+          candidates.sort((a, b) => a.distance - b.distance);
+          
+          if (candidates.length > 1 && onOverlappingPins) {
+            onOverlappingPins(candidates.map(c => c.listing));
+          } else {
+            onSelect(candidates[0].listing.id);
+          }
         }}
         mapPadding={mapPadding}
         moveOnMarkerPress={false}
@@ -214,7 +229,6 @@ export default function MapSection({
               tracksViewChanges={false}
               anchor={{ x: 0.5, y: 1 }}
               centerOffset={{ x: 0, y: 0 }}
-              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
               onPress={(e) => {
                 e?.stopPropagation?.();
                 onSelect?.(listing.id);
@@ -230,6 +244,8 @@ export default function MapSection({
         {labelKeys.map((key) => {
           const [label, state] = key.split("|");
           const selected = state === "selected";
+          const isSoldOut = label === "Sold out";
+          const price = isSoldOut ? 0 : parseFloat(label.replace(/[€,]/g, "")) || 0;
           return (
             <ViewShot
               key={key}
@@ -243,7 +259,7 @@ export default function MapSection({
               options={{ format: "png", result: "tmpfile", quality: 1 }}
               style={styles.capture}
             >
-              <PricePin label={label} selected={selected} />
+              <MapPricePin price={price} selected={selected} soldOut={isSoldOut} />
             </ViewShot>
           );
         })}

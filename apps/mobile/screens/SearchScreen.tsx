@@ -119,7 +119,7 @@ const formatDateTimeLabel = (date: Date) => `${formatDateLabel(date)} · ${forma
 const snapTo5Minutes = (date: Date) => {
   const next = new Date(date);
   const minutes = next.getMinutes();
-  const snapped = Math.round(minutes / 5) * 5;
+  const snapped = Math.ceil(minutes / 5) * 5;
   next.setMinutes(snapped, 0, 0);
   return next;
 };
@@ -127,8 +127,8 @@ const snapTo5Minutes = (date: Date) => {
 export function SearchScreen({ navigation }: Props) {
   const today = useMemo(() => {
     const now = new Date();
-    const start = new Date(now);
-    const end = new Date(now);
+    const start = snapTo5Minutes(new Date(now));
+    const end = new Date(start);
     end.setHours(end.getHours() + 2);
     return {
       from: start.toISOString(),
@@ -145,6 +145,7 @@ export function SearchScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<ListingSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [dismissingCard, setDismissingCard] = useState(false);
   const [addressQuery, setAddressQuery] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState<PlaceSuggestion[]>([]);
   const [addressLoading, setAddressLoading] = useState(false);
@@ -162,6 +163,7 @@ export function SearchScreen({ navigation }: Props) {
   const [priceMax, setPriceMax] = useState("");
   const [securityLevel, setSecurityLevel] = useState<SecurityLevel | "">("");
   const [vehicleSize, setVehicleSize] = useState<VehicleSize | "">("");
+  const [overlappingPins, setOverlappingPins] = useState<ListingSummary[]>([]);
   const [coveredParking, setCoveredParking] = useState(false);
   const [evCharging, setEvCharging] = useState(false);
   const [instantBook, setInstantBook] = useState(false);
@@ -506,16 +508,19 @@ export function SearchScreen({ navigation }: Props) {
       ? `https://maps.googleapis.com/maps/api/streetview?size=240x240&location=${selectedListing.latitude},${selectedListing.longitude}&key=${mapsKey}`
       : null);
 
-  const handleSelectListing = useCallback((id: string) => {
+  const handleSelectListing = useCallback((id: string | null) => {
     ignoreNextRegionChangeRef.current = true;
-    setSelectedId((current) => {
-      // Force re-render even if same ID
-      if (current === id) {
-        return id;
-      }
-      return id;
-    });
-  }, []);
+    if (id === null && selectedId !== null) {
+      // Animate out before clearing
+      setDismissingCard(true);
+      setTimeout(() => {
+        setSelectedId(null);
+        setDismissingCard(false);
+      }, 250);
+    } else {
+      setSelectedId(id);
+    }
+  }, [selectedId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -691,6 +696,7 @@ export function SearchScreen({ navigation }: Props) {
             freezeMarkers={loading}
             onMapLoaded={handleMapReady}
             onMapReady={handleMapReady}
+            onOverlappingPins={setOverlappingPins}
           />
         ) : (
           <View style={styles.mapPlaceholder} />
@@ -835,6 +841,7 @@ export function SearchScreen({ navigation }: Props) {
             bottomOffset={Math.max(6, insets.bottom - 6)}
             horizontalInset={16}
             onReserve={() => navigation.navigate("Listing", { id: selectedListing.id, from, to })}
+            dismissing={dismissingCard}
           />
         ) : null}
         {filtersVisible ? (
@@ -956,7 +963,7 @@ export function SearchScreen({ navigation }: Props) {
                   style={styles.headerIconButton}
                   onPress={() => setSearchSheetOpen(false)}
                 >
-                  <Text style={styles.headerIconText}>{"<"}</Text>
+                  <Ionicons name="arrow-back" size={24} color="#ffffff" />
                 </Pressable>
                 <Text style={styles.searchHeaderTitle}>Search</Text>
                 <Pressable style={styles.headerIconButton} onPress={() => setShowFilters(true)}>
@@ -1224,6 +1231,41 @@ export function SearchScreen({ navigation }: Props) {
           )
         ) : null}
       </View>
+
+      {overlappingPins.length > 1 && (
+        <Modal transparent animationType="fade" visible onRequestClose={() => setOverlappingPins([])}>
+          <Pressable style={styles.overlappingBackdrop} onPress={() => setOverlappingPins([])}>
+            <View style={styles.overlappingSheet}>
+              <View style={styles.overlappingHeader}>
+                <Text style={styles.overlappingTitle}>Select parking spot</Text>
+                <Text style={styles.overlappingSubtitle}>{overlappingPins.length} spots at this location</Text>
+              </View>
+              <View style={styles.overlappingList}>
+                {overlappingPins.map((listing) => (
+                  <Pressable
+                    key={listing.id}
+                    style={styles.overlappingItem}
+                    onPress={() => {
+                      setSelectedId(listing.id);
+                      setOverlappingPins([]);
+                    }}
+                  >
+                    <View style={styles.overlappingItemContent}>
+                      <Text style={styles.overlappingItemTitle} numberOfLines={1}>
+                        {listing.title}
+                      </Text>
+                      <Text style={styles.overlappingItemAddress} numberOfLines={1}>
+                        {listing.address}
+                      </Text>
+                    </View>
+                    <Text style={styles.overlappingItemPrice}>€{listing.price_per_day}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          </Pressable>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -1893,5 +1935,72 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: 12,
     padding: 16,
+  },
+  overlappingBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  overlappingSheet: {
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: "70%",
+    paddingBottom: 32,
+  },
+  overlappingHeader: {
+    borderBottomColor: "#e2e8f0",
+    borderBottomWidth: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+  },
+  overlappingTitle: {
+    color: "#0f172a",
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  overlappingSubtitle: {
+    color: "#64748b",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  overlappingList: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+  },
+  overlappingItem: {
+    backgroundColor: "#ffffff",
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginVertical: 6,
+    marginHorizontal: 8,
+    padding: 16,
+    ...cardShadow,
+  },
+  overlappingItemContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  overlappingItemTitle: {
+    color: "#0f172a",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  overlappingItemAddress: {
+    color: "#64748b",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  overlappingItemPrice: {
+    color: "#10b981",
+    fontSize: 18,
+    fontWeight: "700",
   },
 });

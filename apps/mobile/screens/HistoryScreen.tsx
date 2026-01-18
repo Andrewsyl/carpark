@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CommonActions, useFocusEffect } from "@react-navigation/native";
 import { Animated, BackHandler, Easing, FlatList, InteractionManager, Pressable, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import LottieView from "lottie-react-native";
 import { listMyBookings, type BookingSummary } from "../api";
 import { useAuth } from "../auth";
 import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
@@ -10,21 +11,26 @@ import { BookingCard } from "../components/BookingCard";
 import { Spinner } from "../components/Spinner";
 import type { RootStackParamList } from "../types";
 import { Ionicons } from "@expo/vector-icons";
+import { formatDateLabel, formatTimeLabel } from "../utils/dateFormat";
 
 type Props = NativeStackScreenProps<RootStackParamList, "History">;
 
 export function HistoryScreen({ navigation, route }: Props) {
   const { token, user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
   const [displayTab, setDisplayTab] = useState<"upcoming" | "past">("upcoming");
   const [bookings, setBookings] = useState<BookingSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successVisible, setSuccessVisible] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [newBookingId, setNewBookingId] = useState<string | null>(null);
   const [mapCtaVisible, setMapCtaVisible] = useState(false);
   const tabAnim = useRef(new Animated.Value(1)).current;
   const segmentWidth = useRef(0);
   const segmentAnim = useRef(new Animated.Value(0)).current;
+  const newBookingSlideAnim = useRef(new Animated.Value(50)).current;
+  const newBookingOpacityAnim = useRef(new Animated.Value(0)).current;
 
   const loadBookings = useCallback(async () => {
     if (!token) return;
@@ -35,9 +41,11 @@ export function HistoryScreen({ navigation, route }: Props) {
       const data = await listMyBookings(token);
       if (!active) return;
       setBookings(data.driverBookings ?? []);
+      return data.driverBookings ?? [];
     } catch (err) {
       if (!active) return;
       setError(err instanceof Error ? err.message : "Could not load bookings");
+      return [];
     } finally {
       if (active) setLoading(false);
     }
@@ -74,11 +82,64 @@ export function HistoryScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (!route.params?.showSuccess) return;
-    setSuccessVisible(true);
+    console.log('[HistoryScreen] Setting showSuccess to true');
+    setShowSuccess(true);
+    
+    // Reset animation values
+    newBookingSlideAnim.setValue(50);
+    newBookingOpacityAnim.setValue(0);
+    
+    // Start loading bookings immediately during animation
+    console.log('[HistoryScreen] Starting to load bookings during animation');
+    const previousBookingIds = new Set(bookings.map(b => b.id));
+    
+    void loadBookings().then((newBookings) => {
+      // Find the new booking after load completes
+      if (newBookings && newBookings.length > 0) {
+        const newBooking = newBookings.find(b => !previousBookingIds.has(b.id));
+        console.log('[HistoryScreen] Found new booking:', newBooking?.id);
+        if (newBooking) {
+          setNewBookingId(newBooking.id);
+        }
+      }
+    });
+    
+    const hideTimer = setTimeout(() => {
+      console.log('[HistoryScreen] Hiding success animation');
+      setShowSuccess(false);
+      
+      // Trigger slide-in animation after overlay disappears
+      setTimeout(() => {
+        console.log('[HistoryScreen] Starting slide-in animation');
+        Animated.parallel([
+          Animated.spring(newBookingSlideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 8,
+          }),
+          Animated.timing(newBookingOpacityAnim, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          console.log('[HistoryScreen] Animation complete');
+          // Clear the newBookingId after animation completes
+          setTimeout(() => setNewBookingId(null), 100);
+        });
+      }, 100);
+    }, 1800);
+    
+    // Clear the param immediately but don't add to deps
     navigation.setParams({ showSuccess: undefined });
-    const timer = setTimeout(() => setSuccessVisible(false), 2400);
-    return () => clearTimeout(timer);
-  }, [navigation, route.params?.showSuccess]);
+    
+    return () => {
+      console.log('[HistoryScreen] Cleaning up timers');
+      clearTimeout(hideTimer);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!route.params?.showMapCTA) return;
@@ -155,10 +216,12 @@ export function HistoryScreen({ navigation, route }: Props) {
       : booking.status === "pending"
       ? "pending"
       : "canceled";
-    const dateLabel = formatDate(start);
-    const timeLabel = `${formatTime(start)} – ${formatTime(end)}`;
-
-    return (
+    const dateLabel = formatDateLabel(start);
+    const timeLabel = `${formatTimeLabel(start)} – ${formatTimeLabel(end)}`;
+    
+    const isNewBooking = booking.id === newBookingId;
+    
+    const cardContent = (
       <BookingCard
         booking={booking}
         statusLabel={statusLabel}
@@ -168,22 +231,28 @@ export function HistoryScreen({ navigation, route }: Props) {
         onPress={() => navigation.navigate("BookingDetail", { booking })}
       />
     );
-  }, [navigation, displayTab]);
+    
+    if (isNewBooking) {
+      return (
+        <Animated.View
+          style={{
+            opacity: newBookingOpacityAnim,
+            transform: [{ translateX: newBookingSlideAnim }],
+          }}
+        >
+          {cardContent}
+        </Animated.View>
+      );
+    }
+
+    return cardContent;
+  }, [navigation, displayTab, newBookingId, newBookingOpacityAnim, newBookingSlideAnim]);
 
   const getItemLayout = useCallback((_: any, index: number) => ({
     length: 220, // Approximate card height + gap
     offset: 220 * index,
     index,
   }), []);
-
-  const formatDate = (date: Date) =>
-    date.toLocaleDateString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-  const formatTime = (date: Date) =>
-    date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -200,17 +269,6 @@ export function HistoryScreen({ navigation, route }: Props) {
           </Text>
         )}
       </View>
-      {successVisible ? (
-        <View style={styles.successBanner}>
-          <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={24} color="#047857" />
-          </View>
-          <View style={styles.successContent}>
-            <Text style={styles.successTitle}>Booking confirmed!</Text>
-            <Text style={styles.successBody}>Your reservation is saved in Upcoming</Text>
-          </View>
-        </View>
-      ) : null}
       {mapCtaVisible ? (
         <View style={styles.mapCtaBanner}>
           <View style={styles.mapCtaContent}>
@@ -285,7 +343,7 @@ export function HistoryScreen({ navigation, route }: Props) {
         data={!user ? [] : visible}
         renderItem={renderBookingCard}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) }]}
         ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
         ListHeaderComponent={
           <>
@@ -358,6 +416,20 @@ export function HistoryScreen({ navigation, route }: Props) {
         initialNumToRender={15}
         windowSize={10}
       />
+      {showSuccess ? (
+        <Pressable style={styles.successOverlay} onPress={() => setShowSuccess(false)}>
+          <View style={styles.successCard}>
+            <LottieView
+              source={require("../assets/successfully.json")}
+              autoPlay
+              loop={false}
+              style={styles.successAnimation}
+            />
+            <Text style={styles.successTitle}>Booking confirmed!</Text>
+            <Text style={styles.successBody}>Your reservation is saved in Upcoming</Text>
+          </View>
+        </Pressable>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -396,38 +468,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontWeight: "500",
     marginTop: 4,
-  },
-  successBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ecfdf5",
-    borderRadius: 16,
-    marginHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 8,
-    padding: 16,
-    gap: 12,
-  },
-  successIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#d1fae5",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  successContent: {
-    flex: 1,
-  },
-  successTitle: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "700",
-    marginBottom: 2,
-  },
-  successBody: {
-    color: colors.textMuted,
-    fontSize: 13,
   },
   mapCtaBanner: {
     alignItems: "center",
@@ -631,5 +671,40 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 15,
     fontWeight: "700",
+  },
+  successOverlay: {
+    alignItems: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.35)",
+    bottom: 0,
+    justifyContent: "center",
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  successCard: {
+    alignItems: "center",
+    backgroundColor: colors.cardBg,
+    borderRadius: radius.card,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    ...cardShadow,
+    width: 240,
+  },
+  successAnimation: {
+    height: 140,
+    width: 140,
+  },
+  successTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 6,
+  },
+  successBody: {
+    color: colors.textMuted,
+    fontSize: 13,
+    marginTop: 4,
+    textAlign: "center",
   },
 });

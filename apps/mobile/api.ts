@@ -653,6 +653,7 @@ export async function listListingReviews(listingId: string) {
 
 export type BookingSummary = {
   id: string;
+  listingId: string;
   startTime: string;
   endTime: string;
   status: string;
@@ -667,6 +668,7 @@ export type BookingSummary = {
   currency: string;
   title: string;
   address: string;
+  imageUrls?: string[] | null;
   latitude?: number | null;
   longitude?: number | null;
 };

@@ -1,7 +1,8 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Path, Rect } from "react-native-svg";
+import { Ionicons } from "@expo/vector-icons";
+import Svg, { Path, Rect, Circle } from "react-native-svg";
 import { useListingFlow } from "./context";
 import { StepProgress } from "./StepProgress";
 import { colors, radius, spacing, textStyles } from "../../styles/theme";
@@ -14,7 +15,7 @@ type FlowStackParamList = {
 type Props = NativeStackScreenProps<FlowStackParamList, "ListingDetails">;
 
 const spaceTypes = ["Driveway", "Garage", "Car park", "Private road"];
-const accessOptions = ["Gated", "Permit required", "EV charging"];
+const accessOptions = ["Gated", "Permit required", "EV charging", "CCTV", "Covered"];
 
 const SpaceTypeIcon = ({ type, active }: { type: string; active: boolean }) => {
   const stroke = active ? colors.accent : colors.textSoft;
@@ -73,7 +74,7 @@ export function ListingDetailsScreen({ navigation }: Props) {
         <Text style={styles.kicker}>Tell us about your space</Text>
         <StepProgress current={3} total={7} />
         <Text style={styles.title}>What type of space is it?</Text>
-        <Text style={styles.subtitle}>Pick the closest match. You can edit later.</Text>
+        <Text style={styles.subtitle}>Pick the closest match</Text>
 
         <View style={styles.grid}>
           {spaceTypes.map((type) => (
@@ -95,28 +96,33 @@ export function ListingDetailsScreen({ navigation }: Props) {
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>Access options</Text>
-        <Text style={styles.subtitle}>Select anything that applies.</Text>
-        <View style={styles.grid}>
-          {accessOptions.map((option) => (
-            <Pressable
-              key={option}
-              style={[
-                styles.card,
-                draft.accessOptions.includes(option) && styles.cardActive,
-              ]}
-              onPress={() => toggleAccess(option)}
-            >
-              <Text style={styles.cardTitle}>{option}</Text>
-            </Pressable>
-          ))}
+        <Text style={styles.sectionTitle}>Features</Text>
+        <Text style={styles.subtitle}>What does your space have?</Text>
+        <View style={styles.chipGrid}>
+          {accessOptions.map((option) => {
+            const isSelected = draft.accessOptions.includes(option);
+            return (
+              <Pressable
+                key={option}
+                style={[styles.chip, isSelected && styles.chipActive]}
+                onPress={() => toggleAccess(option)}
+              >
+                <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                  {option}
+                </Text>
+                {isSelected && (
+                  <Ionicons name="checkmark-circle" size={16} color={colors.accent} />
+                )}
+              </Pressable>
+            );
+          })}
         </View>
 
-        <Text style={styles.sectionTitle}>Access code (optional)</Text>
-        <Text style={styles.subtitle}>Share a gate or keypad code if needed.</Text>
+        <Text style={styles.sectionTitle}>Access notes (optional)</Text>
+        <Text style={styles.subtitle}>Gate code or special instructions</Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g. 2468"
+          placeholder="e.g. Gate code is 2468"
           placeholderTextColor="#9ca3af"
           value={draft.accessCode}
           onChangeText={(value) =>
@@ -125,8 +131,10 @@ export function ListingDetailsScreen({ navigation }: Props) {
               accessCode: value,
             }))
           }
-          autoCapitalize="characters"
-          maxLength={40}
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+          maxLength={150}
         />
       </ScrollView>
       <View style={styles.footer}>
@@ -168,19 +176,20 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
-    marginTop: 16,
+    gap: 10,
+    marginTop: 14,
   },
   card: {
     backgroundColor: colors.cardBg,
     borderColor: colors.border,
-    borderRadius: radius.card,
+    borderRadius: 14,
     borderWidth: 2,
     flexBasis: "48%",
-    padding: 16,
+    padding: 14,
   },
   cardActive: {
     borderColor: colors.accent,
+    backgroundColor: "#ffffff",
   },
   cardRow: {
     alignItems: "center",
@@ -189,38 +198,70 @@ const styles = StyleSheet.create({
   },
   cardIcon: {
     alignItems: "center",
-    backgroundColor: colors.appBg,
+    backgroundColor: "#f8fafc",
     borderRadius: 10,
-    height: 36,
+    height: 40,
     justifyContent: "center",
-    width: 36,
+    width: 40,
   },
   cardIconActive: {
-    backgroundColor: "#e6f9f5",
+    backgroundColor: "#e9fbf6",
   },
   cardTitle: {
     color: colors.text,
+    flex: 1,
     fontSize: 14,
     fontWeight: "600",
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: "700",
-    letterSpacing: 0.5,
     marginTop: 24,
-    textTransform: "uppercase",
+  },
+  chipGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 14,
+  },
+  chip: {
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderColor: "#e2e8f0",
+    borderRadius: 999,
+    borderWidth: 1.5,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  chipActive: {
+    backgroundColor: "#e9fbf6",
+    borderColor: colors.accent,
+  },
+  chipText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  chipTextActive: {
+    color: colors.text,
+    fontWeight: "700",
   },
   input: {
     backgroundColor: colors.cardBg,
     borderColor: colors.border,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     color: colors.text,
     fontSize: 14,
-    marginTop: 10,
+    lineHeight: 20,
+    marginTop: 12,
+    minHeight: 80,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
   footer: {
     backgroundColor: colors.cardBg,
@@ -232,14 +273,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.accent,
     borderRadius: 14,
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
   primaryButtonDisabled: {
     backgroundColor: "#cbd5e1",
   },
   primaryButtonText: {
     color: colors.cardBg,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
   },
 });

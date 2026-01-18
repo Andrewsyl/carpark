@@ -1732,12 +1732,12 @@ export async function cancelBookingWithRefund({
     SET status = 'canceled',
         payout_status = 'canceled',
         refund_status = CASE
-          WHEN $3 IS NOT NULL THEN 'succeeded'
+          WHEN $3::text IS NOT NULL THEN 'succeeded'
           ELSE refund_status
         END,
-        refund_id = COALESCE($3, refund_id),
+        refund_id = COALESCE($3::text, refund_id),
         refunded_at = CASE
-          WHEN $3 IS NOT NULL THEN NOW()
+          WHEN $3::text IS NOT NULL THEN NOW()
           ELSE refunded_at
         END
     WHERE id = $1
@@ -1755,6 +1755,7 @@ export async function listUserBookings(userId: string) {
     `
     SELECT
       b.id,
+      b.listing_id,
       b.start_time,
       b.end_time,
       b.status,
@@ -1768,6 +1769,7 @@ export async function listUserBookings(userId: string) {
       b.currency,
       l.title,
       l.address,
+      l.image_urls,
       ST_X(l.geom) AS longitude,
       ST_Y(l.geom) AS latitude,
       l.host_id,
@@ -1785,6 +1787,7 @@ export async function listUserBookings(userId: string) {
     `
     SELECT
       b.id,
+      b.listing_id,
       b.start_time,
       b.end_time,
       b.status,
@@ -1798,6 +1801,7 @@ export async function listUserBookings(userId: string) {
       b.currency,
       l.title,
       l.address,
+      l.image_urls,
       ST_X(l.geom) AS longitude,
       ST_Y(l.geom) AS latitude,
       l.host_id,
@@ -1813,6 +1817,7 @@ export async function listUserBookings(userId: string) {
 
   const mapRow = (row: any) => ({
     id: row.id,
+    listingId: row.listing_id,
     startTime: row.start_time,
     endTime: row.end_time,
     status: row.status ?? "pending",
@@ -1826,6 +1831,7 @@ export async function listUserBookings(userId: string) {
     currency: row.currency ?? "eur",
     address: row.address,
     title: row.title,
+    imageUrls: row.image_urls ?? null,
     latitude: row.latitude ?? null,
     longitude: row.longitude ?? null,
     accessCode: row.access_code ?? null,

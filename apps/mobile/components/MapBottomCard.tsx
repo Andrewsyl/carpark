@@ -23,6 +23,7 @@ type MapBottomCardProps = {
   onPress?: () => void;
   bottomOffset?: number;
   horizontalInset?: number;
+  dismissing?: boolean;
 };
 
 export function MapBottomCard({
@@ -39,26 +40,56 @@ export function MapBottomCard({
   onPress,
   bottomOffset = 0,
   horizontalInset = 0,
+  dismissing = false,
 }: MapBottomCardProps) {
   const translateAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
   const translateY = useMemo(
     () =>
       translateAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [0, 140],
+        outputRange: [0, 160],
       }),
     [translateAnim]
   );
 
   useEffect(() => {
-    translateAnim.setValue(1);
-    Animated.timing(translateAnim, {
-      toValue: 0,
-      duration: 200,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [translateAnim, title]);
+    if (dismissing) {
+      // Animate out
+      Animated.parallel([
+        Animated.timing(translateAnim, {
+          toValue: 1,
+          duration: 250,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 200,
+          easing: Easing.in(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Animate in
+      translateAnim.setValue(1);
+      opacityAnim.setValue(0);
+      Animated.parallel([
+        Animated.timing(translateAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [translateAnim, opacityAnim, title, dismissing]);
 
   return (
     <Animated.View
@@ -69,6 +100,7 @@ export function MapBottomCard({
           left: horizontalInset,
           right: horizontalInset,
           transform: [{ translateY }],
+          opacity: opacityAnim,
         },
       ]}
     >
@@ -80,7 +112,7 @@ export function MapBottomCard({
               <Image source={{ uri: imageUrl }} style={styles.thumbnail} resizeMode="cover" />
             ) : (
               <View style={styles.thumbnailPlaceholder}>
-                <Text style={styles.thumbnailText}>Awaiting images</Text>
+                <Text style={styles.thumbnailText}>No image</Text>
               </View>
             )}
           </View>
@@ -105,15 +137,14 @@ export function MapBottomCard({
                     <Text style={styles.iconStar}>★</Text>
                     <Text style={styles.metaText}>{rating.toFixed(1)}</Text>
                     <Text style={styles.metaText}>({reviewCount})</Text>
+                    <Text style={styles.metaSeparator}>•</Text>
                   </>
                 ) : (
-                  <Text style={styles.metaText}>New listing</Text>
+                  <>
+                    <Text style={styles.metaText}>New listing</Text>
+                    <Text style={styles.metaSeparator}>•</Text>
+                  </>
                 )}
-              </View>
-              <View style={styles.metaRow}>
-                <View style={[styles.iconBlock, styles.iconShield]} />
-                <Text style={styles.metaText}>Best Price Guarantee</Text>
-                <Text style={styles.metaSeparator}>•</Text>
                 <View style={[styles.iconBlock, styles.iconWalk]} />
                 <Text style={styles.metaText}>{walkTime}</Text>
               </View>
@@ -139,39 +170,43 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderRadius: 16,
     position: "absolute",
-    shadowColor: "#000000",
+    shadowColor: "#0f172a",
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.15,
-    shadowRadius: 16,
-    height: 140,
+    shadowRadius: 20,
+    elevation: 8,
+    overflow: "hidden",
   },
   imageColumn: {
-    marginLeft: -16,
-    marginTop: -10,
-    marginBottom: 0,
-    width: 76,
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+    overflow: "hidden",
   },
   content: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 0,
+    padding: 12,
   },
   bodyPress: {
-    flex: 1,
+    marginBottom: 10,
   },
   favButton: {
     alignItems: "center",
     borderRadius: 999,
-    height: 30,
+    height: 28,
     justifyContent: "center",
     position: "absolute",
     right: 0,
     top: 0,
-    width: 30,
+    width: 28,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   favText: {
-    color: "#ffffff",
+    color: "#d1d5db",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -179,67 +214,69 @@ const styles = StyleSheet.create({
     color: "#00d4aa",
   },
   topRow: {
-    alignItems: "stretch",
+    alignItems: "flex-start",
     flexDirection: "row",
-    flex: 1,
     gap: 12,
   },
   thumbnail: {
-    borderTopLeftRadius: 16,
-    height: "100%",
-    width: 76,
+    height: 80,
+    width: 80,
+    borderRadius: 10,
   },
   thumbnailPlaceholder: {
     alignItems: "center",
-    backgroundColor: "#e5e7eb",
-    borderTopLeftRadius: 16,
-    height: "100%",
+    backgroundColor: "#f3f4f6",
+    height: 80,
+    width: 80,
+    borderRadius: 10,
     justifyContent: "center",
-    width: 76,
   },
   thumbnailText: {
-    color: "#6b7280",
-    fontSize: 11,
+    color: "#9ca3af",
+    fontSize: 9,
     fontWeight: "600",
     textAlign: "center",
   },
   textStack: {
     flex: 1,
-    justifyContent: "space-between",
-    paddingVertical: 4,
+    justifyContent: "flex-start",
+    gap: 6,
     position: "relative",
   },
   title: {
     color: "#111827",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
+    lineHeight: 18,
+    paddingRight: 24,
   },
   metaRow: {
     alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
+    gap: 5,
   },
   metaText: {
     color: "#6b7280",
     fontSize: 11,
+    fontWeight: "500",
   },
   metaSeparator: {
-    color: "#9ca3af",
-    fontSize: 11,
+    color: "#d1d5db",
+    fontSize: 10,
   },
   iconStar: {
-    color: "#f5a623",
+    color: "#f59e0b",
     fontSize: 11,
     fontWeight: "700",
   },
   iconBlock: {
     borderRadius: 3,
-    height: 10,
-    width: 10,
+    height: 9,
+    width: 9,
   },
   iconShield: {
-    backgroundColor: "#22c55e",
+    backgroundColor: "#10b981",
   },
   iconWalk: {
     backgroundColor: "#6b7280",
@@ -247,22 +284,20 @@ const styles = StyleSheet.create({
   cta: {
     alignItems: "center",
     backgroundColor: "#00d4aa",
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    height: 40,
+    height: 44,
     justifyContent: "center",
-    marginTop: "auto",
-    marginHorizontal: -16,
+    marginHorizontal: -12,
+    marginBottom: -12,
   },
   ctaText: {
     color: "#ffffff",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   ctaDisabled: {
     backgroundColor: "#e5e7eb",
   },
   ctaTextDisabled: {
-    color: "#6b7280",
+    color: "#9ca3af",
   },
 });

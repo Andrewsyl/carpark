@@ -844,11 +844,22 @@ router.post("/:id/cancel", requireAuth, bookingLimiter, async (req, res, next) =
     }
 
     let refundId: string | null = null;
+    let alreadyRefunded = false;
     if (booking.payment_intent_id && stripe && booking.status === "confirmed") {
-      const refund = await stripe.refunds.create({
-        payment_intent: booking.payment_intent_id,
-      });
-      refundId = refund.id;
+      try {
+        const refund = await stripe.refunds.create({
+          payment_intent: booking.payment_intent_id,
+        });
+        refundId = refund.id;
+      } catch (err: any) {
+        // If charge is already refunded, just proceed with cancellation
+        if (err?.code === 'charge_already_refunded') {
+          console.log(`[Booking ${bookingId}] Charge already refunded, proceeding with cancellation`);
+          alreadyRefunded = true;
+        } else {
+          throw err;
+        }
+      }
     }
 
     const ok = refundId
@@ -869,7 +880,7 @@ router.post("/:id/cancel", requireAuth, bookingLimiter, async (req, res, next) =
       });
       await deleteScheduledNotificationsByBooking(targets.booking_id);
     }
-    res.json({ ok: true, refunded: Boolean(refundId) });
+    res.json({ ok: true, refunded: Boolean(refundId) || alreadyRefunded });
   } catch (error) {
     next(error);
   }

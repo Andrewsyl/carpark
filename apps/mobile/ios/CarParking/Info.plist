@@ -27,6 +27,8 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
+          <string>carparking</string>
+          <string>com.googleusercontent.apps.742052774291-32p3r3jcea4oge0uec8aqqe9chi2f79l</string>
           <string>com.andrewsyl.carparking</string>
         </array>
       </dict>
@@ -36,11 +38,17 @@
           <string>exp+carparking</string>
         </array>
       </dict>
+      <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>com.googleusercontent.apps.742052774291-m8e3ilp5au87432ps0huhk52it6e7eug</string>
+        </array>
+      </dict>
     </array>
-	<key>CFBundleVersion</key>
-	<string>1</string>
-	<key>GMSApiKey</key>
-	<string>AIzaSyC1h1NFLFz7SPauw85Udh0O1CBlN5bqOek</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>GMSApiKey</key>
+    <string>AIzaSyC1h1NFLFz7SPauw85Udh0O1CBlN5bqOek</string>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>
@@ -52,12 +60,18 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your camera</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your location</string>
     <key>NSLocationAlwaysUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your location</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your location</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your photos</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UILaunchStoryboardName</key>

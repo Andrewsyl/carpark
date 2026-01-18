@@ -33,7 +33,7 @@ type FlowStackParamList = {
 type Props = NativeStackScreenProps<FlowStackParamList, "ListingReview">;
 
 export function ListingReviewScreen({ navigation }: Props) {
-  const { draft, listingId } = useListingFlow();
+  const { draft, setDraft, listingId } = useListingFlow();
   const { token } = useAuth();
   const mapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const [submitting, setSubmitting] = useState(false);

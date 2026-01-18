@@ -52,7 +52,7 @@ export function SearchForm({
 
   const initialStart = useMemo(() => {
     const now = new Date();
-    now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
+    now.setMinutes(Math.ceil(now.getMinutes() / 5) * 5, 0, 0);
     return now;
   }, []);
 
@@ -287,7 +287,7 @@ function DateTimePicker({ label, value, onChange, minGapMinutes = 120 }: DateTim
 
   const times = useMemo(() => {
     const slots: string[] = [];
-    for (let i = 0; i < 24 * 60; i += 15) {
+    for (let i = 0; i < 24 * 60; i += 5) {
       const hh = String(Math.floor(i / 60)).padStart(2, "0");
       const mm = String(i % 60).padStart(2, "0");
       slots.push(`${hh}:${mm}`);

@@ -29,18 +29,9 @@ import { logError, logInfo } from "../logger";
 import { getNotificationImageAttachment } from "../notifications";
 import { BookingProgressBar } from "../components/BookingProgressBar";
 import type { ListingDetail, RootStackParamList } from "../types";
+import { formatDateLabel, formatTimeLabel } from "../utils/dateFormat";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingSummary">;
-
-const formatDateLabel = (date: Date) =>
-  date.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-
-const formatTimeLabel = (date: Date) =>
-  date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 
 const formatDateTimeLabel = (date: Date) => `${formatDateLabel(date)} · ${formatTimeLabel(date)}`;
 
@@ -298,21 +289,6 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
       void scheduleBookingReminders().catch(() => {
         // Reminder failures shouldn't block the success flow.
       });
-      void (async () => {
-        try {
-          const attachments = await getNotificationImageAttachment();
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: "Booking confirmed",
-              body: "Your reservation is saved in Upcoming.",
-              attachments,
-            },
-            trigger: null,
-          });
-        } catch {
-          // Notification failures shouldn't block the success flow.
-        }
-      })();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Booking failed";
       logError("Booking error", { message });

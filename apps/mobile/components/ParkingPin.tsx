@@ -62,7 +62,11 @@ export function ParkingPin({ price, isSelected = false, onPress }: ParkingPinPro
   const label = `€${price}`;
 
   return (
-    <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
+    <Pressable 
+      onPress={onPress} 
+      onPressIn={handlePressIn} 
+      onPressOut={handlePressOut}
+    >
       <Animated.View style={[styles.container, animatedStyle]}>
         {/* Pulse effect for selected */}
         {isSelected && <Animated.View style={[styles.pulse, pulseStyle]} />}

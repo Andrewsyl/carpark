@@ -5,6 +5,7 @@ export type RootStackParamList = {
     id: string;
     from: string;
     to: string;
+    booking?: import("./api").BookingSummary;
   };
   BookingSummary: {
     id: string;

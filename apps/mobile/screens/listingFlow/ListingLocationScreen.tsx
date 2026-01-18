@@ -4,6 +4,7 @@ import { Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from
 import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from "react-native-maps";
 import * as Location from "expo-location";
+import { Ionicons } from "@expo/vector-icons";
 import { MapPin } from "../../components/MapPin";
 import { LIGHT_MAP_STYLE } from "../../components/mapStyles";
 import { useListingFlow } from "./context";
@@ -232,6 +233,7 @@ export function ListingLocationScreen({ navigation }: Props) {
       </View>
       <View style={styles.searchShell}>
         <View style={styles.searchField}>
+          <Ionicons name="search" size={20} color={colors.accent} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             value={query}
@@ -377,7 +379,15 @@ export function ListingLocationScreen({ navigation }: Props) {
           </>
         ) : (
           <View style={styles.mapPlaceholder}>
-            <Text style={styles.mapPlaceholderText}>Select an address to preview the map.</Text>
+            <View style={styles.mapPlaceholderIconCircle}>
+              <Ionicons name="map-outline" size={48} color={colors.accent} />
+            </View>
+            <View style={styles.mapPlaceholderContent}>
+              <Text style={styles.mapPlaceholderTitle}>No location selected</Text>
+              <Text style={styles.mapPlaceholderText}>
+                Search for an address above to preview your parking spot on the map
+              </Text>
+            </View>
           </View>
         )}
       </View>
@@ -420,36 +430,45 @@ const styles = StyleSheet.create({
   },
   searchShell: {
     paddingHorizontal: spacing.screenX,
-    marginTop: 12,
+    marginTop: 16,
   },
   searchField: {
     alignItems: "center",
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
+    backgroundColor: "#ffffff",
+    borderColor: "#e2e8f0",
+    borderRadius: 14,
+    borderWidth: 2,
     flexDirection: "row",
-    fontSize: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  searchIcon: {
+    marginRight: 10,
   },
   searchInput: {
     color: colors.text,
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: "500",
   },
   clearButton: {
     alignItems: "center",
-    backgroundColor: colors.appBg,
+    backgroundColor: "#f1f5f9",
     borderRadius: radius.pill,
-    height: 24,
+    height: 26,
     justifyContent: "center",
-    width: 24,
+    width: 26,
   },
   clearButtonText: {
     color: colors.textMuted,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
-    lineHeight: 18,
+    lineHeight: 20,
   },
   suggestions: {
     backgroundColor: colors.cardBg,
@@ -486,17 +505,40 @@ const styles = StyleSheet.create({
   },
   mapPlaceholder: {
     alignItems: "center",
-    backgroundColor: colors.appBg,
+    backgroundColor: "#fafbfc",
     borderColor: colors.border,
     borderRadius: radius.card,
-    borderWidth: 1,
+    borderStyle: "dashed",
+    borderWidth: 2,
     flex: 1,
+    gap: 20,
     justifyContent: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 32,
+  },
+  mapPlaceholderIconCircle: {
+    alignItems: "center",
+    backgroundColor: "#e9fbf6",
+    borderColor: "#b8efe3",
+    borderRadius: 999,
+    borderWidth: 2,
+    height: 96,
+    justifyContent: "center",
+    width: 96,
+  },
+  mapPlaceholderContent: {
+    alignItems: "center",
+    gap: 8,
+  },
+  mapPlaceholderTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center",
   },
   mapPlaceholderText: {
     color: colors.textMuted,
     fontSize: 13,
+    lineHeight: 19,
     textAlign: "center",
   },
   centerPin: {

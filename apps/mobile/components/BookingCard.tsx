@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing } from "../styles/theme";
 import type { BookingSummary } from "../api";
@@ -14,13 +14,13 @@ type Props = {
 
 const STATUS_STYLES: Record<
   Props["statusTone"],
-  { background: string; text: string; icon: string }
+  { background: string; text: string; icon: string; border: string }
 > = {
-  confirmed: { background: "#ecfdf5", text: "#047857", icon: "checkmark-circle" },
-  completed: { background: "#f3f4f6", text: "#6b7280", icon: "checkmark-circle-outline" },
-  pending: { background: "#fef3c7", text: "#b45309", icon: "time" },
-  canceled: { background: "#f3f4f6", text: "#6b7280", icon: "close-circle-outline" },
-  refunded: { background: "#dbeafe", text: "#1e40af", icon: "arrow-undo" },
+  confirmed: { background: "#ecfdf5", text: "#047857", icon: "checkmark-circle", border: "#10b981" },
+  completed: { background: "#f3f4f6", text: "#6b7280", icon: "checkmark-circle-outline", border: "#6b7280" },
+  pending: { background: "#fef3c7", text: "#b45309", icon: "time", border: "#f59e0b" },
+  canceled: { background: "#fee2e2", text: "#991b1b", icon: "close-circle-outline", border: "#ef4444" },
+  refunded: { background: "#dbeafe", text: "#1e40af", icon: "arrow-undo", border: "#3b82f6" },
 };
 
 export function BookingCard({
@@ -32,71 +32,57 @@ export function BookingCard({
   onPress,
 }: Props) {
   const badgeStyle = STATUS_STYLES[statusTone];
-  const price = `€${(booking.amountCents / 100).toFixed(2)}`;
+  const imageUrl = booking.imageUrls?.[0];
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
+        { borderLeftWidth: 4, borderLeftColor: badgeStyle.border },
         pressed && styles.cardPressed,
       ]}
       android_ripple={null}
     >
-      {/* Status badge with icon */}
-      <View style={[styles.statusBadge, { backgroundColor: badgeStyle.background }]}>
-        <Ionicons name={badgeStyle.icon as any} size={14} color={badgeStyle.text} />
-        <Text style={[styles.statusText, { color: badgeStyle.text }]}>{statusLabel}</Text>
-      </View>
-
-      {/* Location info */}
-      <View style={styles.locationSection}>
-        <Text style={styles.title} numberOfLines={2}>
-          {booking.title}
-        </Text>
-        <View style={styles.addressRow}>
-          <Ionicons name="location-outline" size={14} color={colors.textSoft} />
-          <Text style={styles.address} numberOfLines={1}>
-            {booking.address}
-          </Text>
-        </View>
-      </View>
-
-      {/* Divider */}
-      <View style={styles.divider} />
-
-      {/* Date and time */}
-      <View style={styles.infoSection}>
-        <View style={styles.infoRow}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="calendar" size={16} color={colors.accent} />
+      <View style={styles.mainContent}>
+        {imageUrl ? (
+          <Image 
+            source={{ uri: imageUrl }} 
+            style={styles.image}
+            resizeMode="cover"
+          />
+        ) : null}
+        
+        <View style={styles.textContent}>
+          <View style={styles.header}>
+            <View style={styles.titleSection}>
+              <Text style={styles.title} numberOfLines={1}>
+                {booking.title}
+              </Text>
+              <View style={styles.addressRow}>
+                <Ionicons name="location-outline" size={12} color={colors.textSoft} />
+                <Text style={styles.address} numberOfLines={1}>
+                  {booking.address}
+                </Text>
+              </View>
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor: badgeStyle.background }]}>
+              <Ionicons name={badgeStyle.icon as any} size={12} color={badgeStyle.text} />
+            </View>
           </View>
-          <View style={styles.infoContent}>
-            <Text style={styles.infoLabel}>Date</Text>
-            <Text style={styles.infoValue}>{dateLabel}</Text>
-          </View>
-        </View>
 
-        <View style={styles.infoRow}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="time" size={16} color={colors.accent} />
+          <View style={styles.timeRow}>
+            <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
+            <Text style={styles.dateText}>{dateLabel}</Text>
+            <Text style={styles.separator}>•</Text>
+            <Ionicons name="time-outline" size={14} color={colors.textMuted} />
+            <Text style={styles.timeText}>{timeLabel}</Text>
           </View>
-          <View style={styles.infoContent}>
-            <Text style={styles.infoLabel}>Time</Text>
-            <Text style={styles.infoValue}>{timeLabel}</Text>
-          </View>
-        </View>
-      </View>
 
-      {/* Price and action */}
-      <View style={styles.footer}>
-        <View>
-          <Text style={styles.priceLabel}>Total paid</Text>
-          <Text style={styles.price}>{price}</Text>
-        </View>
-        <View style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>View details</Text>
-          <Ionicons name="arrow-forward" size={16} color={colors.accent} />
+          <View style={styles.footer}>
+            <Text style={styles.viewDetails}>View details</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+          </View>
         </View>
       </View>
     </Pressable>
@@ -106,116 +92,93 @@ export function BookingCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.cardBg,
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 16,
+    padding: 0,
     shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 1,
+    overflow: "hidden",
   },
   cardPressed: {
     transform: [{ scale: 0.98 }],
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.08,
   },
-  statusBadge: {
+  mainContent: {
     flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 6,
-    marginBottom: 16,
+    gap: 12,
   },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "600",
+  image: {
+    width: 80,
+    height: "100%",
+    minHeight: 100,
   },
-  locationSection: {
-    gap: 8,
+  textContent: {
+    flex: 1,
+    padding: 16,
+    gap: 12,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  titleSection: {
+    flex: 1,
+    gap: 4,
   },
   title: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
-    lineHeight: 24,
+    lineHeight: 22,
   },
   addressRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 4,
   },
   address: {
     color: colors.textMuted,
-    fontSize: 14,
+    fontSize: 13,
     flex: 1,
   },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 16,
-  },
-  infoSection: {
-    gap: 12,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#ecfdf5",
+  statusBadge: {
+    borderRadius: 999,
+    padding: 6,
     alignItems: "center",
     justifyContent: "center",
   },
-  infoContent: {
-    flex: 1,
+  timeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  infoLabel: {
-    fontSize: 12,
-    color: colors.textSoft,
-    fontWeight: "500",
-    marginBottom: 2,
-  },
-  infoValue: {
-    fontSize: 14,
+  dateText: {
+    fontSize: 13,
     color: colors.text,
-    fontWeight: "600",
+    fontWeight: "500",
+  },
+  separator: {
+    fontSize: 13,
+    color: colors.textMuted,
+    fontWeight: "500",
+  },
+  timeText: {
+    fontSize: 13,
+    color: colors.textMuted,
+    fontWeight: "500",
   },
   footer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  priceLabel: {
-    fontSize: 12,
-    color: colors.textSoft,
-    fontWeight: "500",
-    marginBottom: 4,
-  },
-  price: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: "700",
-  },
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
+    justifyContent: "flex-end",
     gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: "#ecfdf5",
+    paddingTop: 4,
   },
-  actionButtonText: {
+  viewDetails: {
     fontSize: 13,
     fontWeight: "600",
     color: colors.accent,

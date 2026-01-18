@@ -20,8 +20,31 @@ export function BottomTabButton({ children, onPress, accessibilityState }: Props
     }).start();
   }, [focused, scale]);
 
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.92,
+      useNativeDriver: true,
+      friction: 8,
+      tension: 200,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: focused ? 1.04 : 1,
+      useNativeDriver: true,
+      friction: 6,
+      tension: 100,
+    }).start();
+  };
+
   return (
-    <Pressable onPress={onPress} style={styles.pressable}>
+    <Pressable 
+      onPress={onPress} 
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={styles.pressable}
+    >
       <Animated.View style={[styles.item, { transform: [{ scale }] }]}>
         {children}
         {focused ? <View style={styles.indicator} /> : null}
@@ -39,7 +62,6 @@ const styles = StyleSheet.create({
   item: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: spacing.sm,
     gap: 4,
   },
   indicator: {

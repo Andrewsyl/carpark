@@ -34,20 +34,9 @@ import { useFavorites } from "../favorites";
 import { logError, logInfo } from "../logger";
 import type { ListingDetail, RootStackParamList } from "../types";
 import { Ionicons } from "@expo/vector-icons";
+import { formatDateLabel, formatTimeLabel, formatDateTimeLabel } from "../utils/dateFormat";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Listing">;
-
-const formatDateLabel = (date: Date) =>
-  date.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-
-const formatTimeLabel = (date: Date) =>
-  date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-
-const formatDateTimeLabel = (date: Date) => `${formatDateLabel(date)} · ${formatTimeLabel(date)}`;
 
 const snapTo5Minutes = (date: Date) => {
   const next = new Date(date);
@@ -126,7 +115,7 @@ const FeatureIcon = ({ type }: { type: string }) => {
 };
 
 export function ListingScreen({ navigation, route }: Props) {
-  const { id, from, to } = route.params;
+  const { id, from, to, booking } = route.params;
   const { token, login, register, loading: authLoading, user } = useAuth();
   const { isFavorite, toggle } = useFavorites();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -156,6 +145,12 @@ export function ListingScreen({ navigation, route }: Props) {
     listing?.latitude && listing?.longitude
       ? `${listing.latitude},${listing.longitude}`
       : "53.3498,-6.2603";
+
+  // Check if current times match the booking times
+  const isBookingTimes = booking && 
+    startAt.toISOString() === booking.startTime && 
+    endAt.toISOString() === booking.endTime;
+  const showBookingMode = booking && isBookingTimes;
 
   useEffect(() => {
     const load = async () => {
@@ -417,16 +412,16 @@ export function ListingScreen({ navigation, route }: Props) {
                 </View>
               </View>
               <View style={styles.timeRow}>
-                <Text style={styles.timeLabel}>Selected times</Text>
+                <Text style={styles.timeLabel}>Parking time</Text>
                 <View style={styles.dateRow}>
                   <Pressable style={styles.dateTimePill} onPress={() => openPicker("start")}>
-                    <Text style={styles.dateTimeText}>{formatDateTimeLabel(startAt)}</Text>
+                    <Ionicons name="calendar-outline" size={14} color={colors.accent} />
+                    <Text style={styles.dateTimeText} numberOfLines={1}>{formatDateTimeLabel(startAt)}</Text>
                   </Pressable>
-                  <View style={styles.dateArrow}>
-                    <Text style={styles.dateArrowText}>→</Text>
-                  </View>
+                  <Text style={styles.dateArrowText}>→</Text>
                   <Pressable style={styles.dateTimePill} onPress={() => openPicker("end")}>
-                    <Text style={styles.dateTimeText}>{formatDateTimeLabel(endAt)}</Text>
+                    <Ionicons name="calendar-outline" size={14} color={colors.accent} />
+                    <Text style={styles.dateTimeText} numberOfLines={1}>{formatDateTimeLabel(endAt)}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -444,30 +439,6 @@ export function ListingScreen({ navigation, route }: Props) {
                 ) : null}
               </View>
               <View style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>Host</Text>
-                <View style={styles.hostRow}>
-                  <View style={styles.hostAvatar}>
-                    <Text style={styles.hostInitials}>{hostInitials}</Text>
-                  </View>
-                  <View style={styles.hostMeta}>
-                    <Text style={styles.hostName}>{hostName}</Text>
-                    <Text style={styles.hostSub}>
-                      {hasReviews
-                        ? `Superhost • ${hostRating} rating • ${hostReviews} reviews`
-                        : "New host • No reviews yet"}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.hostDetailRow}>
-                  <Text style={styles.hostDetailLabel}>Response time</Text>
-                  <Text style={styles.hostDetailValue}>Within an hour</Text>
-                </View>
-                <View style={styles.hostDetailRow}>
-                  <Text style={styles.hostDetailLabel}>Verified</Text>
-                  <Text style={styles.hostDetailValue}>Identity + phone</Text>
-                </View>
-              </View>
-              <View style={styles.sectionCard}>
                 <Text style={styles.sectionTitle}>Features</Text>
                 <View style={styles.featuresGrid}>
                   {featureRows.map((feature) => (
@@ -478,6 +449,32 @@ export function ListingScreen({ navigation, route }: Props) {
                       <Text style={styles.featureText}>{feature}</Text>
                     </View>
                   ))}
+                </View>
+              </View>
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Host</Text>
+                <View style={styles.hostRow}>
+                  <View style={styles.hostAvatar}>
+                    <Text style={styles.hostInitials}>{hostInitials}</Text>
+                  </View>
+                  <View style={styles.hostMeta}>
+                    <Text style={styles.hostName}>{hostName}</Text>
+                    <Text style={styles.hostSub}>
+                      {hasReviews
+                        ? `Superhost • ${hostRating} ⭐ • ${hostReviews} reviews`
+                        : "New host"}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.hostDetails}>
+                  <View style={styles.hostDetailPill}>
+                    <Ionicons name="time-outline" size={14} color={colors.textMuted} />
+                    <Text style={styles.hostDetailText}>Within an hour</Text>
+                  </View>
+                  <View style={styles.hostDetailPill}>
+                    <Ionicons name="checkmark-circle" size={14} color="#22c55e" />
+                    <Text style={styles.hostDetailText}>Verified</Text>
+                  </View>
                 </View>
               </View>
               {imageUrls.length > 1 ? (
@@ -561,33 +558,49 @@ export function ListingScreen({ navigation, route }: Props) {
           </ScrollView>
           {priceSummary && user ? (
             <View style={[styles.bottomBar, { paddingBottom: 14 + insets.bottom }]}>
-              <View>
-                <Text style={styles.bottomPrice}>€{priceSummary.total.toFixed(2)}</Text>
-                <Text style={styles.bottomMeta}>{priceSummary.days} day(s)</Text>
-              </View>
-              {listing?.is_available === false ? (
-                <Pressable style={[styles.bottomButton, styles.bottomButtonDisabled]} disabled>
-                  <Text style={styles.bottomButtonDisabledText}>Sold out</Text>
-                </Pressable>
+              {showBookingMode ? (
+                <>
+                  <Text style={styles.bottomSoldOut}>Sold out</Text>
+                  <Pressable
+                    style={styles.bottomButton}
+                    onPress={() => {
+                      navigation.navigate("BookingDetail", { booking });
+                    }}
+                  >
+                    <Text style={styles.bottomButtonText}>View your booking</Text>
+                  </Pressable>
+                </>
               ) : (
-              <Pressable
-                style={styles.bottomButton}
-                onPress={() => {
-                  if (navigatingToBooking) return;
-                  setNavigatingToBooking(true);
-                  navigation.navigate("BookingSummary", {
-                    id,
-                    from: startAt.toISOString(),
-                    to: endAt.toISOString(),
-                  });
-                  setTimeout(() => setNavigatingToBooking(false), 800);
-                }}
-                disabled={authLoading}
-              >
-                <Text style={styles.bottomButtonText}>
-                  {navigatingToBooking ? "Opening..." : "Reserve"}
-                </Text>
-              </Pressable>
+                <>
+                  <View>
+                    <Text style={styles.bottomPrice}>€{priceSummary.total.toFixed(2)}</Text>
+                    <Text style={styles.bottomMeta}>{priceSummary.days} day(s)</Text>
+                  </View>
+                  {listing?.is_available === false ? (
+                    <Pressable style={[styles.bottomButton, styles.bottomButtonDisabled]} disabled>
+                      <Text style={styles.bottomButtonDisabledText}>Sold out</Text>
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      style={styles.bottomButton}
+                      onPress={() => {
+                        if (navigatingToBooking) return;
+                        setNavigatingToBooking(true);
+                        navigation.navigate("BookingSummary", {
+                          id,
+                          from: startAt.toISOString(),
+                          to: endAt.toISOString(),
+                        });
+                        setTimeout(() => setNavigatingToBooking(false), 800);
+                      }}
+                      disabled={authLoading}
+                    >
+                      <Text style={styles.bottomButtonText}>
+                        {navigatingToBooking ? "Opening..." : "Reserve"}
+                      </Text>
+                    </Pressable>
+                  )}
+                </>
               )}
             </View>
           ) : null}
@@ -879,41 +892,41 @@ const styles = StyleSheet.create({
   timeRow: {
     backgroundColor: colors.cardBg,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   timeLabel: {
-    color: colors.textSoft,
-    fontSize: 11,
+    color: colors.text,
+    fontSize: 17,
     fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
+    letterSpacing: -0.3,
+    marginBottom: 10,
   },
   dateRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 8,
-    marginTop: 10,
+    gap: 6,
   },
   dateTimePill: {
-    backgroundColor: "#f8fafc",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "#e2e8f0",
     borderRadius: 10,
+    borderWidth: 1,
     flex: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   dateTimeText: {
     color: "#101828",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
-  },
-  dateArrow: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: 16,
+    flex: 1,
   },
   dateArrowText: {
     color: "#94a3b8",
@@ -968,11 +981,11 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     backgroundColor: colors.cardBg,
-    borderRadius: radius.card,
+    borderRadius: 16,
     borderColor: colors.border,
     borderWidth: 1,
-    marginTop: 12,
-    padding: 16,
+    marginTop: 16,
+    padding: 20,
   },
   sectionStack: {
     marginTop: 6,
@@ -980,123 +993,126 @@ const styles = StyleSheet.create({
   featuresGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
-    marginTop: 10,
+    gap: 8,
+    marginTop: 14,
   },
   featureItem: {
     alignItems: "center",
     flexDirection: "row",
     gap: 8,
-    backgroundColor: "#e9fbf6",
-    borderColor: "#ccf5eb",
+    backgroundColor: "#f8fafc",
     borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   featureIcon: {
     alignItems: "center",
     backgroundColor: colors.cardBg,
-    borderColor: "#b8efe3",
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 28,
+    borderRadius: 8,
+    height: 24,
     justifyContent: "center",
-    width: 28,
+    width: 24,
   },
   featureText: {
-    color: colors.textMuted,
-    fontSize: 12,
+    color: colors.text,
+    fontSize: 13,
     fontWeight: "600",
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 13,
+    fontSize: 17,
     fontWeight: "700",
+    letterSpacing: -0.3,
   },
   hostRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 12,
-    marginTop: 10,
+    gap: 14,
+    marginTop: 16,
   },
   hostAvatar: {
     alignItems: "center",
     backgroundColor: "#e9fbf6",
     borderColor: "#b8efe3",
     borderRadius: 999,
-    borderWidth: 1,
-    height: 52,
+    borderWidth: 1.5,
+    height: 56,
     justifyContent: "center",
-    width: 52,
+    width: 56,
   },
   hostInitials: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
   },
   hostMeta: {
     flex: 1,
-    gap: 4,
+    gap: 5,
   },
   hostName: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
   },
   hostSub: {
     color: colors.textMuted,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
   },
-  hostDetailRow: {
+  hostDetails: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 12,
+    gap: 8,
+    marginTop: 14,
   },
-  hostDetailLabel: {
-    color: colors.textSoft,
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
+  hostDetailPill: {
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderRadius: 999,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  hostDetailValue: {
-    color: colors.text,
-    fontSize: 12,
+  hostDetailText: {
+    color: colors.textMuted,
+    fontSize: 13,
     fontWeight: "600",
   },
   reviewList: {
-    gap: 12,
-    marginTop: 8,
+    gap: 16,
+    marginTop: 14,
   },
   reviewItem: {
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    paddingTop: 10,
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    padding: 12,
   },
   reviewRow: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
+    marginBottom: 6,
   },
   reviewRating: {
-    color: colors.text,
-    fontSize: 12,
+    color: "#f59e0b",
+    fontSize: 14,
     fontWeight: "700",
   },
   reviewDate: {
     color: colors.textSoft,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
   },
   reviewBody: {
     color: colors.textMuted,
-    fontSize: 12,
-    marginTop: 6,
+    fontSize: 13,
+    lineHeight: 19,
   },
   sectionBody: {
     color: colors.textMuted,
-    marginTop: 6,
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 10,
   },
   summaryRow: {
     alignItems: "center",
@@ -1195,6 +1211,16 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 28,
     fontWeight: "800",
+  },
+  bottomSoldOut: {
+    color: colors.textMuted,
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  bottomExisting: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "600",
   },
   bottomMeta: {
     color: colors.textMuted,

@@ -111,6 +111,7 @@ export default function App() {
                 <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Tabs">
                   <Stack.Screen name="Tabs" component={MainTabs} />
                   <Stack.Screen name="Listing" component={ListingScreen} />
+                  <Stack.Screen name="Listings" component={ListingsScreen} />
                   <Stack.Screen name="BookingSummary" component={BookingSummaryScreen} />
                   <Stack.Screen name="SignIn" component={SignInScreen} />
                   <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
@@ -182,7 +183,7 @@ function MainTabs() {
           borderTopWidth: 0,
           height: 60 + insets.bottom,
           paddingBottom: Math.max(8, insets.bottom),
-          paddingTop: 6,
+          paddingTop: 12,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: -4 },
           shadowOpacity: 0.06,
@@ -192,8 +193,13 @@ function MainTabs() {
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: "600",
+          marginTop: 2,
         },
         tabBarButton: (props) => <BottomTabButton {...props} />,
+        tabBarItemStyle: {
+          paddingVertical: 0,
+          paddingTop: 0,
+        },
       }}
     >
       <Tab.Screen

@@ -13,6 +13,7 @@ import { getNotificationImageAttachment } from "../notifications";
 import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import type { RootStackParamList } from "../types";
 import { Ionicons } from "@expo/vector-icons";
+import { formatDateTimeLabel } from "../utils/dateFormat";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingDetail">;
 
@@ -76,6 +77,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
       await cancelBooking({ token, bookingId: booking.id });
       await AsyncStorage.setItem("searchRefreshToken", Date.now().toString());
       setLocalStatus("canceled");
+      setCanceling(false);
       try {
         const attachments = await getNotificationImageAttachment();
         await Notifications.scheduleNotificationAsync({
@@ -89,23 +91,9 @@ export function BookingDetailScreen({ navigation, route }: Props) {
       } catch {
         // Notification failures shouldn't block the cancel flow.
       }
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [
-            {
-              name: "History",
-              params: {
-                refreshToken: Date.now(),
-                showMapCTA: true,
-                initialTab: "upcoming",
-              },
-            },
-          ],
-        })
-      );
-    } finally {
+    } catch (err) {
       setCanceling(false);
+      Alert.alert("Cancellation failed", err instanceof Error ? err.message : "Could not cancel booking. Please try again.");
     }
   };
 
@@ -219,6 +207,18 @@ export function BookingDetailScreen({ navigation, route }: Props) {
           <Ionicons name="navigate" size={16} color={colors.accent} />
           <Text style={styles.mapButtonText}>Open in Google Maps</Text>
         </Pressable>
+        <Pressable
+          style={[styles.mapButton, { marginTop: spacing.sm }]}
+          onPress={() => navigation.navigate("Listing", { 
+            id: booking.listingId,
+            from: booking.startTime,
+            to: booking.endTime,
+            booking: booking
+          })}
+        >
+          <Ionicons name="information-circle-outline" size={16} color={colors.accent} />
+          <Text style={styles.mapButtonText}>View listing details</Text>
+        </Pressable>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Booking details</Text>
@@ -231,24 +231,24 @@ export function BookingDetailScreen({ navigation, route }: Props) {
             {checkedInAt ? (
               <View style={[styles.detailRow, styles.detailRowBorder]}>
                 <Text style={styles.detailLabel}>CHECKED IN</Text>
-                <Text style={styles.detailValue}>{checkedInAt.toLocaleString()}</Text>
+                <Text style={styles.detailValue}>{formatDateTimeLabel(checkedInAt)}</Text>
               </View>
             ) : null}
             {isRefunded ? (
               <View style={[styles.detailRow, styles.detailRowBorder]}>
                 <Text style={styles.detailLabel}>REFUND</Text>
                 <Text style={styles.detailValue}>
-                  {refundedAt ? refundedAt.toLocaleString() : "Refunded"}
+                  {refundedAt ? formatDateTimeLabel(refundedAt) : "Refunded"}
                 </Text>
               </View>
             ) : null}
             <View style={[styles.detailRow, styles.detailRowBorder]}>
               <Text style={styles.detailLabel}>START</Text>
-                <Text style={styles.detailValue}>{start.toLocaleString()}</Text>
+                <Text style={styles.detailValue}>{formatDateTimeLabel(start)}</Text>
             </View>
             <View style={[styles.detailRow, styles.detailRowBorder]}>
               <Text style={styles.detailLabel}>END</Text>
-                <Text style={styles.detailValue}>{end.toLocaleString()}</Text>
+                <Text style={styles.detailValue}>{formatDateTimeLabel(end)}</Text>
             </View>
             {vehiclePlate ? (
               <View style={[styles.detailRow, styles.detailRowBorder]}>
