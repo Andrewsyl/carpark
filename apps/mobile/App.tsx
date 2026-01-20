@@ -36,6 +36,7 @@ import { ListingFlowScreen } from "./screens/ListingFlowScreen";
 import { EditListingScreen } from "./screens/EditListingScreen";
 import { SupportScreen } from "./screens/SupportScreen";
 import { AdminScreen } from "./screens/AdminScreen";
+import { JustParkAuthScreen } from "./screens/JustParkAuthScreen";
 import type { RootStackParamList } from "./types";
 import { registerPushToken } from "./api";
 import { Ionicons } from "@expo/vector-icons";
@@ -113,7 +114,7 @@ export default function App() {
                   <Stack.Screen name="Listing" component={ListingScreen} />
                   <Stack.Screen name="Listings" component={ListingsScreen} />
                   <Stack.Screen name="BookingSummary" component={BookingSummaryScreen} />
-                  <Stack.Screen name="SignIn" component={SignInScreen} />
+                  <Stack.Screen name="SignIn" component={JustParkAuthScreen} />
                   <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
                   <Stack.Screen name="Legal" component={LegalScreen} />
                   <Stack.Screen name="History" component={HistoryScreen} />

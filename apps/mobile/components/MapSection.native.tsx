@@ -174,9 +174,12 @@ export default function MapSection({
           const { latitude, longitude } = event.nativeEvent.coordinate;
           const target = { lat: latitude, lng: longitude };
           const regionRef = region ?? initialRegion;
+          
+          // Airbnb-style: Larger, more forgiving tap threshold that scales with zoom
+          // At close zoom: ~40m, at far zoom: can be 100m+
           const thresholdM = Math.max(
-            60,
-            regionRef.latitudeDelta * METERS_PER_DEGREE_LAT * 0.03
+            40,
+            Math.min(150, regionRef.latitudeDelta * METERS_PER_DEGREE_LAT * 0.05)
           );
           
           const list = freezeMarkers ? renderedResultsRef.current : nextResults;
@@ -201,8 +204,20 @@ export default function MapSection({
           
           candidates.sort((a, b) => a.distance - b.distance);
           
-          if (candidates.length > 1 && onOverlappingPins) {
-            onOverlappingPins(candidates.map(c => c.listing));
+          // Airbnb-style: Show picker only if pins are really close (within 15m)
+          if (candidates.length > 1) {
+            const closestDistance = candidates[0].distance;
+            const secondDistance = candidates[1].distance;
+            
+            // If the closest is clearly closer (>15m difference), just select it
+            if (secondDistance - closestDistance > 15 && onOverlappingPins) {
+              onSelect(candidates[0].listing.id);
+            } else if (onOverlappingPins) {
+              // Otherwise show picker for truly overlapping pins
+              onOverlappingPins(candidates.map(c => c.listing));
+            } else {
+              onSelect(candidates[0].listing.id);
+            }
           } else {
             onSelect(candidates[0].listing.id);
           }
@@ -230,11 +245,17 @@ export default function MapSection({
               anchor={{ x: 0.5, y: 1 }}
               centerOffset={{ x: 0, y: 0 }}
               onPress={(e) => {
+                // Airbnb-style: Always handle marker press and prevent map press
                 e?.stopPropagation?.();
                 onSelect?.(listing.id);
               }}
-              zIndex={isSelected ? 1000 : listing.id.charCodeAt(0)}
+              // Airbnb-style: Selected pins always on top with high z-index
+              // Unselected pins have lower but varied z-index to prevent stacking issues
+              zIndex={isSelected ? 10000 : 100 + listing.id.charCodeAt(0)}
               image={{ uri: pinImage }}
+              // Airbnb-style: Markers are always tappable
+              tappable={true}
+              stopPropagation={true}
             />
           );
         })

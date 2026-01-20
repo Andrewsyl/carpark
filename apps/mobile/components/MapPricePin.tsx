@@ -11,6 +11,9 @@ type MapPricePinProps = {
 export function MapPricePin({ price, selected = false, soldOut = false }: MapPricePinProps) {
   const priceText = soldOut ? "Sold out" : `€${price}`;
   
+  // Airbnb-style: larger pins when selected for better visibility
+  const scale = selected ? 1.15 : 1;
+  
   const dimensions = useMemo(() => {
     const textLength = priceText.length;
     const baseWidth = soldOut ? 56 : 46;
@@ -57,8 +60,8 @@ export function MapPricePin({ price, selected = false, soldOut = false }: MapPri
   const viewBoxHeight = totalHeight + padding * 2;
 
   return (
-    <View style={[styles.container, { width: viewBoxWidth, height: viewBoxHeight }]}>
-      <Svg width={viewBoxWidth} height={viewBoxHeight} viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}>
+    <View style={[styles.container, { width: viewBoxWidth * scale, height: viewBoxHeight * scale }]}>
+      <Svg width={viewBoxWidth * scale} height={viewBoxHeight * scale} viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}>
         {selected && !soldOut && (
           <Defs>
             <SvgLinearGradient id="pinGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -90,6 +93,12 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "flex-start",
+    // Airbnb-style: add drop shadow for better depth perception
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
   textContainer: {
     position: "absolute",

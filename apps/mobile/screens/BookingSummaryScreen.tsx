@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useStripe } from "@stripe/stripe-react-native";
 import * as Notifications from "expo-notifications";
@@ -48,6 +48,7 @@ const snapTo5Minutes = (date: Date) => {
 export function BookingSummaryScreen({ navigation, route }: Props) {
   const { id, from, to } = route.params;
   const { token, user } = useAuth();
+  const insets = useSafeAreaInsets();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [loadingListing, setLoadingListing] = useState(true);
@@ -418,8 +419,9 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
         </View>
       )}
       {listing && user ? (
-        <View style={styles.bottomBar}>
-          <View>
+        <View style={[styles.bottomBar, { paddingBottom: 24 + insets.bottom }]}>
+          <View style={styles.priceInfo}>
+            <Text style={styles.priceFrom}>From</Text>
             <Text style={styles.bottomPrice}>
               €{priceSummary ? priceSummary.total.toFixed(2) : "--"}
             </Text>
@@ -706,44 +708,47 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
-    padding: 16,
+    paddingTop: 20,
     paddingHorizontal: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
   bottomPrice: {
-    fontSize: 32,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 2,
   },
   bottomDuration: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: 12,
+    color: '#9CA3AF',
   },
   reserveButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#059669',
     paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingHorizontal: 48,
     borderRadius: 12,
-    shadowColor: '#10B981',
+    shadowColor: '#059669',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   reserveButtonDisabled: {
-    backgroundColor: colors.textSoft,
+    backgroundColor: '#E5E7EB',
+    shadowOpacity: 0,
   },
   reserveButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   successOverlay: {

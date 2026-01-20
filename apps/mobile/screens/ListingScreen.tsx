@@ -20,6 +20,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import LottieView from "lottie-react-native";
 import DatePicker from "react-native-date-picker";
+import MapView, { Marker } from "react-native-maps";
 import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import { useStripe } from "@stripe/stripe-react-native";
 import * as Notifications from "expo-notifications";
@@ -204,9 +205,20 @@ export function ListingScreen({ navigation, route }: Props) {
   const priceSummary = useMemo(() => {
     if (!listing) return null;
     const ms = Math.max(0, endAt.getTime() - startAt.getTime());
+    const hours = ms / (1000 * 60 * 60);
     const days = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
     const total = listing.price_per_day * days;
-    return { days, total, totalCents: Math.round(total * 100) };
+    
+    // Format duration label
+    let durationLabel: string;
+    if (hours < 24) {
+      const roundedHours = Math.ceil(hours);
+      durationLabel = `${roundedHours} ${roundedHours === 1 ? 'hour' : 'hours'}`;
+    } else {
+      durationLabel = `${days} ${days === 1 ? 'day' : 'days'}`;
+    }
+    
+    return { days, total, totalCents: Math.round(total * 100), durationLabel };
   }, [listing, startAt, endAt]);
 
   const openPicker = (field: "start" | "end") => {
@@ -248,6 +260,12 @@ export function ListingScreen({ navigation, route }: Props) {
   const aboutText = listing?.availability_text ?? "No description yet.";
   const aboutPreview =
     aboutText.length > 140 ? `${aboutText.slice(0, 140).trim()}...` : aboutText;
+  
+  // Add dummy data for new fields (remove this once backend is ready)
+  const description = listing?.description ?? "Secure off-street parking space in a quiet residential area. The space is well-lit and monitored 24/7 with CCTV cameras. Perfect for daily commuters or long-term parking needs. Easy access from main road with clear signage.";
+  const vehicleSizeSuitability = (listing?.vehicle_size_suitability || listing?.vehicleSizeSuitability) ?? "Suitable for: Compact cars, Sedans, Small SUVs (up to 4.8m length)";
+  const accessDirections = (listing?.access_directions || listing?.accessDirections) ?? "1. Enter through the main gate on Oak Street\n2. Turn left at the first intersection\n3. The parking space is number 24, located on the right side\n4. Access code will be provided after booking\n5. Gate opens automatically with the code";
+  
   const hostName = "Andrew";
   const hostInitials = hostName
     .split(" ")
@@ -302,25 +320,18 @@ export function ListingScreen({ navigation, route }: Props) {
   return (
     <>
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <View style={styles.topBar}>
-        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </Pressable>
-        <Text style={styles.topTitle}>Listing</Text>
-        <View style={styles.backButton} />
-      </View>
-      {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator />
-        </View>
-      ) : error ? (
-        <View style={styles.centered}>
-          <Text style={styles.error}>{error}</Text>
-        </View>
-      ) : listing ? (
-        <>
-          <ScrollView contentContainerStyle={styles.content}>
-            <View style={[styles.hero, { height: heroHeight }]}>
+        {loading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator />
+          </View>
+        ) : error ? (
+          <View style={styles.centered}>
+            <Text style={styles.error}>{error}</Text>
+          </View>
+        ) : listing ? (
+          <>
+            {/* Hero Image Section */}
+            <View style={[styles.header, { height: 300 }]}>
               {imageUrls.length ? (
                 <ScrollView
                   horizontal
@@ -341,23 +352,24 @@ export function ListingScreen({ navigation, route }: Props) {
                     >
                       <Image
                         source={{ uri: url }}
-                        style={[styles.heroImage, { width, height: heroHeight }]}
+                        style={[styles.heroImage, { width, height: 300 }]}
                       />
                     </Pressable>
                   ))}
-      </ScrollView>
-
+                </ScrollView>
               ) : (
-                <View style={[styles.heroPlaceholder, { height: heroHeight }]}>
+                <View style={[styles.heroPlaceholder, { height: 300 }]}>
                   <Text style={styles.heroPlaceholderText}>No image</Text>
                 </View>
               )}
-              <View style={styles.heroOverlay}>
-                <View style={styles.heroPillDark}>
-                  <Text style={styles.heroPillText}>€{listing.price_per_day} / day</Text>
-                </View>
-                <Pressable style={styles.heroFav} onPress={handleToggleFavorite}>
-                  <Text style={[styles.heroFavText, isFavorite(id) && styles.heroFavTextActive]}>
+              
+              {/* Header Overlay */}
+              <View style={styles.headerOverlay}>
+                <Pressable style={styles.backButtonRound} onPress={() => navigation.goBack()}>
+                  <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                </Pressable>
+                <Pressable style={styles.favoriteButtonRound} onPress={handleToggleFavorite}>
+                  <Text style={[styles.favoriteIcon, isFavorite(id) && styles.favoriteIconActive]}>
                     {isFavorite(id) ? "♥︎" : "♡"}
                   </Text>
                   {showFavAnim ? (
@@ -366,12 +378,13 @@ export function ListingScreen({ navigation, route }: Props) {
                       autoPlay
                       loop={false}
                       onAnimationFinish={() => setShowFavAnim(false)}
-                      style={styles.heroFavLottie}
+                      style={styles.favAnimOverlay}
                       pointerEvents="none"
                     />
                   ) : null}
                 </Pressable>
               </View>
+              
               {imageUrls.length > 1 ? (
                 <View style={styles.dotsRow}>
                   {imageUrls.map((_, index) => (
@@ -383,51 +396,53 @@ export function ListingScreen({ navigation, route }: Props) {
                 </View>
               ) : null}
             </View>
-            <View style={styles.sheet}>
-              <View style={styles.titleCard}>
-                <Text style={styles.title}>{listing.title}</Text>
-                <View style={styles.addressRow}>
-                  <View style={styles.addressDot} />
-                  <Text style={styles.address}>{listing.address}</Text>
+
+            {/* Content Card */}
+            <ScrollView style={styles.contentCard} showsVerticalScrollIndicator={false}>
+              {/* Title Section */}
+              <View style={styles.titleSection}>
+                <Text style={styles.category}>PARKING SPACE</Text>
+                <Text style={styles.cardTitle}>{listing.title}</Text>
+                <View style={styles.locationRow}>
+                  <Ionicons name="location-outline" size={16} color="#6B7280" />
+                  <Text style={styles.location}>{listing.address}</Text>
                 </View>
-                <View style={styles.metricsRow}>
-                  <View style={styles.metricPill}>
-                    <View style={styles.metricIcon} />
-                    <Text style={styles.metricText}>{distanceLabel} away</Text>
-                  </View>
-                  <View style={styles.metricPill}>
-                    {hasReviews ? (
-                      <>
-                        <Text style={styles.metricStar}>★</Text>
-                        <Text style={styles.metricText}>
-                          {listing.rating?.toFixed(1)} ({listing.rating_count})
-                        </Text>
-                      </>
-                    ) : (
-                      <Text style={styles.metricText}>New listing</Text>
-                    )}
-                  </View>
-                  <View style={styles.metricPill}>
-                    <View style={styles.metricIconBadge} />
-                    <Text style={styles.metricText}>Verified host</Text>
-                  </View>
+                <View style={styles.ratingRow}>
+                  {hasReviews ? (
+                    <>
+                      <Ionicons name="star" size={16} color="#FBBF24" />
+                      <Text style={styles.rating}>{listing.rating?.toFixed(1)}</Text>
+                      <Text style={styles.reviewCount}>({listing.rating_count} reviews)</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.reviewCount}>New listing</Text>
+                  )}
                 </View>
               </View>
-              <View style={styles.timeRow}>
-                <Text style={styles.timeLabel}>Parking time</Text>
-                <View style={styles.dateRow}>
-                  <Pressable style={styles.dateTimePill} onPress={() => openPicker("start")}>
-                    <Ionicons name="calendar-outline" size={14} color={colors.accent} />
-                    <Text style={styles.dateTimeText} numberOfLines={1}>{formatDateTimeLabel(startAt)}</Text>
-                  </Pressable>
-                  <Text style={styles.dateArrow}>→</Text>
-                  <Pressable style={styles.dateTimePill} onPress={() => openPicker("end")}>
-                    <Ionicons name="calendar-outline" size={14} color={colors.accent} />
-                    <Text style={styles.dateTimeText} numberOfLines={1}>{formatDateTimeLabel(endAt)}</Text>
-                  </Pressable>
-                </View>
+
+              {/* Date/Time Picker Row */}
+              <View style={styles.timePickerSection}>
+                <Pressable style={styles.dateTimeCard} onPress={() => openPicker("start")}>
+                  <Ionicons name="calendar-outline" size={18} color="#10B981" />
+                  <View style={styles.dateTimeInfo}>
+                    <Text style={styles.dateTimeLabel}>Start</Text>
+                    <Text style={styles.dateTimeValue}>{formatDateTimeLabel(startAt)}</Text>
+                  </View>
+                </Pressable>
+                <Ionicons name="arrow-forward" size={20} color="#9CA3AF" />
+                <Pressable style={styles.dateTimeCard} onPress={() => openPicker("end")}>
+                  <Ionicons name="calendar-outline" size={18} color="#10B981" />
+                  <View style={styles.dateTimeInfo}>
+                    <Text style={styles.dateTimeLabel}>End</Text>
+                    <Text style={styles.dateTimeValue}>{formatDateTimeLabel(endAt)}</Text>
+                  </View>
+                </Pressable>
               </View>
-              <View style={styles.section}>
+
+              {/* Content Sections */}
+              <View style={styles.contentSections}>
+                <View style={styles.dividerLine} />
+                
                 <Text style={styles.sectionTitle}>About this space</Text>
                 <Text style={styles.sectionBody}>
                   {showFullAbout ? aboutText : aboutPreview}
@@ -439,242 +454,256 @@ export function ListingScreen({ navigation, route }: Props) {
                     </Text>
                   </Pressable>
                 ) : null}
-              </View>
-              
-              <View style={styles.divider} />
-              
-              <View style={styles.section}>
+                
+                {(description || vehicleSizeSuitability || accessDirections) && (
+                  <>
+                    <View style={styles.dividerLine} />
+                    
+                    {description && (
+                      <>
+                        <Text style={styles.sectionTitle}>Description</Text>
+                        <Text style={styles.sectionBody}>{description}</Text>
+                      </>
+                    )}
+
+                    {vehicleSizeSuitability && (
+                      <>
+                        {description && <View style={{ height: 20 }} />}
+                        <Text style={styles.sectionTitle}>Vehicle Size Suitability</Text>
+                        <View style={styles.vehicleSizeCard}>
+                          <Ionicons name="car-sport" size={24} color="#10B981" />
+                          <Text style={styles.vehicleSizeText}>
+                            {vehicleSizeSuitability}
+                          </Text>
+                        </View>
+                      </>
+                    )}
+
+                    {accessDirections && (
+                      <>
+                        {(description || vehicleSizeSuitability) && <View style={{ height: 20 }} />}
+                        <Text style={styles.sectionTitle}>Access Directions</Text>
+                        <View style={styles.accessDirectionsCard}>
+                          <Ionicons name="navigate-circle" size={24} color="#10B981" />
+                          <Text style={styles.accessDirectionsText}>
+                            {accessDirections}
+                          </Text>
+                        </View>
+                      </>
+                    )}
+                  </>
+                )}
+                
+                <View style={styles.dividerLine} />
+                
                 <Text style={styles.sectionTitle}>Features</Text>
                 <View style={styles.featuresGrid}>
                   {featureRows.map((feature) => (
-                    <View key={feature} style={styles.featureItem}>
-                      <View style={styles.featureIcon}>
+                    <View key={feature} style={styles.featureCard}>
+                      <View style={styles.featureIconWrapper}>
                         <FeatureIcon type={getFeatureIconType(feature)} />
                       </View>
-                      <Text style={styles.featureText}>{feature}</Text>
+                      <Text style={styles.featureLabel}>{feature}</Text>
                     </View>
                   ))}
                 </View>
-              </View>
-              
-              <View style={styles.divider} />
-              
-              <View style={styles.section}>
+
+                <View style={styles.dividerLine} />
+                
                 <Text style={styles.sectionTitle}>Host</Text>
-                <View style={styles.hostRow}>
+                <View style={styles.hostCard}>
                   <View style={styles.hostAvatar}>
                     <Text style={styles.hostInitials}>{hostInitials}</Text>
                   </View>
-                  <View style={styles.hostMeta}>
+                  <View style={styles.hostInfo}>
                     <Text style={styles.hostName}>{hostName}</Text>
-                    <Text style={styles.hostSub}>
+                    <Text style={styles.hostDetails}>
                       {hasReviews
                         ? `Superhost • ${hostRating} ⭐ • ${hostReviews} reviews`
                         : "New host"}
                     </Text>
                   </View>
                 </View>
-                <View style={styles.hostDetails}>
-                  <View style={styles.hostDetailPill}>
-                    <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-                    <Text style={styles.hostDetailText}>Within an hour</Text>
-                  </View>
-                  <View style={styles.hostDetailPill}>
-                    <Ionicons name="checkmark-circle" size={14} color="#22c55e" />
-                    <Text style={styles.hostDetailText}>Verified</Text>
-                  </View>
-                </View>
-              </View>
-              {imageUrls.length > 1 ? (
-                <>
-                  <View style={styles.divider} />
-                  <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Photos</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
-                      {imageUrls.map((url, index) => (
-                        <Image
-                          key={`thumb-${index}`}
-                          source={{ uri: url }}
-                          style={styles.photoThumb}
-                        />
-                      ))}
-                    </ScrollView>
-                  </View>
-                </>
-              ) : null}
-              
-              <View style={styles.divider} />
-              
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Reviews</Text>
-                {reviewsLoading ? (
-                  <Text style={styles.sectionBody}>Loading reviews…</Text>
-                ) : reviews.length === 0 ? (
-                  <Text style={styles.sectionBody}>No reviews yet.</Text>
-                ) : (
-                  <View style={styles.reviewList}>
-                    {reviews.map((review) => (
-                      <View key={review.id} style={styles.reviewItem}>
-                        <View style={styles.reviewRow}>
-                          <Text style={styles.reviewRating}>★ {review.rating.toFixed(1)}</Text>
-                          <Text style={styles.reviewDate}>
-                            {new Date(review.createdAt).toLocaleDateString()}
-                          </Text>
-                        </View>
-                        {review.comment ? (
-                          <Text style={styles.reviewBody}>{review.comment}</Text>
-                        ) : null}
+
+                {reviews.length > 0 && (
+                  <>
+                    <View style={styles.dividerLine} />
+                    
+                    <Text style={styles.sectionTitle}>Reviews</Text>
+                    {reviewsLoading ? (
+                      <Text style={styles.sectionBody}>Loading reviews…</Text>
+                    ) : (
+                      <View style={styles.reviewList}>
+                        {reviews.map((review) => (
+                          <View key={review.id} style={styles.reviewCard}>
+                            <View style={styles.reviewHeader}>
+                              <Text style={styles.reviewRating}>★ {review.rating.toFixed(1)}</Text>
+                              <Text style={styles.reviewDate}>
+                                {new Date(review.createdAt).toLocaleDateString()}
+                              </Text>
+                            </View>
+                            {review.comment ? (
+                              <Text style={styles.reviewComment}>{review.comment}</Text>
+                            ) : null}
+                          </View>
+                        ))}
                       </View>
-                    ))}
-                  </View>
+                    )}
+                  </>
                 )}
+
+                {!user && (
+                  <>
+                    <View style={styles.dividerLine} />
+                    
+                    <View style={styles.authCard}>
+                      <Text style={styles.authTitle}>Sign in to book</Text>
+                      <TextInput
+                        style={styles.authInput}
+                        placeholder="Email"
+                        placeholderTextColor="#9CA3AF"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        value={email}
+                        onChangeText={setEmail}
+                      />
+                      <TextInput
+                        style={styles.authInput}
+                        placeholder="Password"
+                        placeholderTextColor="#9CA3AF"
+                        secureTextEntry
+                        value={password}
+                        onChangeText={setPassword}
+                      />
+                      {authError ? <Text style={styles.error}>{authError}</Text> : null}
+                      <View style={styles.authButtons}>
+                        <Pressable
+                          style={styles.authButtonSecondary}
+                          onPress={handleLogin}
+                          disabled={authLoading}
+                        >
+                          <Text style={styles.authButtonSecondaryText}>Log in</Text>
+                        </Pressable>
+                        <Pressable
+                          style={styles.authButtonPrimary}
+                          onPress={handleRegister}
+                          disabled={authLoading}
+                        >
+                          <Text style={styles.authButtonPrimaryText}>Create account</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  </>
+                )}
+                
+                {/* Extra padding for bottom button */}
+                <View style={{ height: 200 }} />
               </View>
-      {!user ? (
-        <View style={styles.ctaCard}>
-                  <Text style={styles.ctaTitle}>Sign in to book</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Email"
-                    placeholderTextColor="#98a2b3"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    value={email}
-                    onChangeText={setEmail}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    placeholderTextColor="#98a2b3"
-                    secureTextEntry
-                    value={password}
-                    onChangeText={setPassword}
-                  />
-                  {authError ? <Text style={styles.error}>{authError}</Text> : null}
-                  <View style={styles.authButtons}>
-                    <Pressable
-                      style={styles.secondaryButton}
-                      onPress={handleLogin}
-                      disabled={authLoading}
-                    >
-                      <Text style={styles.secondaryButtonText}>Log in</Text>
-                    </Pressable>
-                    <Pressable
-                      style={styles.primaryButton}
-                      onPress={handleRegister}
-                      disabled={authLoading}
-                    >
-                      <Text style={styles.primaryButtonText}>Create account</Text>
-                    </Pressable>
-                  </View>
+            </ScrollView>
+
+            {/* Fixed Bottom Button */}
+            {priceSummary && user ? (
+              <View style={[styles.bottomBar, { paddingBottom: 24 + insets.bottom }]}>
+                <View style={styles.priceInfo}>
+                  <Text style={styles.priceFrom}>From</Text>
+                  <Text style={styles.priceAmount}>€{priceSummary.total.toFixed(2)}</Text>
+                  <Text style={styles.priceDuration}>{priceSummary.durationLabel}</Text>
                 </View>
-              ) : null}
-            </View>
-          </ScrollView>
-          {priceSummary && user ? (
-            <View style={[styles.bottomBar, { paddingBottom: 14 + insets.bottom }]}>
-              {showBookingMode ? (
-                <Pressable style={[styles.bottomButton, styles.bottomButtonDisabled]} disabled>
-                  <Text style={styles.bottomButtonDisabledText}>Sold out</Text>
-                </Pressable>
-              ) : (
-                <>
-                  <View>
-                    <Text style={styles.bottomPrice}>€{priceSummary.total.toFixed(2)}</Text>
-                    <Text style={styles.bottomMeta}>{priceSummary.days} day(s)</Text>
-                  </View>
-                  {listing?.is_available === false ? (
-                    <Pressable style={[styles.bottomButton, styles.bottomButtonDisabled]} disabled>
-                      <Text style={styles.bottomButtonDisabledText}>Sold out</Text>
-                    </Pressable>
-                  ) : (
-                    <Pressable
-                      style={styles.bottomButton}
-                      onPress={() => {
-                        if (navigatingToBooking) return;
-                        setNavigatingToBooking(true);
-                        navigation.navigate("BookingSummary", {
-                          id,
-                          from: startAt.toISOString(),
-                          to: endAt.toISOString(),
-                        });
-                        setTimeout(() => setNavigatingToBooking(false), 800);
-                      }}
-                      disabled={authLoading}
-                    >
-                      <Text style={styles.bottomButtonText}>
-                        {navigatingToBooking ? "Opening..." : "Reserve"}
-                      </Text>
-                    </Pressable>
-                  )}
-                </>
-              )}
-            </View>
-          ) : null}
-          {pickerVisible ? (
-            <Modal transparent animationType="fade" visible>
-              <Pressable
-                style={styles.pickerBackdrop}
-                onPress={() => {
-                  setPickerVisible(false);
-                  setDraftDate(null);
-                }}
-              >
-                <Pressable style={styles.pickerSheet} onPress={() => undefined}>
-                  <View style={styles.pickerHeader}>
-                    <Text style={styles.pickerTitle}>
-                      {pickerField === "start" ? "Start" : "End"}
-                    </Text>
-                    <Pressable
-                      style={styles.pickerDone}
-                      onPress={() => {
-                        setPickerVisible(false);
-                        setDraftDate(null);
-                      }}
-                    >
-                      <Text style={styles.pickerDoneText}>Done</Text>
-                    </Pressable>
-                  </View>
-                  <DatePicker
-                    date={draftDate ?? (pickerField === "start" ? startAt : endAt)}
-                    mode="datetime"
-                    androidVariant="iosClone"
-                    minuteInterval={5}
-                    textColor={colors.accent}
-                    onDateChange={(date) => {
-                      const snapped = snapTo5Minutes(date);
-                      setDraftDate(snapped);
-                      applyPickedDate(snapped);
-                    }}
-                  />
-                </Pressable>
-              </Pressable>
-            </Modal>
-          ) : null}
-          <Modal visible={showImageViewer} transparent animationType="fade">
-            <View style={styles.viewerBackdrop}>
-              <ImageViewer
-                imageUrls={imageUrls.map((url) => ({ url }))}
-                index={viewerIndex}
-                enableSwipeDown
-                onSwipeDown={() => setShowImageViewer(false)}
-                onCancel={() => setShowImageViewer(false)}
-                onClick={() => setShowImageViewer(false)}
-                onChange={(index) => setViewerIndex(index ?? 0)}
-                renderIndicator={() => null}
-                renderHeader={() => (
+                {listing?.is_available === false || showBookingMode ? (
+                  <Pressable style={[styles.bookButton, styles.bookButtonDisabled]} disabled>
+                    <Text style={styles.bookButtonDisabledText}>Sold out</Text>
+                  </Pressable>
+                ) : (
                   <Pressable
-                    style={[styles.viewerClose, { top: insets.top + 12 }]}
-                    onPress={() => setShowImageViewer(false)}
+                    style={styles.bookButton}
+                    onPress={() => {
+                      if (navigatingToBooking) return;
+                      setNavigatingToBooking(true);
+                      navigation.navigate("BookingSummary", {
+                        id,
+                        from: startAt.toISOString(),
+                        to: endAt.toISOString(),
+                      });
+                      setTimeout(() => setNavigatingToBooking(false), 800);
+                    }}
+                    disabled={authLoading}
                   >
-                    <Text style={styles.viewerCloseText}>Close</Text>
+                    <Text style={styles.bookButtonText}>
+                      {navigatingToBooking ? "Opening..." : "Book Now"}
+                    </Text>
                   </Pressable>
                 )}
+              </View>
+            ) : null}
+          </>
+        ) : null}
+      </SafeAreaView>
+
+      {/* Date Picker Modal */}
+      {pickerVisible ? (
+        <Modal transparent animationType="fade" visible>
+          <Pressable
+            style={styles.pickerBackdrop}
+            onPress={() => {
+              setPickerVisible(false);
+              setDraftDate(null);
+            }}
+          >
+            <Pressable style={styles.pickerSheet} onPress={() => undefined}>
+              <View style={styles.pickerHeader}>
+                <Text style={styles.pickerTitle}>
+                  {pickerField === "start" ? "Start" : "End"}
+                </Text>
+                <Pressable
+                  style={styles.pickerDone}
+                  onPress={() => {
+                    setPickerVisible(false);
+                    setDraftDate(null);
+                  }}
+                >
+                  <Text style={styles.pickerDoneText}>Done</Text>
+                </Pressable>
+              </View>
+              <DatePicker
+                date={draftDate ?? (pickerField === "start" ? startAt : endAt)}
+                mode="datetime"
+                androidVariant="iosClone"
+                minuteInterval={5}
+                textColor={colors.accent}
+                onDateChange={(date) => {
+                  const snapped = snapTo5Minutes(date);
+                  setDraftDate(snapped);
+                  applyPickedDate(snapped);
+                }}
               />
-            </View>
-          </Modal>
-        </>
+            </Pressable>
+          </Pressable>
+        </Modal>
       ) : null}
-    </SafeAreaView>
+
+      {/* Image Viewer Modal */}
+      <Modal visible={showImageViewer} transparent animationType="fade">
+        <View style={styles.viewerBackdrop}>
+          <ImageViewer
+            imageUrls={imageUrls.map((url) => ({ url }))}
+            index={viewerIndex}
+            enableSwipeDown
+            onSwipeDown={() => setShowImageViewer(false)}
+            onCancel={() => setShowImageViewer(false)}
+            onClick={() => setShowImageViewer(false)}
+            onChange={(index) => setViewerIndex(index ?? 0)}
+            renderIndicator={() => null}
+            renderHeader={() => (
+              <Pressable
+                style={[styles.viewerClose, { top: insets.top + 12 }]}
+                onPress={() => setShowImageViewer(false)}
+              >
+                <Text style={styles.viewerCloseText}>Close</Text>
+              </Pressable>
+            )}
+          />
+        </View>
+      </Modal>
     </>
   );
 }
@@ -1325,5 +1354,427 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 12,
     fontWeight: "600",
+  },
+  
+  // New Tab-Based Design Styles
+  header: {
+    position: 'relative',
+  },
+  headerOverlay: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    zIndex: 10,
+  },
+  backButtonRound: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  favoriteButtonRound: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  favoriteIcon: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  favoriteIconActive: {
+    color: '#10B981',
+  },
+  favAnimOverlay: {
+    position: 'absolute',
+    width: 62,
+    height: 62,
+  },
+  contentCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -24,
+    paddingTop: 20,
+    paddingBottom: 120, // Extra padding for fixed bottom bar
+  },
+  titleSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  category: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F59E0B',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 12,
+  },
+  location: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rating: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  reviewCount: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  timePickerSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  dateTimeCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 12,
+    gap: 10,
+  },
+  dateTimeInfo: {
+    flex: 1,
+  },
+  dateTimeLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginBottom: 2,
+  },
+  dateTimeValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  tabContent: {
+    flex: 1,
+  },
+  tabSection: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  contentSections: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  dividerLine: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  sectionBody: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: '#6B7280',
+  },
+  readMore: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#10B981',
+    marginTop: 8,
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 12,
+  },
+  featureCard: {
+    width: '48%',
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  featureIconWrapper: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  featureLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+    flex: 1,
+  },
+  hostCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+    marginTop: 12,
+  },
+  hostInfo: {
+    flex: 1,
+  },
+  hostDetails: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  detailLabel: {
+    fontSize: 15,
+    color: '#6B7280',
+  },
+  detailValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  unavailable: {
+    color: '#EF4444',
+  },
+  reviewList: {
+    gap: 16,
+    marginTop: 12,
+  },
+  reviewCard: {
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  reviewRating: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FBBF24',
+  },
+  reviewDate: {
+    fontSize: 13,
+    color: '#9CA3AF',
+  },
+  reviewComment: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#6B7280',
+  },
+  mapContainer: {
+    height: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  map: {
+    flex: 1,
+  },
+  locationInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  locationAddress: {
+    fontSize: 15,
+    color: '#374151',
+    flex: 1,
+  },
+  locationDistance: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  authCard: {
+    backgroundColor: '#F9FAFB',
+    padding: 20,
+    borderRadius: 12,
+    marginTop: 24,
+    gap: 12,
+  },
+  authTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  authInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    color: '#111827',
+  },
+  authButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  authButtonSecondary: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#10B981',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+  },
+  authButtonSecondaryText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  authButtonPrimary: {
+    flex: 1,
+    backgroundColor: '#10B981',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+  },
+  authButtonPrimaryText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  vehicleSizeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  vehicleSizeText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#166534',
+    flex: 1,
+  },
+  accessDirectionsCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F0FDF4',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  accessDirectionsText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#166534',
+    flex: 1,
+  },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  priceInfo: {
+    flex: 1,
+  },
+  priceFrom: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  priceAmount: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  priceDuration: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+  bookButton: {
+    backgroundColor: '#059669',
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 12,
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  bookButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  bookButtonDisabled: {
+    backgroundColor: '#E5E7EB',
+    shadowOpacity: 0,
+  },
+  bookButtonDisabledText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#9CA3AF',
   },
 });

@@ -272,7 +272,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
                 : isUpcoming ? "calendar" 
                 : "checkmark-circle"
               } 
-              size={20} 
+              size={14} 
               color="#FFFFFF" 
             />
             <Text style={styles.statusHeaderText}>{statusLabel}</Text>
@@ -432,15 +432,18 @@ export function BookingDetailScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F9FAFB', // Match ListingScreen
   },
   
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 16, // Slightly more breathing room
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF', // White header
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   
   backButton: {
@@ -451,10 +454,10 @@ const styles = StyleSheet.create({
   },
   
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20, // Slightly larger
+    fontWeight: '700', // Bolder to match ListingScreen
     color: '#111827',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   
   scrollContent: {
@@ -542,13 +545,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 8,
+    paddingVertical: 6,
+    gap: 4,
   },
   
   statusHeaderText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.5,
   },

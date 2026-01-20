@@ -64,6 +64,11 @@ export type ListingDetail = ListingSummary & {
   is_available?: boolean | null;
   permission_declared?: boolean | null;
   permissionDeclared?: boolean | null;
+  description?: string | null;
+  vehicle_size_suitability?: string | null;
+  vehicleSizeSuitability?: string | null;
+  access_directions?: string | null;
+  accessDirections?: string | null;
 };
 
 export type SecurityLevel = "basic" | "gated" | "cctv";
