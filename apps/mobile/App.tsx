@@ -176,24 +176,25 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#00d4aa",
+        tabBarActiveTintColor: "#047857",
         tabBarInactiveTintColor: "#9ca3af",
         tabBarStyle: {
           backgroundColor: "#ffffff",
           borderTopWidth: 0,
           height: 60 + insets.bottom,
-          paddingBottom: Math.max(8, insets.bottom),
-          paddingTop: 12,
+          paddingBottom: Math.max(6, insets.bottom),
+          paddingTop: 8,
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.06,
-          shadowRadius: 10,
-          elevation: 10,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.04,
+          shadowRadius: 8,
+          elevation: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "600",
-          marginTop: 2,
+          fontSize: 10,
+          fontWeight: "500",
+          marginTop: 4,
+          letterSpacing: 0,
         },
         tabBarButton: (props) => <BottomTabButton {...props} />,
         tabBarItemStyle: {
@@ -390,7 +391,8 @@ const styles = StyleSheet.create({
   legalTitle: {
     color: "#0f172a",
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "600",
+    letterSpacing: -0.1,
   },
   legalBody: {
     color: "#64748b",
@@ -426,7 +428,7 @@ const styles = StyleSheet.create({
   legalText: {
     color: "#0f172a",
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   legalError: {
     color: "#dc2626",
@@ -446,7 +448,8 @@ const styles = StyleSheet.create({
   legalSecondaryText: {
     color: "#475569",
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
+    letterSpacing: 0,
   },
   legalPrimary: {
     backgroundColor: "#00d4aa",
@@ -461,6 +464,7 @@ const styles = StyleSheet.create({
   legalPrimaryText: {
     color: "#ffffff",
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
+    letterSpacing: 0,
   },
 });

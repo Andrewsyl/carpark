@@ -224,7 +224,7 @@ export function SearchForm({
         className="flex w-full flex-col gap-3 rounded-3xl border border-slate-200 bg-white/95 p-3 shadow-xl ring-1 ring-slate-100 sm:flex-row sm:items-stretch sm:gap-2"
       >
         <div className="flex min-w-[220px] flex-1 flex-col gap-1 text-sm font-semibold text-slate-800">
-          <span className="text-[11px] uppercase tracking-wide text-slate-500">Location</span>
+          <span className="text-[11px] tracking-wide text-slate-500">Location</span>
           <AddressAutocomplete
             defaultValue={state.location}
             placeholder="Enter area or landmark"
@@ -324,7 +324,7 @@ function DateTimePicker({ label, value, onChange, minGapMinutes = 120 }: DateTim
         className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition hover:border-brand-200 hover:shadow-md"
       >
         <div className="flex min-w-[210px] flex-col text-sm font-semibold text-slate-800">
-          <span className="text-[11px] uppercase tracking-wide text-slate-500">{label}</span>
+          <span className="text-[11px] tracking-wide text-slate-500">{label}</span>
           <span className="tabular-nums">{formatTrigger(value)}</span>
         </div>
         <span className="text-slate-400">▾</span>
@@ -333,7 +333,7 @@ function DateTimePicker({ label, value, onChange, minGapMinutes = 120 }: DateTim
         <div className="absolute left-0 z-50 mt-2 w-[440px] max-w-[95vw] rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_18px_60px_rgba(15,23,42,0.15)] ring-1 ring-slate-100">
           <div className="flex items-center justify-between pb-3">
             <div className="space-y-0.5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label} time</p>
+              <p className="text-xs font-semibold tracking-wide text-slate-500">{label} time</p>
               <p className="text-sm font-semibold text-slate-900">{formatTrigger(value)}</p>
             </div>
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -354,7 +354,7 @@ function DateTimePicker({ label, value, onChange, minGapMinutes = 120 }: DateTim
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-7 gap-1 pb-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="grid grid-cols-7 gap-1 pb-2 text-center text-xs font-semibold tracking-wide text-slate-500">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
               <div key={d}>{d}</div>
             ))}
@@ -390,7 +390,7 @@ function DateTimePicker({ label, value, onChange, minGapMinutes = 120 }: DateTim
           </div>
 
           <div className="mt-4 flex items-center gap-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{timeLabel}</div>
+            <div className="text-xs font-semibold tracking-wide text-slate-500">{timeLabel}</div>
             <div className="flex-1">
               <div className="relative">
                 <select

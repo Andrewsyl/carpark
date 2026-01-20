@@ -34,7 +34,8 @@
 .price {
   color: #0b0f14;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   white-space: nowrap;
 }
 

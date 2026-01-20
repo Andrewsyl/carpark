@@ -36,10 +36,10 @@ export function HostStepperLayout({
       <header className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
+            <p className="text-xs font-semibold tracking-[0.18em] text-brand-700">
               Step {step} of {totalSteps}
             </p>
-            <h1 className="text-3xl font-bold text-slate-900">{title}</h1>
+            <h1 className="text-3xl tracking-tight font-semibold text-slate-900">{title}</h1>
           </div>
           <div className="hidden h-10 flex-1 items-center rounded-full bg-slate-100 sm:flex">
             <div

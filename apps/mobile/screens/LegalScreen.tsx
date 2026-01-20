@@ -125,12 +125,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 14,
     textAlign: "center",
-    fontWeight: "700",
+    fontWeight: "600",
   },
   title: {
     color: colors.text,
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   content: {
     paddingHorizontal: spacing.screenX,
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: colors.text,
     fontSize: 20,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 8,
   },
   body: {
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   cardBody: {
     color: colors.textMuted,
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   cardActionText: {
     color: "#047857",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   cardActionTextDanger: {
     color: "#b42318",

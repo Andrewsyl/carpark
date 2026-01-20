@@ -236,12 +236,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 14,
     textAlign: "center",
-    fontWeight: "700",
+    fontWeight: "600",
   },
   topTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   tabs: {
     flexDirection: "row",
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   tabText: {
     color: colors.text,
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   tabTextActive: {
     color: colors.cardBg,
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   cardMeta: {
     color: colors.textMuted,
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   actionText: {
     color: colors.text,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   error: {
     backgroundColor: "#fef2f2",

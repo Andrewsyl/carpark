@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 22,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 6,
   },
   subtitle: {
@@ -201,10 +201,9 @@ const styles = StyleSheet.create({
   label: {
     color: colors.textMuted,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
     marginBottom: 6,
     letterSpacing: 0.5,
-    textTransform: "uppercase",
   },
   input: {
     borderColor: colors.border,
@@ -241,7 +240,7 @@ const styles = StyleSheet.create({
   uploadButtonText: {
     color: colors.cardBg,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   removeButton: {
     alignItems: "center",
@@ -253,7 +252,7 @@ const styles = StyleSheet.create({
   removeButtonText: {
     color: colors.danger,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   footer: {
     backgroundColor: colors.cardBg,
@@ -273,7 +272,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.cardBg,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   secondaryButton: {
     alignItems: "center",

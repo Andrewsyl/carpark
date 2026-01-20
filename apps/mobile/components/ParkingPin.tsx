@@ -147,12 +147,12 @@ const styles = StyleSheet.create({
   selectedText: {
     color: "#ffffff",
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   unselectedText: {
     color: "#047857", // emerald-700
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   triangleWrapper: {
     alignItems: "center",

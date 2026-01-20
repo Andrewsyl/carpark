@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   priceText: {
     color: "#047857",
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   priceTextSelected: {
     color: "#FFFFFF",

@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 22,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 6,
   },
   subtitle: {
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   confirmCheck: {
     color: colors.cardBg,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   confirmTextWrap: {
     flex: 1,
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   confirmTitle: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   confirmSubtitle: {
     color: colors.textMuted,
@@ -307,8 +307,7 @@ const styles = StyleSheet.create({
   label: {
     color: colors.textMuted,
     fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
+    fontWeight: "600",
   },
   value: {
     color: colors.text,
@@ -334,7 +333,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.cardBg,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   secondaryButton: {
     alignItems: "center",

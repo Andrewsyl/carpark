@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 34,
-    fontWeight: "800",
+    fontWeight: "600",
     marginTop: 6,
   },
   subtitle: {
@@ -488,12 +488,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 8,
     marginTop: 24,
-    textTransform: "uppercase",
   },
   sectionHeader: {
     color: colors.text,
     fontSize: 22,
-    fontWeight: "700",
+    fontWeight: "600",
     marginBottom: 10,
     marginTop: 18,
   },
@@ -554,7 +553,7 @@ const styles = StyleSheet.create({
   inlineButtonText: {
     color: "#0f766e",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   linkButton: {
     alignItems: "center",
@@ -563,12 +562,12 @@ const styles = StyleSheet.create({
   linkButtonText: {
     color: "#0f766e",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   inlineStatus: {
     color: "#059669",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   emptyState: {
     alignItems: "center",
@@ -587,7 +586,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: "#ffffff",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   ghostButton: {
     alignItems: "center",
@@ -615,6 +614,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 14,
     textAlign: "center",
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

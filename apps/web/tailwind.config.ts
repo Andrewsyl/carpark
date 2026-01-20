@@ -23,7 +23,13 @@ const config: Config = {
       },
       boxShadow: {
         card: "0 12px 30px rgba(0, 48, 102, 0.12)"
-      }
+      },
+      letterSpacing: {
+        tighter: "-0.04em",
+      },
+      fontFamily: {
+        sans: ["Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+      },
     }
   },
   plugins: []

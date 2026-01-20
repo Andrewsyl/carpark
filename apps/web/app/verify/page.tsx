@@ -33,8 +33,8 @@ export default function VerifyPage() {
   return (
     <div className="mx-auto max-w-md space-y-4">
       <div className="card space-y-3 text-center">
-        <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">Email verification</p>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <p className="text-sm font-semibold tracking-wide text-brand-700">Email verification</p>
+        <h1 className="text-2xl tracking-tight font-semibold text-slate-900">
           {status === "loading" ? "Verifying…" : status === "success" ? "All set" : "Verification failed"}
         </h1>
         <p className="text-sm text-slate-600">{message}</p>

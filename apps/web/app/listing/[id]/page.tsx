@@ -51,8 +51,8 @@ export default async function ListingDetailPage({
             />
           </div>
           <div className="card space-y-3">
-            <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">Parking space</p>
-            <h1 className="text-3xl font-bold text-slate-900">{listing.title}</h1>
+            <p className="text-sm font-semibold tracking-wide text-brand-700">Parking space</p>
+            <h1 className="text-3xl tracking-tight font-semibold text-slate-900">{listing.title}</h1>
             {searchParams.created && (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                 Listing published successfully.

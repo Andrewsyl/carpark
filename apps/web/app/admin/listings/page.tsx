@@ -100,7 +100,7 @@ export default function AdminListingsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Listings</h1>
+          <h1 className="text-2xl tracking-tight font-semibold text-slate-900">Listings</h1>
           <p className="text-sm text-slate-600">Approve, reject, or disable listings.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -210,7 +210,7 @@ export default function AdminListingsPage() {
       {confirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-lg font-semibold text-slate-900">
               {confirm.action === "approve"
                 ? "Approve listing"
                 : confirm.action === "rejected"

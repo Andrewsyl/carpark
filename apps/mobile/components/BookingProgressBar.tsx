@@ -129,12 +129,12 @@ const styles = StyleSheet.create({
   checkmark: {
     color: "#10B981",
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   stepNumber: {
     color: "#F97316",
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   stepNumberUpcoming: {
     color: "#9CA3AF",

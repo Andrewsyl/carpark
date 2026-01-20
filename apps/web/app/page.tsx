@@ -41,7 +41,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.10),transparent_26%),radial-gradient(circle_at_80%_10%,rgba(14,165,233,0.08),transparent_24%)]" />
         <div className="relative flex flex-col gap-6">
           <div className="space-y-3 sm:space-y-4 text-center">
-            <h1 className="text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">Find parking fast.</h1>
+            <h1 className="text-4xl font-semibold leading-tight text-slate-900 sm:text-5xl">Find parking fast.</h1>
             <p className="mx-auto max-w-3xl text-base text-slate-600 sm:text-lg">
               Book a driveway or private car park in seconds. Daily or monthly, with instant confirmation.
             </p>

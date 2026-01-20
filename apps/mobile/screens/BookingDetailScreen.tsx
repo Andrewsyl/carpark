@@ -1,19 +1,19 @@
-import { CommonActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from "react-native";
 import { useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import DatePicker from "react-native-date-picker";
 import { useStripe } from "@stripe/stripe-react-native";
+import MapView, { Marker } from "react-native-maps";
 import { cancelBooking, checkInBooking, confirmBookingExtension, createBookingExtensionIntent } from "../api";
 import { useAuth } from "../auth";
 import { getNotificationImageAttachment } from "../notifications";
-import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import type { RootStackParamList } from "../types";
 import { Ionicons } from "@expo/vector-icons";
 import { formatDateTimeLabel } from "../utils/dateFormat";
+import { formatBookingReference } from "../utils/bookingFormat";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingDetail">;
 
@@ -32,38 +32,31 @@ export function BookingDetailScreen({ navigation, route }: Props) {
   const [extendBusy, setExtendBusy] = useState(false);
   const [extendError, setExtendError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
-  const cancelOffsetRef = useRef<number | null>(null);
   const start = new Date(booking.startTime);
   const end = localEndTime;
-  const isUpcoming = end.getTime() > Date.now();
+  const now = Date.now();
+  const isUpcoming = end.getTime() > now && start.getTime() > now;
+  const isInProgress = start.getTime() <= now && end.getTime() > now && localStatus === "confirmed";
   const isCanceled = localStatus === "canceled";
   const isRefunded = booking.refundStatus === "succeeded";
   const refundedAt = booking.refundedAt ? new Date(booking.refundedAt) : null;
-  const canReview = end.getTime() <= Date.now() && booking.status === "confirmed";
-  const statusLabel = (isRefunded ? "refunded" : localStatus).toUpperCase();
+  const canReview = end.getTime() <= now && booking.status === "confirmed";
+  
+  const statusLabel = isRefunded 
+    ? "Refunded" 
+    : isCanceled 
+    ? "Cancelled" 
+    : isInProgress 
+    ? "In Progress" 
+    : isUpcoming 
+    ? "Upcoming" 
+    : "Completed";
+    
   const receiptUrl = booking.receiptUrl ?? null;
   const vehiclePlate = booking.vehiclePlate?.trim();
   const accessCode = booking.accessCode?.trim();
-  const destination =
-    typeof booking.latitude === "number" && typeof booking.longitude === "number"
-      ? `${booking.latitude},${booking.longitude}`
-      : booking.address;
-  const staticMapUrl =
-    typeof booking.latitude === "number" && typeof booking.longitude === "number"
-      ? `https://maps.googleapis.com/maps/api/staticmap?center=${booking.latitude},${booking.longitude}&zoom=16&size=600x300&markers=color:0x10B981|${booking.latitude},${booking.longitude}&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""}`
-      : null;
-  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-    destination
-  )}`;
-  const handleOpenMaps = () => {
-    Alert.alert("Open Google Maps", "Open directions to this space?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Open", onPress: () => Linking.openURL(mapsUrl) },
-    ]);
-  };
   const showAccessCode = accessCode && localStatus === "confirmed";
   const minExtendTime = new Date(end.getTime() + 5 * 60 * 1000);
-  const graceEndsAt = new Date(start.getTime() + 15 * 60 * 1000);
   const canCheckIn =
     localStatus === "confirmed" &&
     !checkedInAt &&
@@ -105,18 +98,6 @@ export function BookingDetailScreen({ navigation, route }: Props) {
     ]);
   };
 
-  const handleChangeStartInfo = () => {
-    if (!token || localStatus === "canceled") return;
-    if (cancelOffsetRef.current == null) {
-      handleCancel();
-      return;
-    }
-    scrollRef.current?.scrollTo({
-      y: Math.max(cancelOffsetRef.current - 16, 0),
-      animated: true,
-    });
-  };
-
   const handleExtend = async (nextEnd: Date) => {
     if (!token || extendBusy || localStatus !== "confirmed") return;
     setExtendBusy(true);
@@ -144,7 +125,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
         returnURL: "carparking://stripe-redirect",
       });
       if (initResult.error) {
-        setExtendError("We couldn’t start the extension payment.");
+        setExtendError("We couldn't start the extension payment.");
         return;
       }
 
@@ -187,151 +168,248 @@ export function BookingDetailScreen({ navigation, route }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <View style={styles.topBar}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={28} color="#111827" />
         </Pressable>
-        <Text style={styles.topTitle}>Booking</Text>
-        <View style={styles.backButton} />
+        <Text style={styles.headerTitle}>Booking Details</Text>
+        <View style={{ width: 40 }} />
       </View>
-      <ScrollView contentContainerStyle={styles.content} ref={scrollRef}>
-        <Text style={styles.title}>{booking.title}</Text>
-        <Text style={styles.subtitle}>{booking.address}</Text>
-        {staticMapUrl ? (
-          <Pressable style={styles.mapPreview} onPress={handleOpenMaps}>
-            <Image source={{ uri: staticMapUrl }} style={styles.mapImage} resizeMode="cover" />
-          </Pressable>
+      
+      <ScrollView contentContainerStyle={styles.scrollContent} ref={scrollRef}>
+        {/* Map Section - for upcoming/active bookings */}
+        {(isUpcoming || isInProgress) && localStatus !== "canceled" ? (
+          <View style={styles.mapSection}>
+            <Text style={styles.mapTitle}>{booking.title}</Text>
+            <Text style={styles.mapAddress}>{booking.address}</Text>
+            
+            {booking.latitude && booking.longitude ? (
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert(
+                    "Open Navigation",
+                    "Navigate to this parking spot in Google Maps?",
+                    [
+                      {
+                        text: "Cancel",
+                        style: "cancel"
+                      },
+                      {
+                        text: "Open Maps",
+                        onPress: () => {
+                          const destination = `${booking.latitude},${booking.longitude}`;
+                          const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+                          Linking.openURL(url);
+                        }
+                      }
+                    ]
+                  );
+                }}
+                activeOpacity={0.8}
+              >
+                <Image
+                  source={{
+                    uri: `https://maps.googleapis.com/maps/api/staticmap?center=${booking.latitude},${booking.longitude}&zoom=16&size=600x300&markers=color:green%7C${booking.latitude},${booking.longitude}&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}`,
+                  }}
+                  style={styles.parkingImage}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.mapPlaceholder}>
+                <Ionicons name="location" size={48} color="#10B981" />
+                <Text style={styles.mapPlaceholderText}>Map preview unavailable</Text>
+              </View>
+            )}
+            
+            <TouchableOpacity 
+              style={styles.mapButton}
+              onPress={() => {
+                Alert.alert(
+                  "Open Navigation",
+                  "Navigate to this parking spot in Google Maps?",
+                  [
+                    {
+                      text: "Cancel",
+                      style: "cancel"
+                    },
+                    {
+                      text: "Open Maps",
+                      onPress: () => {
+                        const destination = booking.latitude && booking.longitude 
+                          ? `${booking.latitude},${booking.longitude}`
+                          : encodeURIComponent(booking.address);
+                        const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+                        Linking.openURL(url);
+                      }
+                    }
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="navigate" size={20} color="#10B981" />
+              <Text style={styles.mapButtonText}>Open in Google Maps</Text>
+            </TouchableOpacity>
+          </View>
         ) : null}
-        <Pressable style={styles.mapButton} onPress={handleOpenMaps}>
-          <Ionicons name="navigate" size={16} color={colors.accent} />
-          <Text style={styles.mapButtonText}>Open in Google Maps</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.mapButton, { marginTop: spacing.sm }]}
-          onPress={() => navigation.navigate("Listing", { 
-            id: booking.listingId,
-            from: booking.startTime,
-            to: booking.endTime,
-            booking: booking
-          })}
-        >
-          <Ionicons name="information-circle-outline" size={16} color={colors.accent} />
-          <Text style={styles.mapButtonText}>View listing details</Text>
-        </Pressable>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Booking details</Text>
-          <Text style={styles.cardSubtitle}>Your reservation summary.</Text>
-          <View style={styles.detailList}>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>STATUS</Text>
-              <Text style={styles.detailValue}>{statusLabel}</Text>
+        {/* Outer Green Card - creates the "frame" */}
+        <View style={[
+          styles.outerGreenCard,
+          isCanceled && styles.outerGreenCardCanceled,
+          isRefunded && styles.outerGreenCardRefunded,
+          isInProgress && styles.outerGreenCardInProgress,
+          isUpcoming && styles.outerGreenCardUpcoming
+        ]}>
+          {/* Status Header */}
+          <View style={styles.statusHeader}>
+            <Ionicons 
+              name={
+                isCanceled ? "close-circle" 
+                : isRefunded ? "arrow-undo" 
+                : isInProgress ? "time" 
+                : isUpcoming ? "calendar" 
+                : "checkmark-circle"
+              } 
+              size={20} 
+              color="#FFFFFF" 
+            />
+            <Text style={styles.statusHeaderText}>{statusLabel}</Text>
+          </View>
+
+          {/* Inner White Content with rounded corners */}
+          <View style={styles.innerWhiteContent}>
+            {/* Listing Header */}
+            <View style={styles.listingRow}>
+              <View style={styles.carIcon}>
+                <Ionicons name="car" size={32} color="#10B981" />
+              </View>
+              <View style={styles.listingText}>
+                <Text style={styles.listingName} numberOfLines={2}>{booking.title}</Text>
+                <Text style={styles.listingSubtitle} numberOfLines={2}>{booking.address}</Text>
+              </View>
             </View>
+
+            {/* Details Rows - Mixed Vertical/Horizontal Layout */}
             {checkedInAt ? (
-              <View style={[styles.detailRow, styles.detailRowBorder]}>
-                <Text style={styles.detailLabel}>CHECKED IN</Text>
-                <Text style={styles.detailValue}>{formatDateTimeLabel(checkedInAt)}</Text>
-              </View>
+              <>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>CHECKED IN</Text>
+                  <Text style={styles.detailValue}>{formatDateTimeLabel(checkedInAt)}</Text>
+                </View>
+              </>
             ) : null}
-            {isRefunded ? (
-              <View style={[styles.detailRow, styles.detailRowBorder]}>
-                <Text style={styles.detailLabel}>REFUND</Text>
-                <Text style={styles.detailValue}>
-                  {refundedAt ? formatDateTimeLabel(refundedAt) : "Refunded"}
-                </Text>
-              </View>
+            
+            {isRefunded && refundedAt ? (
+              <>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>REFUNDED</Text>
+                  <Text style={styles.detailValue}>{formatDateTimeLabel(refundedAt)}</Text>
+                </View>
+              </>
             ) : null}
-            <View style={[styles.detailRow, styles.detailRowBorder]}>
-              <Text style={styles.detailLabel}>START</Text>
-                <Text style={styles.detailValue}>{formatDateTimeLabel(start)}</Text>
+          
+          {/* Start and End Time - Side by Side */}
+          <View style={styles.detailRowDouble}>
+            <View style={styles.detailRowDoubleItem}>
+              <Text style={styles.detailLabel}>START TIME</Text>
+              <Text style={styles.detailValue}>{formatDateTimeLabel(start)}</Text>
             </View>
-            <View style={[styles.detailRow, styles.detailRowBorder]}>
-              <Text style={styles.detailLabel}>END</Text>
-                <Text style={styles.detailValue}>{formatDateTimeLabel(end)}</Text>
+            <View style={styles.detailRowDoubleItem}>
+              <Text style={styles.detailLabel}>END TIME</Text>
+              <Text style={styles.detailValue}>{formatDateTimeLabel(end)}</Text>
             </View>
-            {vehiclePlate ? (
-              <View style={[styles.detailRow, styles.detailRowBorder]}>
-                <Text style={styles.detailLabel}>PLATE</Text>
-                <Text style={styles.detailValue}>{vehiclePlate}</Text>
-              </View>
-            ) : null}
-            {showAccessCode ? (
-              <View style={[styles.detailRow, styles.detailRowBorder]}>
-                <Text style={styles.detailLabel}>ACCESS</Text>
-                <Text style={styles.detailValue}>{accessCode}</Text>
-              </View>
-            ) : null}
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>TOTAL</Text>
-              <Text style={styles.totalValue}>€{(localAmountCents / 100).toFixed(2)}</Text>
+          </View>
+          
+          <View style={styles.detailRowHorizontal}>
+            <Text style={styles.detailLabel}>ORDER ID</Text>
+            <Text style={styles.detailValue}>{formatBookingReference(booking.id)}</Text>
+          </View>
+          
+          {vehiclePlate ? (
+            <View style={styles.detailRowHorizontal}>
+              <Text style={styles.detailLabel}>VEHICLE</Text>
+              <Text style={styles.detailValue}>{vehiclePlate}</Text>
             </View>
+          ) : null}
+          
+          {showAccessCode ? (
+            <View style={styles.detailRowHorizontal}>
+              <Text style={styles.detailLabel}>ACCESS CODE</Text>
+              <Text style={styles.detailValue}>{accessCode}</Text>
+            </View>
+          ) : null}
+          
+          <View style={styles.divider} />
+          
+          <View style={styles.detailRowHorizontal}>
+            <Text style={styles.detailLabel}>PARKING SPOT</Text>
+            <Text style={styles.detailValue}>1 x Parking Space</Text>
+          </View>
+          
+          <View style={styles.detailRowHorizontal}>
+            <Text style={styles.detailLabel}>TOTAL</Text>
+            <Text style={[styles.detailValue, styles.totalValue]}>€{(localAmountCents / 100).toFixed(2)}</Text>
+          </View>
           </View>
         </View>
 
+        {/* Review Card */}
+        {canReview ? (
+          <TouchableOpacity 
+            style={styles.reviewButton}
+            onPress={() => navigation.navigate("Review", { booking })}
+          >
+            <Ionicons name="star-outline" size={20} color="#10B981" />
+            <Text style={styles.reviewButtonText}>Leave a review</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {/* Action Buttons */}
         {isUpcoming && localStatus !== "canceled" ? (
           <>
-            <View style={styles.noticeCard}>
-              <Text style={styles.noticeTitle}>Grace period</Text>
-              <Text style={styles.noticeText}>
-                Please arrive within 15 minutes of the start time. Grace ends at{" "}
-                {graceEndsAt.toLocaleTimeString()}.
-              </Text>
-            </View>
             {canCheckIn ? (
-              <Pressable style={styles.primaryButton} onPress={handleCheckIn}>
-                <Text style={styles.primaryButtonText}>I’m parked</Text>
-              </Pressable>
+              <TouchableOpacity style={styles.actionBtn} onPress={handleCheckIn}>
+                <Text style={styles.actionBtnText}>Check In</Text>
+              </TouchableOpacity>
             ) : null}
-            <Pressable
-              style={[styles.primaryButton, extendBusy && styles.primaryButtonDisabled]}
+            
+            <TouchableOpacity
+              style={[styles.actionBtn, extendBusy && styles.actionBtnDisabled]}
               onPress={() => setExtendOpen(true)}
               disabled={extendBusy}
             >
-              <Text style={styles.primaryButtonText}>
-                {extendBusy ? "Extending..." : "Extend booking"}
+              <Text style={styles.actionBtnText}>
+                {extendBusy ? "Extending..." : "Extend Booking"}
               </Text>
-            </Pressable>
-            <Pressable onPress={handleChangeStartInfo}>
-              <Text style={styles.helperText}>Need to change start time? Cancel and rebook.</Text>
-            </Pressable>
-            <View
-              onLayout={(event) => {
-                cancelOffsetRef.current = event.nativeEvent.layout.y;
-              }}
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.dangerButton, canceling && styles.dangerButtonDisabled]}
+              onPress={handleCancel}
+              disabled={canceling}
             >
-              <Pressable
-                style={[styles.dangerButton, canceling && styles.dangerButtonDisabled]}
-                onPress={handleCancel}
-                disabled={canceling}
-              >
-                <Text style={styles.dangerButtonText}>
-                  {canceling ? "Canceling..." : "Cancel booking"}
-                </Text>
-              </Pressable>
-            </View>
-            {extendError ? <Text style={styles.error}>{extendError}</Text> : null}
+              <Text style={styles.dangerButtonText}>
+                {canceling ? "Canceling..." : "Cancel Booking"}
+              </Text>
+            </TouchableOpacity>
+            
+            {extendError ? <Text style={styles.errorText}>{extendError}</Text> : null}
           </>
         ) : receiptUrl ? (
-          <Pressable style={styles.primaryButton} onPress={() => Linking.openURL(receiptUrl)}>
-            <Text style={styles.primaryButtonText}>View receipt</Text>
-          </Pressable>
-        ) : canReview ? (
-          <Pressable
-            style={styles.primaryButton}
-            onPress={() => navigation.navigate("Review", { booking })}
-          >
-            <Text style={styles.primaryButtonText}>Leave a review</Text>
-          </Pressable>
-        ) : !isCanceled ? (
-          <View style={styles.noticeCard}>
-            <Text style={styles.noticeTitle}>Reviews unlock after the stay</Text>
-            <Text style={styles.noticeText}>
-              You can leave a review once the booking has ended and is confirmed.
-            </Text>
-          </View>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => Linking.openURL(receiptUrl)}>
+            <Text style={styles.actionBtnText}>View Receipt</Text>
+          </TouchableOpacity>
         ) : null}
+
+        {/* Help Button */}
+        <TouchableOpacity style={styles.helpButton}>
+          <Ionicons name="help-circle-outline" size={28} color="#10B981" />
+          <Text style={styles.helpText}>Need help?</Text>
+        </TouchableOpacity>
       </ScrollView>
+      
       <DatePicker
         modal
         open={extendOpen}
@@ -353,209 +431,371 @@ export function BookingDetailScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.appBg,
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    letterSpacing: -0.2,
+  },
+  
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  
+  // Review card
+  reviewCard: {
+    backgroundColor: '#10B981',
+    paddingVertical: 24,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  
+  reviewTitle: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 28,
+    letterSpacing: -0.3,
+  },
+  
+  starsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'center',
+  },
+  
+  // Review button
+  reviewButton: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginTop: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  
+  reviewButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    letterSpacing: -0.2,
+  },
+  
+  // Outer Green Card - creates the "frame" effect
+  outerGreenCard: {
+    backgroundColor: '#047857', // Dark green
+    marginHorizontal: 20,
+    borderRadius: 28, // Outer corner radius
+    paddingHorizontal: 4, // Thin green "border" on sides
+    paddingBottom: 4, // Thin green "border" at bottom
+    overflow: 'hidden',
+  },
+  
+  outerGreenCardCanceled: {
+    backgroundColor: '#DC2626',
+  },
+  
+  outerGreenCardRefunded: {
+    backgroundColor: '#3B82F6',
+  },
+  
+  outerGreenCardInProgress: {
+    backgroundColor: '#F59E0B', // Amber/Orange
+  },
+  
+  outerGreenCardUpcoming: {
+    backgroundColor: '#8B5CF6', // Purple
+  },
+  
+  // Status Header - dark green area at top
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  
+  statusHeaderText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  
+  // Inner White Content - has its own rounded corners
+  innerWhiteContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 24, // Match outer container radius
+    borderBottomRightRadius: 24, // Match outer container radius
+    padding: 20,
+  },
+  
+  // Listing row
+  listingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 32,
+    gap: 16,
+  },
+  
+  carIcon: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#D1FAE5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  listingText: {
     flex: 1,
   },
-  topBar: {
-    alignItems: "center",
-    backgroundColor: colors.headerTint,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.screenX,
-    paddingTop: 8,
+  
+  listingName: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+    letterSpacing: -0.2,
   },
-  backButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  backCircle: {
-    alignItems: "center",
-    justifyContent: "center",
-    height: 32,
-    width: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.cardBg,
-  },
-  backIcon: {
-    color: colors.text,
-    fontSize: 14,
-    lineHeight: 14,
-    textAlign: "center",
-    fontWeight: "700",
-  },
-  topTitle: {
-    color: colors.text,
+  
+  listingSubtitle: {
     fontSize: 16,
-    fontWeight: "700",
+    color: '#6B7280',
   },
-  content: {
-    paddingHorizontal: spacing.screenX,
-    paddingBottom: 32,
+  
+  // Detail rows - vertical stacked layout
+  detailRow: {
+    paddingVertical: 12,
+    alignItems: 'flex-start',
   },
-  title: {
-    color: colors.text,
+  
+  // Detail rows - horizontal layout (label left, value right)
+  detailRowHorizontal: {
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  
+  // Detail rows - two columns side by side
+  detailRowDouble: {
+    paddingVertical: 12,
+    flexDirection: 'row',
+    gap: 16,
+  },
+  
+  detailRowDoubleItem: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+    fontFamily: 'System',
+  },
+  
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+    fontFamily: 'System',
+  },
+  
+  detailValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    lineHeight: 22,
+    fontFamily: 'System',
+  },
+  
+  value: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    lineHeight: 22,
+    fontFamily: 'System',
+  },
+  
+  totalValue: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  
+  divider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 8,
+  },
+  
+  // Map section
+  mapSection: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  
+  mapTitle: {
     fontSize: 24,
-    fontWeight: "700",
-    marginTop: 12,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+    letterSpacing: -0.3,
   },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: 13,
-    marginTop: 6,
-  },
-  mapButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 8,
+  
+  mapAddress: {
+    fontSize: 15,
+    color: '#6B7280',
     marginBottom: 16,
   },
-  mapPreview: {
+  
+  parkingImage: {
+    height: 200,
     borderRadius: 16,
-    overflow: "hidden",
-    marginTop: 12,
-    marginBottom: 4,
+    marginBottom: 12,
+    backgroundColor: '#F3F4F6',
   },
-  mapImage: {
-    width: "100%",
-    height: 140,
+  
+  map: {
+    height: 200,
+    borderRadius: 16,
+    marginBottom: 12,
   },
-  mapButtonText: {
-    color: colors.accent,
+  
+  mapPlaceholder: {
+    height: 200,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  
+  mapPlaceholderText: {
     fontSize: 14,
-    fontWeight: "600",
+    color: '#6B7280',
+    marginTop: 8,
   },
-  card: {
-    backgroundColor: colors.cardBg,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    marginTop: 16,
-    padding: spacing.card,
-    ...cardShadow,
+  
+  mapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  cardTitle: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  cardSubtitle: {
-    color: colors.textMuted,
-    fontSize: 13,
-    marginTop: 6,
-  },
-  detailList: {
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 14,
-    overflow: "hidden",
-  },
-  detailRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  detailRowBorder: {
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-  },
-  detailLabel: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  detailValue: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: "600",
-    textAlign: "right",
-  },
-  totalRow: {
-    alignItems: "center",
-    backgroundColor: "#ecfdf3",
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  totalLabel: {
-    color: "#059669",
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  totalValue: {
-    color: "#047857",
+  
+  mapButtonText: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: '500',
+    color: '#111827',
   },
+  
+  // Action buttons
+  actionBtn: {
+    backgroundColor: '#10B981',
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginHorizontal: 20,
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  
+  actionBtnDisabled: {
+    opacity: 0.6,
+  },
+  
+  actionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  
   dangerButton: {
-    alignItems: "center",
-    borderColor: "#fecaca",
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 20,
-    paddingVertical: 12,
+    borderWidth: 2,
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FEF2F2',
+    paddingVertical: 14,
+    borderRadius: 16,
+    marginHorizontal: 20,
+    marginTop: 12,
+    alignItems: 'center',
   },
+  
   dangerButtonText: {
-    color: "#b42318",
-    fontSize: 13,
-    fontWeight: "700",
+    color: '#DC2626',
+    fontSize: 16,
+    fontWeight: '600',
   },
+  
   dangerButtonDisabled: {
     opacity: 0.6,
   },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.card,
-    marginTop: 20,
-    minHeight: 44,
-    paddingVertical: 12,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.6,
-  },
-  primaryButtonText: {
-    color: "#ffffff",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  noticeCard: {
-    backgroundColor: colors.cardBg,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    marginTop: 16,
-    padding: 16,
-  },
-  noticeTitle: {
-    color: colors.text,
+  
+  errorText: {
+    color: '#DC2626',
     fontSize: 14,
-    fontWeight: "700",
+    textAlign: 'center',
+    marginTop: 12,
+    marginHorizontal: 20,
   },
-  noticeText: {
-    color: colors.textMuted,
-    fontSize: 12,
-    marginTop: 6,
-    lineHeight: 18,
+  
+  // Help button
+  helpButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    marginTop: 24,
+    marginHorizontal: 20,
   },
-  helperText: {
-    color: colors.accent,
-    fontSize: 12,
-    marginTop: 10,
-    textAlign: "center",
-    fontWeight: "600",
+  
+  helpText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#10B981',
   },
 });

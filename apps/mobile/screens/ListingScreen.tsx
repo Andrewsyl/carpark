@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import ImageViewer from "react-native-image-zoom-viewer";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import LottieView from "lottie-react-native";
 import DatePicker from "react-native-date-picker";
@@ -35,6 +36,7 @@ import { logError, logInfo } from "../logger";
 import type { ListingDetail, RootStackParamList } from "../types";
 import { Ionicons } from "@expo/vector-icons";
 import { formatDateLabel, formatTimeLabel, formatDateTimeLabel } from "../utils/dateFormat";
+import { Info, Star, User, Image as ImageIcon } from "lucide-react-native";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Listing">;
 
@@ -418,14 +420,14 @@ export function ListingScreen({ navigation, route }: Props) {
                     <Ionicons name="calendar-outline" size={14} color={colors.accent} />
                     <Text style={styles.dateTimeText} numberOfLines={1}>{formatDateTimeLabel(startAt)}</Text>
                   </Pressable>
-                  <Text style={styles.dateArrowText}>→</Text>
+                  <Text style={styles.dateArrow}>→</Text>
                   <Pressable style={styles.dateTimePill} onPress={() => openPicker("end")}>
                     <Ionicons name="calendar-outline" size={14} color={colors.accent} />
                     <Text style={styles.dateTimeText} numberOfLines={1}>{formatDateTimeLabel(endAt)}</Text>
                   </Pressable>
                 </View>
               </View>
-              <View style={styles.sectionCard}>
+              <View style={styles.section}>
                 <Text style={styles.sectionTitle}>About this space</Text>
                 <Text style={styles.sectionBody}>
                   {showFullAbout ? aboutText : aboutPreview}
@@ -438,7 +440,10 @@ export function ListingScreen({ navigation, route }: Props) {
                   </Pressable>
                 ) : null}
               </View>
-              <View style={styles.sectionCard}>
+              
+              <View style={styles.divider} />
+              
+              <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Features</Text>
                 <View style={styles.featuresGrid}>
                   {featureRows.map((feature) => (
@@ -451,7 +456,10 @@ export function ListingScreen({ navigation, route }: Props) {
                   ))}
                 </View>
               </View>
-              <View style={styles.sectionCard}>
+              
+              <View style={styles.divider} />
+              
+              <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Host</Text>
                 <View style={styles.hostRow}>
                   <View style={styles.hostAvatar}>
@@ -478,20 +486,26 @@ export function ListingScreen({ navigation, route }: Props) {
                 </View>
               </View>
               {imageUrls.length > 1 ? (
-                <View style={styles.sectionCard}>
-                  <Text style={styles.sectionTitle}>More photos</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {imageUrls.map((url, index) => (
-                      <Image
-                        key={`thumb-${index}`}
-                        source={{ uri: url }}
-                        style={styles.photoThumb}
-                      />
-                    ))}
-                  </ScrollView>
-                </View>
+                <>
+                  <View style={styles.divider} />
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Photos</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
+                      {imageUrls.map((url, index) => (
+                        <Image
+                          key={`thumb-${index}`}
+                          source={{ uri: url }}
+                          style={styles.photoThumb}
+                        />
+                      ))}
+                    </ScrollView>
+                  </View>
+                </>
               ) : null}
-              <View style={styles.sectionCard}>
+              
+              <View style={styles.divider} />
+              
+              <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Reviews</Text>
                 {reviewsLoading ? (
                   <Text style={styles.sectionBody}>Loading reviews…</Text>
@@ -559,17 +573,9 @@ export function ListingScreen({ navigation, route }: Props) {
           {priceSummary && user ? (
             <View style={[styles.bottomBar, { paddingBottom: 14 + insets.bottom }]}>
               {showBookingMode ? (
-                <>
-                  <Text style={styles.bottomSoldOut}>Sold out</Text>
-                  <Pressable
-                    style={styles.bottomButton}
-                    onPress={() => {
-                      navigation.navigate("BookingDetail", { booking });
-                    }}
-                  >
-                    <Text style={styles.bottomButtonText}>View your booking</Text>
-                  </Pressable>
-                </>
+                <Pressable style={[styles.bottomButton, styles.bottomButtonDisabled]} disabled>
+                  <Text style={styles.bottomButtonDisabledText}>Sold out</Text>
+                </Pressable>
               ) : (
                 <>
                   <View>
@@ -675,7 +681,7 @@ export function ListingScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.appBg,
+    backgroundColor: "#F9FAFB",
     flex: 1,
   },
   topBar: {
@@ -708,12 +714,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 14,
     textAlign: "center",
-    fontWeight: "700",
+    fontWeight: "600",
   },
   topTitle: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     letterSpacing: 0.3,
   },
   centered: {
@@ -808,12 +814,12 @@ const styles = StyleSheet.create({
   heroPillText: {
     color: "#ffffff",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   heroPillTextDark: {
     color: colors.text,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   sheet: {
     backgroundColor: colors.cardBg,
@@ -828,9 +834,10 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 26,
-    fontWeight: "800",
-    letterSpacing: 0.2,
+    fontSize: 28,
+    fontWeight: "600",
+    letterSpacing: -0.5,
+    lineHeight: 34,
   },
   addressRow: {
     alignItems: "center",
@@ -845,7 +852,9 @@ const styles = StyleSheet.create({
   },
   address: {
     color: colors.textMuted,
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "500",
   },
   headerBlock: {
     marginBottom: 6,
@@ -868,8 +877,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   metricText: {
-    color: colors.textMuted,
-    fontSize: 12,
+    color: colors.text,
+    fontSize: 13,
     fontWeight: "600",
   },
   metricIcon: {
@@ -881,7 +890,7 @@ const styles = StyleSheet.create({
   metricStar: {
     color: "#f59e0b",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   metricIconBadge: {
     backgroundColor: "#22c55e",
@@ -891,17 +900,20 @@ const styles = StyleSheet.create({
   },
   timeRow: {
     backgroundColor: colors.cardBg,
-    borderColor: colors.border,
     borderRadius: 16,
-    borderWidth: 1,
     marginTop: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   timeLabel: {
     color: colors.text,
     fontSize: 17,
-    fontWeight: "700",
+    fontWeight: "600",
     letterSpacing: -0.3,
     marginBottom: 10,
   },
@@ -909,6 +921,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: 6,
+  },
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   dateTimePill: {
     alignItems: "center",
@@ -928,10 +945,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     flex: 1,
   },
-  dateArrowText: {
+  dateArrow: {
     color: "#94a3b8",
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 16,
+    marginHorizontal: 8,
+  },
+  dateArrow: {
+    paddingHorizontal: 8,
   },
   chipRow: {
     flexDirection: "row",
@@ -980,12 +1000,14 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   sectionCard: {
-    backgroundColor: colors.cardBg,
-    borderRadius: 16,
-    borderColor: colors.border,
-    borderWidth: 1,
-    marginTop: 16,
-    padding: 20,
+    paddingVertical: 20,
+  },
+  section: {
+    paddingVertical: 16,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
   },
   sectionStack: {
     marginTop: 6,
@@ -1015,14 +1037,16 @@ const styles = StyleSheet.create({
   },
   featureText: {
     color: colors.text,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
+    marginTop: 2,
   },
   sectionTitle: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: "700",
+    color: '#111827',
+    fontSize: 18,
+    fontWeight: "600",
     letterSpacing: -0.3,
+    marginBottom: 10,
   },
   hostRow: {
     alignItems: "center",
@@ -1043,16 +1067,17 @@ const styles = StyleSheet.create({
   hostInitials: {
     color: colors.text,
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   hostMeta: {
     flex: 1,
     gap: 5,
   },
   hostName: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "700",
+    color: '#111827',
+    fontSize: 18,
+    fontWeight: "600",
+    letterSpacing: -0.3,
   },
   hostSub: {
     color: colors.textMuted,
@@ -1096,7 +1121,7 @@ const styles = StyleSheet.create({
   reviewRating: {
     color: "#f59e0b",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   reviewDate: {
     color: colors.textSoft,
@@ -1108,11 +1133,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
   },
+  photoScroll: {
+    marginTop: 12,
+  },
   sectionBody: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: 10,
+    color: '#6B7280',
+    fontSize: 15,
+    lineHeight: 22,
   },
   summaryRow: {
     alignItems: "center",
@@ -1122,7 +1149,7 @@ const styles = StyleSheet.create({
   summaryValue: {
     color: colors.text,
     fontSize: 18,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   ctaCard: {
     backgroundColor: colors.cardBg,
@@ -1134,7 +1161,7 @@ const styles = StyleSheet.create({
   ctaTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
     marginBottom: 12,
   },
   input: {
@@ -1161,7 +1188,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: "#ffffff",
-    fontWeight: "700",
+    fontWeight: "600",
   },
   secondaryButton: {
     alignItems: "center",
@@ -1181,7 +1208,7 @@ const styles = StyleSheet.create({
   readMore: {
     color: colors.accent,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 8,
   },
   photoThumb: {
@@ -1210,7 +1237,7 @@ const styles = StyleSheet.create({
   bottomPrice: {
     color: colors.text,
     fontSize: 28,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   bottomSoldOut: {
     color: colors.textMuted,
@@ -1239,12 +1266,12 @@ const styles = StyleSheet.create({
   bottomButtonText: {
     color: "#ffffff",
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   bottomButtonDisabledText: {
     color: "#6b7280",
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   pickerBackdrop: {
     flex: 1,
@@ -1270,7 +1297,7 @@ const styles = StyleSheet.create({
   },
   pickerTitle: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.text,
   },
   pickerDone: {
@@ -1279,7 +1306,7 @@ const styles = StyleSheet.create({
   },
   pickerDoneText: {
     color: colors.accent,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   viewerBackdrop: {
     backgroundColor: "rgba(15, 23, 42, 0.95)",
@@ -1297,6 +1324,6 @@ const styles = StyleSheet.create({
   viewerCloseText: {
     color: "#ffffff",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

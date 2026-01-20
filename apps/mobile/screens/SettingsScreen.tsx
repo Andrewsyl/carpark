@@ -68,12 +68,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 14,
     textAlign: "center",
-    fontWeight: "700",
+    fontWeight: "600",
   },
   topTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   content: {
     padding: spacing.screenX,
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   cardBody: {
     color: colors.textMuted,

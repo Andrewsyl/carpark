@@ -104,12 +104,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 14,
     textAlign: "center",
-    fontWeight: "700",
+    fontWeight: "600",
   },
   title: {
     color: colors.text,
     fontSize: 20,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   content: {
     padding: spacing.screenX,
@@ -187,6 +187,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: "#ffffff",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

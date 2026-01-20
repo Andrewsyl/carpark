@@ -84,7 +84,7 @@ export function ListingCard({
               <MapPinIcon className="h-3.5 w-3.5 text-brand-500" />
               <span className="line-clamp-1">{listing.address}</span>
             </p>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{listing.availability}</p>
+            <p className="text-[10px] font-semibold tracking-wide text-slate-500">{listing.availability}</p>
           </div>
           <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
             <StarIcon className="h-3.5 w-3.5" /> {listing.rating.toFixed(1)}

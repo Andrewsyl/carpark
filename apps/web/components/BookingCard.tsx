@@ -24,7 +24,7 @@ export function BookingCard({ booking }: { booking: Booking }) {
 
   return (
     <article className="card flex flex-col gap-3">
-      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <div className="flex items-center justify-between text-xs font-semibold tracking-wide text-slate-500">
         <span className={`rounded-full px-2 py-1 ${badge}`}>{booking.status}</span>
         {typeof booking.payout === "number" && (
           <span className="text-slate-900">€{booking.payout.toFixed(2)} payout</span>

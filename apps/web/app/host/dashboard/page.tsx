@@ -87,8 +87,8 @@ export default function HostDashboardPage() {
       <header className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 py-5 text-white shadow-lg">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200">Host dashboard</p>
-            <h1 className="text-3xl font-bold leading-tight">Your listings</h1>
+            <p className="text-xs font-semibold tracking-[0.28em] text-emerald-200">Host dashboard</p>
+            <h1 className="text-3xl tracking-tight font-semibold leading-tight">Your listings</h1>
             <p className="text-sm text-emerald-100/80">Manage spaces, payouts, and visibility.</p>
             <div className="flex flex-wrap gap-2 text-sm">
               <Link href="/host" className="rounded-full bg-emerald-500 px-3 py-1.5 font-semibold text-slate-900 hover:bg-emerald-400">

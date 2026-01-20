@@ -185,8 +185,8 @@ export default function PaymentsPage() {
   const pageContent = (
     <div className="space-y-6 p-4 lg:p-6">
       <header className="flex flex-col gap-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Payments</p>
-        <h1 className="text-3xl font-bold text-slate-900">Manage payment methods</h1>
+        <p className="text-xs font-semibold tracking-[0.18em] text-brand-700">Payments</p>
+        <h1 className="text-3xl tracking-tight font-semibold text-slate-900">Manage payment methods</h1>
         <p className="text-sm text-slate-600">Add a card, set a default, and review your booking charges.</p>
       </header>
 
@@ -219,7 +219,7 @@ export default function PaymentsPage() {
           </div>
 
           {status === "loading" && <div className="text-sm text-slate-600">Loading cards…</div>}
-          {methods.length === 0 && status === "idle" && <div className="text-sm text-slate-600">No cards saved yet.</div>}
+          {methods.length === 0 && status !== "loading" && <div className="text-sm text-slate-600">No cards saved yet.</div>}
 
           <div className="space-y-2">
             {methods.map((pm) => (
@@ -229,7 +229,7 @@ export default function PaymentsPage() {
               >
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold uppercase">{pm.brand}</span>
+                    <span className="font-semibold">{pm.brand}</span>
                     <span className="text-slate-500">•••• {pm.last4}</span>
                     <span className="text-slate-500">
                       {pm.exp_month}/{pm.exp_year}
@@ -364,7 +364,7 @@ function StatusChip({ status }: { status: PaymentHistoryItem["status"] }) {
     refunded: "bg-blue-100 text-blue-700",
   };
   return (
-    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${map[status] ?? "bg-slate-100 text-slate-700"}`}>
+    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide ${map[status] ?? "bg-slate-100 text-slate-700"}`}>
       {status}
     </span>
   );
@@ -450,7 +450,7 @@ function AddCardModalStripe({
     <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Add card</p>
+          <p className="text-xs font-semibold tracking-wide text-brand-700">Add card</p>
           <p className="text-sm text-slate-600">Securely save a card with Stripe.</p>
         </div>
         <button className="rounded-lg px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-100" onClick={onClose}>
@@ -509,7 +509,7 @@ function AddCardModalFallback({
     <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Add card</p>
+          <p className="text-xs font-semibold tracking-wide text-brand-700">Add card</p>
           <p className="text-sm text-slate-600">Stripe is not configured for web.</p>
         </div>
         <button className="rounded-lg px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-100" onClick={onClose}>

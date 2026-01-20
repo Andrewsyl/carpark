@@ -178,7 +178,7 @@ export default function HostWizardPage() {
     return (
       <div className="mx-auto max-w-3xl space-y-4">
         <div className="card space-y-2">
-          <h1 className="text-2xl font-bold text-slate-900">Become a host</h1>
+          <h1 className="text-2xl tracking-tight font-semibold text-slate-900">Become a host</h1>
           <p className="text-sm text-slate-600">Sign in to add a new space.</p>
           <div className="flex gap-2">
             <Link href="/login" className="btn-primary">

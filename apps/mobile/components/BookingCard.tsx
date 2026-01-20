@@ -1,12 +1,13 @@
-import { Pressable, StyleSheet, Text, View, Image } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing } from "../styles/theme";
 import type { BookingSummary } from "../api";
+import { formatBookingReference } from "../utils/bookingFormat";
 
 type Props = {
   booking: BookingSummary;
   statusLabel: string;
-  statusTone: "confirmed" | "completed" | "pending" | "canceled" | "refunded";
+  statusTone: "confirmed" | "completed" | "pending" | "canceled" | "refunded" | "active";
   dateLabel: string;
   timeLabel: string;
   onPress: () => void;
@@ -17,6 +18,7 @@ const STATUS_STYLES: Record<
   { background: string; text: string; icon: string; border: string }
 > = {
   confirmed: { background: "#ecfdf5", text: "#047857", icon: "checkmark-circle", border: "#10b981" },
+  active: { background: "#ede9fe", text: "#6b21a8", icon: "play-circle", border: "#a855f7" },
   completed: { background: "#f3f4f6", text: "#6b7280", icon: "checkmark-circle-outline", border: "#6b7280" },
   pending: { background: "#fef3c7", text: "#b45309", icon: "time", border: "#f59e0b" },
   canceled: { background: "#fee2e2", text: "#991b1b", icon: "close-circle-outline", border: "#ef4444" },
@@ -32,7 +34,6 @@ export function BookingCard({
   onPress,
 }: Props) {
   const badgeStyle = STATUS_STYLES[statusTone];
-  const imageUrl = booking.imageUrls?.[0];
 
   return (
     <Pressable
@@ -45,14 +46,6 @@ export function BookingCard({
       android_ripple={null}
     >
       <View style={styles.mainContent}>
-        {imageUrl ? (
-          <Image 
-            source={{ uri: imageUrl }} 
-            style={styles.image}
-            resizeMode="cover"
-          />
-        ) : null}
-        
         <View style={styles.textContent}>
           <View style={styles.header}>
             <View style={styles.titleSection}>
@@ -80,8 +73,11 @@ export function BookingCard({
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.viewDetails}>View details</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+            <Text style={styles.reference}>{formatBookingReference(booking.id)}</Text>
+            <View style={styles.viewDetailsRow}>
+              <Text style={styles.viewDetails}>View details</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+            </View>
           </View>
         </View>
       </View>
@@ -107,12 +103,6 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flexDirection: "row",
-    gap: 12,
-  },
-  image: {
-    width: 80,
-    height: "100%",
-    minHeight: 100,
   },
   textContent: {
     flex: 1,
@@ -132,7 +122,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
     lineHeight: 22,
   },
   addressRow: {
@@ -174,9 +164,19 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 4,
+    justifyContent: "space-between",
     paddingTop: 4,
+  },
+  reference: {
+    color: colors.textSoft,
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+  },
+  viewDetailsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   viewDetails: {
     fontSize: 13,

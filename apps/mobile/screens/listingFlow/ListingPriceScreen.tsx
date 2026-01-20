@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 22,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 6,
   },
   subtitle: {
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   inputLabel: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
     marginBottom: 14,
   },
   priceInputRow: {
@@ -161,14 +161,14 @@ const styles = StyleSheet.create({
   currencySymbol: {
     color: colors.text,
     fontSize: 28,
-    fontWeight: "700",
+    fontWeight: "600",
     marginRight: 8,
   },
   priceInput: {
     color: colors.text,
     flex: 1,
     fontSize: 36,
-    fontWeight: "700",
+    fontWeight: "600",
     padding: 0,
   },
   perDayText: {
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
   estimateValue: {
     color: colors.text,
     fontSize: 28,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   estimateHint: {
     color: colors.textMuted,
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   infoTitle: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   infoText: {
     color: colors.textMuted,
@@ -255,6 +255,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.cardBg,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

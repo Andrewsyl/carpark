@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: "#ffffff",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   secondaryButton: {
     alignItems: "center",
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   dividerRow: {
     alignItems: "center",
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   oauthButtonText: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   error: {
     color: colors.danger,
@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 14,
     textAlign: "center",
-    fontWeight: "700",
+    fontWeight: "600",
   },
   successOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
   successTitle: {
     color: "#0f172a",
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "600",
     marginBottom: 6,
   },
   successMessage: {

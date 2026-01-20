@@ -45,8 +45,8 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">Profile</p>
-        <h1 className="text-3xl font-bold text-slate-900">Account settings</h1>
+        <p className="text-sm font-semibold tracking-wide text-brand-700">Profile</p>
+        <h1 className="text-3xl tracking-tight font-semibold text-slate-900">Account settings</h1>
         <p className="text-sm text-slate-600">Manage your account info, verification, and security.</p>
       </header>
 
@@ -57,7 +57,7 @@ export default function ProfilePage() {
         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Account</p>
+              <p className="text-xs font-semibold tracking-wide text-slate-500">Account</p>
               <h2 className="text-lg font-semibold text-slate-900">User details</h2>
             </div>
             {user?.emailVerified ? (
@@ -68,11 +68,11 @@ export default function ProfilePage() {
           </div>
           <div className="mt-3 space-y-3 text-sm text-slate-700">
             <div>
-              <p className="text-xs uppercase tracking-wide text-slate-500">Email</p>
+              <p className="text-xs tracking-wide text-slate-500">Email</p>
               <p className="font-semibold text-slate-900">{user?.email}</p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-slate-500">Role</p>
+              <p className="text-xs tracking-wide text-slate-500">Role</p>
               <p className="font-semibold text-slate-900">{user?.role ?? "driver"}</p>
             </div>
           </div>
@@ -88,7 +88,7 @@ export default function ProfilePage() {
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur">
-          <p className="text-xs font-semibold uppercase tracking-wide text-rose-600">Danger zone</p>
+          <p className="text-xs font-semibold tracking-wide text-rose-600">Danger zone</p>
           <h2 className="text-lg font-semibold text-slate-900">Delete account</h2>
           <p className="mt-2 text-sm text-slate-700">
             This will permanently remove your account, listings, and bookings. This action cannot be undone.
@@ -104,7 +104,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Shortcuts</p>
+        <p className="text-xs font-semibold tracking-wide text-slate-500">Shortcuts</p>
         <div className="mt-2 flex flex-wrap gap-3 text-sm font-semibold text-brand-700">
           <Link href="/dashboard" className="rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50">
             Your trips

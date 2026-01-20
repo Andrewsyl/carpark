@@ -105,10 +105,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <header className="space-y-3 rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 py-6 text-white shadow-lg">
-        <div className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200">Dashboard</div>
+        <div className="text-xs font-semibold tracking-[0.28em] text-emerald-200">Dashboard</div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold leading-tight sm:text-4xl">Welcome back{user?.email ? `, ${user.email}` : ""}</h1>
+            <h1 className="text-3xl tracking-tight font-semibold leading-tight sm:text-4xl">Welcome back{user?.email ? `, ${user.email}` : ""}</h1>
             <p className="text-sm text-emerald-100/85">Track bookings, payouts, and saved payment methods.</p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-100">
@@ -143,7 +143,7 @@ export default function DashboardPage() {
         <section className="space-y-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Driver</p>
+              <p className="text-xs font-semibold tracking-wide text-emerald-600">Driver</p>
               <h2 className="text-xl font-semibold text-slate-900">Your trips</h2>
             </div>
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
@@ -167,7 +167,7 @@ export default function DashboardPage() {
         <section className="space-y-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Host</p>
+              <p className="text-xs font-semibold tracking-wide text-slate-700">Host</p>
               <h2 className="text-xl font-semibold text-slate-900">Earnings</h2>
             </div>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
@@ -211,7 +211,7 @@ export default function DashboardPage() {
                 Close
               </button>
             </div>
-            <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide">
+            <div className="flex items-center gap-2 text-sm font-semibold tracking-wide">
               <span
                 className={`rounded-full px-2 py-1 ${
                   selected.status === "pending"
@@ -244,10 +244,10 @@ function StatCard({ label, value, hint, accent }: { label: string; value: string
           : "border-slate-200 bg-white/80 text-slate-900 backdrop-blur"
       }`}
     >
-      <p className={`text-xs font-semibold uppercase tracking-wide ${accent ? "text-emerald-700" : "text-slate-500"}`}>
+      <p className={`text-xs font-semibold tracking-wide ${accent ? "text-emerald-700" : "text-slate-500"}`}>
         {label}
       </p>
-      <div className="text-2xl font-bold">{value}</div>
+      <div className="text-2xl tracking-tight font-semibold">{value}</div>
       {hint && <p className={`text-xs ${accent ? "text-emerald-800/80" : "text-slate-500"}`}>{hint}</p>}
     </div>
   );

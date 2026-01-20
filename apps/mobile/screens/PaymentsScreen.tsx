@@ -209,7 +209,7 @@ export function PaymentsScreen() {
               </Pressable>
             </View>
           ) : null}
-          {methods.length === 0 ? (
+          {methods.length === 0 && !loading ? (
             <View style={styles.emptyRow}>
               <Text style={styles.emptyText}>No cards saved yet.</Text>
             </View>
@@ -317,7 +317,8 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 28,
-    fontWeight: "800",
+    fontWeight: "600",
+    letterSpacing: -0.4,
     marginTop: 6,
   },
   subtitle: {
@@ -358,7 +359,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     color: colors.text,
     fontSize: 20,
-    fontWeight: "700",
+    fontWeight: "600",
     marginBottom: 10,
     marginTop: 8,
   },
@@ -367,7 +368,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     textAlign: "center",
-    textTransform: "uppercase",
   },
   sectionHeaderRow: {
     alignItems: "center",
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   addButton: {
     backgroundColor: colors.accent,
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: "#ffffff",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   addCardPanel: {
     borderBottomColor: colors.border,
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: "#ffffff",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   row: {
     alignItems: "center",
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   rowStatus: {
     color: "#16a34a",
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   rowDelete: {
     borderColor: "#fecaca",
@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
   rowDeleteText: {
     color: "#b42318",
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   rowRetry: {
     borderColor: "#fcd34d",

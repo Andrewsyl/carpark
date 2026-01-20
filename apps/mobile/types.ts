@@ -16,7 +16,7 @@ export type RootStackParamList = {
   ResetPassword: undefined;
   Profile: undefined;
   Legal: undefined;
-  History: { showSuccess?: boolean; refreshToken?: number; showMapCTA?: boolean } | undefined;
+  History: { showSuccess?: boolean; refreshToken?: number; showMapCTA?: boolean; initialTab?: "upcoming" | "active" | "past" } | undefined;
   Settings: undefined;
   Listings: undefined;
   Payments: undefined;

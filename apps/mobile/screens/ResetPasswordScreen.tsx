@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   },
   linkButtonText: {
     color: colors.cardBg,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   primaryButton: {
     backgroundColor: colors.accent,
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.cardBg,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   secondaryButton: {
     borderRadius: 12,
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 14,
     textAlign: "center",
-    fontWeight: "700",
+    fontWeight: "600",
   },
   error: {
     color: colors.danger,

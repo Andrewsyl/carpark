@@ -297,12 +297,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 14,
     textAlign: "center",
-    fontWeight: "700",
+    fontWeight: "600",
   },
   topTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   content: {
     padding: spacing.screenX,
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   cardBody: {
     color: colors.textMuted,
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   earningsTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
     marginBottom: 10,
   },
   earningsRow: {
@@ -376,23 +376,21 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
-    textTransform: "uppercase",
   },
   earningsValue: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   earningsLabelStrong: {
     color: colors.text,
     fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
+    fontWeight: "600",
   },
   earningsValueStrong: {
     color: colors.accent,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   payoutCard: {
     backgroundColor: colors.cardBg,
@@ -404,7 +402,7 @@ const styles = StyleSheet.create({
   payoutTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   payoutBody: {
     color: colors.textMuted,
@@ -454,7 +452,7 @@ const styles = StyleSheet.create({
   listTitle: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   listMeta: {
     color: colors.textMuted,
@@ -471,7 +469,7 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     color: colors.danger,
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   primaryButton: {
     alignItems: "center",
@@ -486,11 +484,11 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.cardBg,
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   actionText: {
     color: colors.text,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

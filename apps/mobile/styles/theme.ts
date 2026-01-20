@@ -34,17 +34,18 @@ export const textStyles = {
   kicker: {
     color: colors.accent,
     fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    textTransform: "uppercase" as const,
+    fontWeight: "500" as const,
+    letterSpacing: 0,
   },
   title: {
     color: colors.text,
-    fontSize: 26,
-    fontWeight: "800",
+    fontSize: 24,
+    fontWeight: "600" as const,
+    letterSpacing: -0.3,
   },
   subtitle: {
     color: colors.textMuted,
     fontSize: 14,
+    fontWeight: "400" as const,
   },
 };

@@ -14,10 +14,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { useStripe } from "@stripe/stripe-react-native";
 import * as Notifications from "expo-notifications";
 import DatePicker from "react-native-date-picker";
 import { Ionicons } from "@expo/vector-icons";
+import { MapPin, Clock, CreditCard } from "lucide-react-native";
 import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import {
   confirmBookingPayment,
@@ -311,16 +313,18 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.headerBackButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          disabled={bookingBusy || bookingConfirmed}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Booking summary</Text>
+      <View style={styles.gradientWrapper}>
+        <LinearGradient colors={["#ECFDF5", "#F9FAFB"]} style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.headerBackButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            disabled={bookingBusy || bookingConfirmed}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Booking summary</Text>
+        </LinearGradient>
       </View>
       <BookingProgressBar currentStep={bookingBusy || confirmingBooking ? 3 : 2} />
       {loadingListing ? (
@@ -337,94 +341,68 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
           </Pressable>
         </View>
       ) : listing ? (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Confirm your booking</Text>
-            <View style={styles.locationBlock}>
-              <Text style={styles.locationTitle}>{listing.title}</Text>
-              <Text style={styles.locationSubtitle}>{listing.address}</Text>
-            </View>
-            <View style={styles.detailList}>
-              <Text style={styles.detailLabel}>TIME</Text>
-              <View style={styles.dateRow}>
-                <Pressable style={styles.dateTimePill} onPress={() => openPicker("start")}>
-                  <Text style={styles.dateTimeText}>{formatDateTimeLabel(start)}</Text>
-                </Pressable>
-                <View style={styles.dateArrow}>
-                  <Text style={styles.dateArrowText}>→</Text>
-                </View>
-                <Pressable style={styles.dateTimePill} onPress={() => openPicker("end")}>
-                  <Text style={styles.dateTimeText}>{formatDateTimeLabel(end)}</Text>
-                </Pressable>
+          
+          <Text style={styles.pageTitle}>Confirm booking</Text>
+          
+          <View style={styles.section}>
+            <Text style={styles.listingName}>{listing.title}</Text>
+            <Text style={styles.address}>{listing.address}</Text>
+          </View>
+          
+          <View style={styles.divider} />
+          
+          <View style={styles.section}>
+            <View style={styles.timeRow}>
+              <View style={styles.timeBlock}>
+                <Text style={styles.timeLabel}>From</Text>
+                <Text style={styles.timeDate}>{formatDateLabel(start)}</Text>
+                <Text style={styles.timeValue}>{formatTimeLabel(start)}</Text>
               </View>
-              <View style={[styles.detailRow, styles.detailRowBorder]}>
-                <Text style={styles.detailLabel}>DURATION</Text>
-                <Text style={styles.detailValue}>{durationHours} hours</Text>
+              <View style={styles.timeBlock}>
+                <Text style={styles.timeLabel}>Until</Text>
+                <Text style={styles.timeDate}>{formatDateLabel(end)}</Text>
+                <Text style={styles.timeValue}>{formatTimeLabel(end)}</Text>
               </View>
             </View>
-            <View style={styles.inputBlock}>
-              <Text style={styles.inputLabel}>Vehicle plate (optional)</Text>
-              <View style={styles.plateRow}>
-                <View style={styles.plateCountry}>
-                  <Text style={styles.plateCountryText}>IRL</Text>
-                </View>
-                <TextInput
-                  value={vehiclePlate}
-                  onChangeText={(value) =>
-                    setVehiclePlate(value.toUpperCase().replace(/\s+/g, " "))
-                  }
-                  placeholder="12-D-12345"
-                  placeholderTextColor="#9ca3af"
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  maxLength={12}
-                  style={styles.plateInput}
-                />
+            <Text style={styles.durationText}>{durationHours} {durationHours === 1 ? 'hour' : 'hours'} total</Text>
+          </View>
+          
+          <View style={styles.divider} />
+          
+          <View style={styles.section}>
+            <Text style={styles.inputLabel}>License plate (optional)</Text>
+            <View style={styles.plateRow}>
+              <View style={styles.plateCountry}>
+                <Text style={styles.plateCountryText}>IRL</Text>
               </View>
-              <Text style={styles.inputHint}>Share your plate with the host for easy access.</Text>
+              <TextInput
+                value={vehiclePlate}
+                onChangeText={(value) =>
+                  setVehiclePlate(value.toUpperCase().replace(/\s+/g, " "))
+                }
+                placeholder="12-D-12345"
+                placeholderTextColor="#9ca3af"
+                autoCapitalize="characters"
+                autoCorrect={false}
+                maxLength={12}
+                style={styles.plateInput}
+              />
             </View>
-            {priceSummary ? (
+          </View>
+          
+          <View style={styles.divider} />
+          
+          {priceSummary ? (
+            <View style={styles.section}>
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>TOTAL</Text>
-                <Text style={styles.totalValue}>€{priceSummary.total.toFixed(2)}</Text>
+                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.totalAmount}>€{priceSummary.total.toFixed(2)}</Text>
               </View>
-            ) : null}
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Cancellation policy</Text>
-            <Text style={styles.sectionBody}>
-              Cancel up to 2 hours before the start for a full refund.
-            </Text>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Payment method</Text>
-            <View style={styles.paymentStack}>
-              <Pressable
-                onPress={() => setPaymentMethod("google")}
-                style={[
-                  styles.paymentOption,
-                  styles.paymentOptionDark,
-                  paymentMethod === "google" && styles.paymentOptionActiveDark,
-                ]}
-              >
-                <Text style={styles.paymentOptionTextDark}>Google Pay</Text>
-                <Text style={styles.paymentOptionHintDark}>Fast checkout</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setPaymentMethod("card")}
-                style={[
-                  styles.paymentOption,
-                  paymentMethod === "card" && styles.paymentOptionActiveLight,
-                ]}
-              >
-                <Text style={styles.paymentOptionText}>Add card</Text>
-                <Text style={styles.paymentOptionHint}>Secure payment</Text>
-              </Pressable>
             </View>
-          </View>
+          ) : null}
+
           {paymentFailed ? (
             <View style={styles.noticeCard}>
               <Text style={styles.noticeTitle}>Payment didn’t go through</Text>
@@ -433,7 +411,6 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
               </Text>
             </View>
           ) : null}
-          <View style={styles.footerSpacer} />
         </ScrollView>
       ) : (
         <View style={styles.centered}>
@@ -446,33 +423,24 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
             <Text style={styles.bottomPrice}>
               €{priceSummary ? priceSummary.total.toFixed(2) : "--"}
             </Text>
-            <Text style={styles.bottomMeta}>{durationHours} hours</Text>
+            <Text style={styles.bottomDuration}>{durationHours} {durationHours === 1 ? 'hour' : 'hours'}</Text>
           </View>
-          <View style={styles.buttonStack}>
-            <Pressable
-              style={[
-                styles.bottomButton,
-                (bookingBusy || bookingConfirmed) && styles.bottomButtonDisabled,
-              ]}
-              onPress={handlePayment}
-              disabled={bookingBusy || bookingConfirmed}
-            >
-              <Text style={styles.bottomButtonText}>
-                {bookingBusy
-                  ? confirmingBooking
-                    ? "Finalizing..."
-                    : "Processing..."
-                  : paymentFailed
-                    ? "Try again"
-                    : paymentMethod === "google"
-                      ? "Buy with Google Pay"
-                      : "Pay & reserve"}
-              </Text>
-            </Pressable>
-            {confirmingBooking ? (
-              <Text style={styles.bottomStatus}>Finalizing your booking…</Text>
-            ) : null}
-          </View>
+          <TouchableOpacity
+            style={[
+              styles.reserveButton,
+              (bookingBusy || bookingConfirmed) && styles.reserveButtonDisabled,
+            ]}
+            onPress={handlePayment}
+            disabled={bookingBusy || bookingConfirmed}
+          >
+            <Text style={styles.reserveButtonText}>
+              {bookingBusy
+                ? confirmingBooking
+                  ? "Finalizing..."
+                  : "Processing..."
+                : "Pay & reserve"}
+            </Text>
+          </TouchableOpacity>
         </View>
       ) : null}
       {pickerVisible ? (
@@ -522,12 +490,14 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.appBg,
     flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  gradientWrapper: {
+    flex: 0,
   },
   header: {
     alignItems: "center",
-    backgroundColor: colors.headerTint,
     flexDirection: "row",
     paddingHorizontal: spacing.screenX,
     paddingVertical: 12,
@@ -542,10 +512,117 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     flex: 1,
   },
-  content: {
-    paddingHorizontal: spacing.screenX,
-    paddingBottom: 140,
-    paddingTop: 12,
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 120,
+  },
+  pageTitle: {
+    fontSize: 26,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 24,
+    letterSpacing: -0.6,
+  },
+  section: {
+    paddingVertical: 16,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  listingName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+    letterSpacing: -0.3,
+  },
+  address: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    gap: 24,
+    marginBottom: 12,
+  },
+  timeBlock: {
+    flex: 1,
+  },
+  timeLabel: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 6,
+    letterSpacing: 0.5,
+    fontWeight: '600',
+  },
+  timeDate: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  timeValue: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#111827',
+    letterSpacing: -0.3,
+  },
+  durationText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 10,
+  },
+  plateRow: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+    backgroundColor: '#ffffff',
+  },
+  plateCountry: {
+    width: 54,
+    backgroundColor: '#1d4ed8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  plateCountryText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  plateInput: {
+    flex: 1,
+    color: '#111827',
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 1.5,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+  },
+  totalLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  totalAmount: {
+    fontSize: 32,
+    fontWeight: '600',
+    color: '#111827',
+    letterSpacing: -0.8,
   },
   centered: {
     alignItems: "center",
@@ -556,7 +633,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 20,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   subtitle: {
     color: colors.textMuted,
@@ -569,24 +646,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
   },
-  card: {
-    backgroundColor: colors.cardBg,
-    borderRadius: radius.card,
-    marginTop: 16,
-    padding: spacing.card,
-    ...cardShadow,
-  },
-  cardTitle: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  sectionBody: {
-    color: colors.textMuted,
-    fontSize: 13,
-    marginTop: 10,
-    lineHeight: 18,
-  },
   noticeCard: {
     backgroundColor: colors.cardBg,
     borderColor: "#fee2e2",
@@ -598,133 +657,13 @@ const styles = StyleSheet.create({
   noticeTitle: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   noticeText: {
     color: colors.textMuted,
     fontSize: 12,
     marginTop: 6,
     lineHeight: 18,
-  },
-  locationBlock: {
-    marginTop: 12,
-  },
-  locationTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  locationSubtitle: {
-    color: colors.textMuted,
-    fontSize: 13,
-    marginTop: 4,
-  },
-  detailList: {
-    marginTop: 14,
-    overflow: "hidden",
-  },
-  detailRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  detailRowBorder: {
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-  },
-  dateRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  dateTimePill: {
-    alignItems: "center",
-    backgroundColor: "#f8fafc",
-    borderRadius: 999,
-    flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  dateTimeText: {
-    color: "#101828",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  dateArrow: {
-    paddingHorizontal: 8,
-  },
-  dateArrowText: {
-    color: colors.textMuted,
-    fontSize: 16,
-  },
-  detailLabel: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  detailValue: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: "600",
-    textAlign: "right",
-  },
-  inputBlock: {
-    marginTop: 16,
-  },
-  inputLabel: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  inputField: {
-    backgroundColor: colors.appBg,
-    borderRadius: 12,
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  plateRow: {
-    flexDirection: "row",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    overflow: "hidden",
-    backgroundColor: "#ffffff",
-    marginTop: 8,
-  },
-  plateCountry: {
-    width: 54,
-    backgroundColor: "#1d4ed8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  plateCountryText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1,
-  },
-  plateInput: {
-    flex: 1,
-    color: "#111827",
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  inputHint: {
-    color: colors.textMuted,
-    fontSize: 12,
-    marginTop: 6,
   },
   pickerBackdrop: {
     flex: 1,
@@ -750,7 +689,7 @@ const styles = StyleSheet.create({
   },
   pickerTitle: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.text,
   },
   pickerDone: {
@@ -759,121 +698,53 @@ const styles = StyleSheet.create({
   },
   pickerDoneText: {
     color: colors.accent,
-    fontWeight: "700",
-  },
-  totalRow: {
-    alignItems: "center",
-    backgroundColor: "#ecfdf3",
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  totalLabel: {
-    color: "#059669",
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  totalValue: {
-    color: "#047857",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  paymentStack: {
-    marginTop: 14,
-  },
-  paymentOption: {
-    borderRadius: 12,
-    marginBottom: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...cardShadow,
-  },
-  paymentOptionDark: {
-    backgroundColor: "#111827",
-    borderColor: "#111827",
-  },
-  paymentOptionActiveDark: {
-    backgroundColor: "#0f172a",
-  },
-  paymentOptionActiveLight: {
-    borderColor: colors.accent,
-    backgroundColor: "#ecfdf3",
-  },
-  paymentOptionTextDark: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  paymentOptionHintDark: {
-    color: "#d1d5db",
-    fontSize: 12,
-    marginTop: 4,
-  },
-  paymentOptionText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  paymentOptionHint: {
-    color: colors.textMuted,
-    fontSize: 12,
-    marginTop: 4,
-  },
-  footerSpacer: {
-    height: 12,
+    fontWeight: "600",
   },
   bottomBar: {
-    alignItems: "center",
-    backgroundColor: colors.cardBg,
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.screenX,
-    paddingVertical: 14,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 6,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 4,
   },
   bottomPrice: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: "700",
+    fontSize: 32,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 2,
   },
-  bottomMeta: {
-    color: colors.textMuted,
-    fontSize: 12,
-    marginTop: 2,
+  bottomDuration: {
+    fontSize: 14,
+    color: '#6B7280',
   },
-  bottomButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
+  reserveButton: {
+    backgroundColor: '#10B981',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
     borderRadius: 12,
-    minHeight: 44,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  bottomButtonDisabled: {
+  reserveButtonDisabled: {
     backgroundColor: colors.textSoft,
   },
-  bottomButtonText: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  buttonStack: {
-    alignItems: "flex-end",
-  },
-  bottomStatus: {
-    color: colors.textMuted,
-    fontSize: 11,
-    marginTop: 6,
+  reserveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   successOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -892,7 +763,7 @@ const styles = StyleSheet.create({
   successTitle: {
     color: colors.text,
     fontSize: 18,
-    fontWeight: "800",
+    fontWeight: "600",
     textAlign: "center",
   },
   successBody: {
@@ -912,7 +783,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: "#ffffff",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   error: {
     backgroundColor: "#fef2f2",

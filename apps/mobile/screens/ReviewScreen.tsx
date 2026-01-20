@@ -38,7 +38,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "Review">;
 export function ReviewScreen({ navigation, route }: Props) {
   const { booking } = route.params;
   const { token } = useAuth();
-  const [rating, setRating] = useState(0);
+  const [rating, setRating] = useState(5);
   const [feedback, setFeedback] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   },
   mainTitle: {
     fontSize: 32,
-    fontWeight: "700",
+    fontWeight: "600",
     marginBottom: spacing.xs,
     color: colors.text.primary,
     letterSpacing: -0.5,
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   },
   noticeTitle: {
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.text.primary,
   },
   noticeText: {

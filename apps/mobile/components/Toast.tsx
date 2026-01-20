@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   text: {
     color: "#ffffff",
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "600",
     textAlign: "center",
   },
 });

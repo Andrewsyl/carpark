@@ -40,13 +40,13 @@ export function Navbar() {
       {error && (
         <div className="bg-rose-500 p-2 text-center text-sm text-white">
           {error}
-          <button onClick={() => setError(null)} className="ml-4 font-bold">
+          <button onClick={() => setError(null)} className="ml-4 font-semibold">
             ✕
           </button>
         </div>
       )}
       <div className="flex w-full items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="text-lg font-bold text-brand-700">
+        <Link href="/" className="text-lg font-semibold text-brand-700">
           ParkShare Dublin
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-semibold text-slate-700 sm:flex">
@@ -70,7 +70,7 @@ export function Navbar() {
               onClick={() => setOpen((v) => !v)}
               className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-900 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold uppercase text-white">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
                 {user.email.slice(0, 2)}
               </span>
               <span className="hidden sm:inline">{user.email}</span>
@@ -87,7 +87,7 @@ export function Navbar() {
             {open && (
               <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
                 <div className="px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Signed in</p>
+                  <p className="text-xs font-semibold tracking-wide text-slate-500">Signed in</p>
                   <p className="truncate text-sm font-semibold text-slate-900">{user.email}</p>
                 </div>
               <div className="border-t border-slate-100">

@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 22,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 6,
   },
   subtitle: {
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 24,
   },
   chipGrid: {
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   },
   chipTextActive: {
     color: colors.text,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   input: {
     backgroundColor: colors.cardBg,
@@ -281,6 +281,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.cardBg,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 22,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 6,
   },
   subtitle: {
@@ -428,12 +428,11 @@ const styles = StyleSheet.create({
   editTitle: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 8,
     letterSpacing: 0.5,
-    textTransform: "uppercase",
   },
   editRow: {
     alignItems: "center",
@@ -455,7 +454,7 @@ const styles = StyleSheet.create({
   editChevron: {
     color: colors.textSoft,
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   mapPreview: {
     height: 160,
@@ -500,7 +499,7 @@ const styles = StyleSheet.create({
   confirmCheck: {
     color: colors.cardBg,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   confirmTextWrap: {
     flex: 1,
@@ -508,7 +507,7 @@ const styles = StyleSheet.create({
   confirmTitle: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   confirmSubtitle: {
     color: colors.textMuted,
@@ -518,8 +517,7 @@ const styles = StyleSheet.create({
   label: {
     color: colors.textMuted,
     fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
+    fontWeight: "600",
     letterSpacing: 0.5,
   },
   value: {
@@ -560,7 +558,7 @@ const styles = StyleSheet.create({
   successTitle: {
     color: colors.text,
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 6,
   },
   successBody: {
@@ -581,7 +579,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.cardBg,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   secondaryButton: {
     alignItems: "center",

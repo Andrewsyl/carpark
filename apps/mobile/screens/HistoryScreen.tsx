@@ -3,6 +3,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CommonActions, useFocusEffect } from "@react-navigation/native";
 import { Animated, BackHandler, Easing, FlatList, InteractionManager, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import LottieView from "lottie-react-native";
 import { listMyBookings, type BookingSummary } from "../api";
 import { useAuth } from "../auth";
@@ -18,8 +19,8 @@ type Props = NativeStackScreenProps<RootStackParamList, "History">;
 export function HistoryScreen({ navigation, route }: Props) {
   const { token, user } = useAuth();
   const insets = useSafeAreaInsets();
-  const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
-  const [displayTab, setDisplayTab] = useState<"upcoming" | "past">("upcoming");
+  const [tab, setTab] = useState<"upcoming" | "active" | "past">("upcoming");
+  const [displayTab, setDisplayTab] = useState<"upcoming" | "active" | "past">("upcoming");
   const [bookings, setBookings] = useState<BookingSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -164,7 +165,7 @@ export function HistoryScreen({ navigation, route }: Props) {
   }, [tab, tabAnim]);
 
   useEffect(() => {
-    const target = tab === "upcoming" ? 0 : 1;
+    const target = tab === "upcoming" ? 0 : tab === "active" ? 1 : 2;
     Animated.timing(segmentAnim, {
       toValue: target,
       duration: 250,
@@ -188,18 +189,24 @@ export function HistoryScreen({ navigation, route }: Props) {
 
   const now = new Date();
   const upcoming = bookings.filter(
-    (booking) => new Date(booking.endTime) >= now && booking.status !== "canceled"
+    (booking) => new Date(booking.startTime) > now && booking.status !== "canceled"
+  );
+  const active = bookings.filter(
+    (booking) => new Date(booking.startTime) <= now && new Date(booking.endTime) >= now && booking.status !== "canceled"
   );
   const past = bookings.filter((booking) => new Date(booking.endTime) < now);
-  const visible = displayTab === "upcoming" ? upcoming : past;
+  const visible = displayTab === "upcoming" ? upcoming : displayTab === "active" ? active : past;
 
   const renderBookingCard = useCallback(({ item: booking }: { item: BookingSummary }) => {
     const start = new Date(booking.startTime);
     const end = new Date(booking.endTime);
     const isRefunded = booking.refundStatus === "succeeded";
     const isCompleted = displayTab === "past" && booking.status === "confirmed";
+    const isActive = displayTab === "active" && booking.status === "confirmed";
     const statusLabel = isRefunded
       ? "Refunded"
+      : isActive
+      ? "In Progress"
       : isCompleted
       ? "Completed"
       : booking.status === "confirmed"
@@ -209,6 +216,8 @@ export function HistoryScreen({ navigation, route }: Props) {
       : "Cancelled";
     const statusTone = isRefunded
       ? "refunded"
+      : isActive
+      ? "active"
       : isCompleted
       ? "completed"
       : booking.status === "confirmed"
@@ -256,18 +265,22 @@ export function HistoryScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.greeting}>Your Trips</Text>
-            <Text style={styles.title}>Bookings</Text>
+      <View style={styles.gradientWrapper}>
+        <LinearGradient colors={["#ECFDF5", "#F9FAFB"]} style={styles.header}>
+          <View style={styles.headerTop}>
+            <View style={styles.heroIcon}>
+              <Ionicons name="calendar" size={20} color={colors.accent} />
+            </View>
+            <View style={styles.heroText}>
+              <Text style={styles.title}>Bookings</Text>
+              {user && (
+                <Text style={styles.subtitle}>
+                  {active.length} active · {upcoming.length} upcoming · {past.length} completed
+                </Text>
+              )}
+            </View>
           </View>
-        </View>
-        {user && (
-          <Text style={styles.subtitle}>
-            {upcoming.length} upcoming · {past.length} completed
-          </Text>
-        )}
+        </LinearGradient>
       </View>
       {mapCtaVisible ? (
         <View style={styles.mapCtaBanner}>
@@ -310,6 +323,20 @@ export function HistoryScreen({ navigation, route }: Props) {
         </Pressable>
         <Pressable 
           style={styles.tab} 
+          onPress={() => setTab("active")}
+          android_ripple={null}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              tab === "active" && styles.tabTextActive,
+            ]}
+          >
+            Active
+          </Text>
+        </Pressable>
+        <Pressable 
+          style={styles.tab} 
           onPress={() => setTab("past")}
           android_ripple={null}
         >
@@ -330,8 +357,8 @@ export function HistoryScreen({ navigation, route }: Props) {
               transform: [
                 {
                   translateX: segmentAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, segmentWidth.current / 2],
+                    inputRange: [0, 1, 2],
+                    outputRange: [0, segmentWidth.current / 3, (segmentWidth.current / 3) * 2],
                   }),
                 },
               ],
@@ -381,17 +408,19 @@ export function HistoryScreen({ navigation, route }: Props) {
                   <View style={styles.emptyState}>
                     <View style={styles.emptyIcon}>
                       <Ionicons 
-                        name={displayTab === "upcoming" ? "calendar-outline" : "checkmark-done-outline"} 
+                        name={displayTab === "upcoming" ? "calendar-outline" : displayTab === "active" ? "time-outline" : "checkmark-done-outline"} 
                         size={44} 
                         color={colors.textSoft} 
                       />
                     </View>
                     <Text style={styles.emptyTitle}>
-                      {displayTab === "upcoming" ? "No upcoming bookings" : "No past bookings"}
+                      {displayTab === "upcoming" ? "No upcoming bookings" : displayTab === "active" ? "No active bookings" : "No past bookings"}
                     </Text>
                     <Text style={styles.emptyBody}>
                       {displayTab === "upcoming"
                         ? "Find a parking space and your next trip will show up here."
+                        : displayTab === "active"
+                        ? "Bookings in progress will appear here."
                         : "Completed reservations will appear here after your stay."}
                     </Text>
                     {displayTab === "upcoming" ? (
@@ -436,20 +465,32 @@ export function HistoryScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.appBg,
+    backgroundColor: "#F9FAFB",
     flex: 1,
+  },
+  gradientWrapper: {
+    flex: 0,
   },
   header: {
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 20,
-    backgroundColor: colors.cardBg,
   },
   headerTop: {
     flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    marginBottom: 8,
+    alignItems: "center",
+    gap: 12,
+  },
+  heroIcon: {
+    height: 48,
+    width: 48,
+    borderRadius: 16,
+    backgroundColor: "#ecfdf3",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroText: {
+    flex: 1,
   },
   greeting: {
     fontSize: 14,
@@ -458,16 +499,16 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   title: {
-    fontSize: 32,
-    fontWeight: "800",
+    fontSize: 28,
+    fontWeight: "600",
     color: colors.text,
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textMuted,
     fontWeight: "500",
-    marginTop: 4,
+    marginTop: 2,
   },
   mapCtaBanner: {
     alignItems: "center",
@@ -491,7 +532,7 @@ const styles = StyleSheet.create({
   mapCtaTitle: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
     marginBottom: 2,
   },
   mapCtaBody: {
@@ -510,7 +551,7 @@ const styles = StyleSheet.create({
   mapCtaButtonText: {
     color: "#ffffff",
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   tabBar: {
     flexDirection: "row",
@@ -532,13 +573,13 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: colors.text,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   tabIndicator: {
     position: "absolute",
     bottom: 0,
     left: 0,
-    width: "50%",
+    width: "33.33%",
     height: 3,
     backgroundColor: colors.accent,
     borderTopLeftRadius: 3,
@@ -630,7 +671,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: colors.text,
     fontSize: 22,
-    fontWeight: "700",
+    fontWeight: "600",
     marginBottom: 8,
   },
   emptyBody: {
@@ -670,7 +711,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: "#ffffff",
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   successOverlay: {
     alignItems: "center",
@@ -698,7 +739,7 @@ const styles = StyleSheet.create({
   successTitle: {
     color: colors.text,
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 6,
   },
   successBody: {

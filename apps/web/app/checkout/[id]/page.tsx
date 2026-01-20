@@ -98,13 +98,13 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto flex max-w-2xl flex-col gap-5 px-4 pb-28 pt-8 sm:px-6">
         <header className="space-y-2">
-          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-600">Booking confirmation</p>
-          <h1 className="text-3xl font-bold text-slate-900">{listing.title}</h1>
+          <p className="text-sm font-semibold tracking-wide text-emerald-600">Booking confirmation</p>
+          <h1 className="text-3xl tracking-tight font-semibold text-slate-900">{listing.title}</h1>
           <p className="text-sm text-slate-600">{listing.address}</p>
         </header>
 
         <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900">Parking location</h2>
+          <h2 className="text-xl font-semibold text-slate-900">Parking location</h2>
           <p className="mt-2 text-sm text-slate-600">Review the space details before confirming.</p>
           <div className="mt-4 rounded-xl border border-slate-200 px-4 py-3">
             <p className="text-sm font-semibold text-slate-900">{listing.title}</p>
@@ -115,8 +115,8 @@ export default function CheckoutPage() {
         <form id="checkout-form" onSubmit={handleSubmit} className="space-y-5">
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900">Session details</h2>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <h2 className="text-xl font-semibold text-slate-900">Session details</h2>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold tracking-wide text-slate-600">
                 {durationHours} hrs
               </span>
             </div>
@@ -164,7 +164,7 @@ export default function CheckoutPage() {
                   key={row.label}
                   className={`flex items-center justify-between px-4 py-3 text-sm ${index !== 0 ? "border-t border-slate-200" : ""}`}
                 >
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">{row.label}</span>
+                  <span className="text-xs font-semibold tracking-wide text-slate-400">{row.label}</span>
                   <span className="text-sm font-semibold text-slate-900">{row.value}</span>
                 </div>
               ))}
@@ -172,38 +172,38 @@ export default function CheckoutPage() {
           </div>
 
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900">Price breakdown</h2>
+            <h2 className="text-xl font-semibold text-slate-900">Price breakdown</h2>
             <div className="mt-4 space-y-3 text-sm text-slate-600">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">RATE</span>
+                <span className="text-xs font-semibold tracking-wide text-slate-400">RATE</span>
                 <span className="text-sm font-semibold text-slate-900">€{listing.pricePerDay} / day</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">BILLING</span>
+                <span className="text-xs font-semibold tracking-wide text-slate-400">BILLING</span>
                 <span className="text-sm font-semibold text-slate-900">{billingDays} day(s)</span>
               </div>
               <div className="rounded-xl bg-emerald-50 px-4 py-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">TOTAL</span>
-                  <span className="text-lg font-bold text-emerald-700">€{totalPrice.toFixed(2)}</span>
+                  <span className="text-xs font-semibold tracking-wide text-emerald-600">TOTAL</span>
+                  <span className="text-lg font-semibold text-emerald-700">€{totalPrice.toFixed(2)}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">PLATFORM FEE</span>
+                <span className="text-xs font-semibold tracking-wide text-slate-400">PLATFORM FEE</span>
                 <span className="text-sm font-semibold text-slate-900">Included</span>
               </div>
             </div>
           </div>
 
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900">Cancellation policy</h2>
+            <h2 className="text-xl font-semibold text-slate-900">Cancellation policy</h2>
             <p className="mt-3 text-sm text-slate-600">
               Cancel up to 2 hours before the start time for a full refund. Late cancellations may incur a fee.
             </p>
           </div>
 
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900">Payment method</h2>
+            <h2 className="text-xl font-semibold text-slate-900">Payment method</h2>
             <div className="mt-4 space-y-3">
               <button
                 type="button"
@@ -215,7 +215,7 @@ export default function CheckoutPage() {
                 }`}
               >
                 <span>Google Pay</span>
-                <span className="text-xs font-semibold uppercase tracking-wide">Fast checkout</span>
+                <span className="text-xs font-semibold tracking-wide">Fast checkout</span>
               </button>
               <button
                 type="button"
@@ -227,7 +227,7 @@ export default function CheckoutPage() {
                 }`}
               >
                 <span>Add card</span>
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Stripe</span>
+                <span className="text-xs font-semibold tracking-wide text-slate-500">Stripe</span>
               </button>
             </div>
           </div>
@@ -255,7 +255,7 @@ export default function CheckoutPage() {
       <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <div>
-            <p className="text-lg font-bold text-slate-900">€{totalPrice.toFixed(2)}</p>
+            <p className="text-lg font-semibold text-slate-900">€{totalPrice.toFixed(2)}</p>
             <p className="text-sm text-slate-500">{durationHours} hours</p>
           </div>
           <button

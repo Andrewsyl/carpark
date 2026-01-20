@@ -24,7 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="grid gap-6 lg:grid-cols-[240px,1fr]">
       <aside className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Admin</p>
+          <p className="text-xs font-semibold tracking-wide text-slate-500">Admin</p>
           <p className="text-sm font-semibold text-slate-900">Platform controls</p>
         </div>
         <nav className="space-y-2 text-sm font-semibold text-slate-700">

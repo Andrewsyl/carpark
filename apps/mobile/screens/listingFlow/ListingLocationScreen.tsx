@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 22,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 6,
   },
   subtitle: {
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   clearButtonText: {
     color: colors.textMuted,
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "600",
     lineHeight: 20,
   },
   suggestions: {
@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
   mapPlaceholderTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
     textAlign: "center",
   },
   mapPlaceholderText: {
@@ -566,8 +566,7 @@ const styles = StyleSheet.create({
   movePinToggleText: {
     color: "#ffffff",
     fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
+    fontWeight: "600",
     letterSpacing: 0.8,
   },
   movePinHint: {
@@ -596,7 +595,7 @@ const styles = StyleSheet.create({
   addressPromptTitle: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   addressPromptBody: {
     color: colors.textMuted,
@@ -624,7 +623,7 @@ const styles = StyleSheet.create({
   addressPromptGhostText: {
     color: colors.text,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
     textAlign: "center",
   },
   addressPromptPrimary: {
@@ -636,7 +635,7 @@ const styles = StyleSheet.create({
   addressPromptPrimaryText: {
     color: colors.cardBg,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
     textAlign: "center",
   },
   footer: {
@@ -657,6 +656,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.cardBg,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

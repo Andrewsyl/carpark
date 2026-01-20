@@ -505,7 +505,7 @@ export function SearchScreen({ navigation }: Props) {
     (selectedListing?.latitude &&
     selectedListing?.longitude &&
     mapsKey
-      ? `https://maps.googleapis.com/maps/api/streetview?size=240x240&location=${selectedListing.latitude},${selectedListing.longitude}&key=${mapsKey}`
+      ? `https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${selectedListing.latitude},${selectedListing.longitude}&key=${mapsKey}`
       : null);
 
   const handleSelectListing = useCallback((id: string | null) => {
@@ -838,7 +838,7 @@ export function SearchScreen({ navigation }: Props) {
             isFavorite={isFavorite(selectedListing.id)}
             onToggleFavorite={() => toggle(selectedListing)}
             onPress={() => navigation.navigate("Listing", { id: selectedListing.id, from, to })}
-            bottomOffset={Math.max(6, insets.bottom - 6)}
+            bottomOffset={10}
             horizontalInset={16}
             onReserve={() => navigation.navigate("Listing", { id: selectedListing.id, from, to })}
             dismissing={dismissingCard}
@@ -1352,7 +1352,7 @@ const styles = StyleSheet.create({
   clearButtonText: {
     color: colors.textMuted,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
     lineHeight: 18,
   },
   filterFab: {
@@ -1438,8 +1438,7 @@ const styles = StyleSheet.create({
   filtersToggleText: {
     color: colors.text,
     fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
+    fontWeight: "600",
   },
   filtersToggleTextActive: {
     color: colors.accent,
@@ -1498,7 +1497,7 @@ const styles = StyleSheet.create({
   filtersTitle: {
     color: colors.text,
     fontSize: 20,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   filtersSubtitle: {
     color: colors.textMuted,
@@ -1582,7 +1581,7 @@ const styles = StyleSheet.create({
   applyButtonText: {
     color: "#ffffff",
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   suggestions: {
     backgroundColor: colors.cardBg,
@@ -1615,7 +1614,7 @@ const styles = StyleSheet.create({
   searchHeaderTitle: {
     color: "#ffffff",
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   headerIconButton: {
     alignItems: "center",
@@ -1626,7 +1625,7 @@ const styles = StyleSheet.create({
   headerIconText: {
     color: "#ffffff",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   searchHeaderInput: {
     backgroundColor: colors.accent,
@@ -1657,7 +1656,7 @@ const styles = StyleSheet.create({
   overlayClearButtonText: {
     color: "#475467",
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "600",
     lineHeight: 20,
   },
   searchContent: {
@@ -1757,13 +1756,13 @@ const styles = StyleSheet.create({
   resultRemoveText: {
     color: "#6b7280",
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
     lineHeight: 18,
   },
   sectionLabel: {
     color: "#111827",
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
     letterSpacing: 0.4,
     marginBottom: 10,
   },
@@ -1810,7 +1809,7 @@ const styles = StyleSheet.create({
   dateArrowText: {
     color: colors.textMuted,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   searchAreaButton: {
     alignItems: "center",
@@ -1836,7 +1835,7 @@ const styles = StyleSheet.create({
   searchAreaText: {
     color: "#ffffff",
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   durationRow: {
     flexDirection: "row",
@@ -1854,7 +1853,7 @@ const styles = StyleSheet.create({
   durationText: {
     color: "#475569",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   pickerBackdrop: {
     backgroundColor: "rgba(15, 23, 42, 0.4)",
@@ -1890,12 +1889,12 @@ const styles = StyleSheet.create({
   pickerCancelText: {
     color: "#475467",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   pickerTitle: {
     color: "#0f172a",
     fontSize: 15,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   pickerDone: {
     backgroundColor: "#0f172a",
@@ -1906,7 +1905,7 @@ const styles = StyleSheet.create({
   pickerDoneText: {
     color: "#ffffff",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   suggestionItem: {
     borderBottomColor: "#f2f4f7",
@@ -1958,7 +1957,7 @@ const styles = StyleSheet.create({
   overlappingTitle: {
     color: "#0f172a",
     fontSize: 20,
-    fontWeight: "700",
+    fontWeight: "600",
     marginBottom: 4,
   },
   overlappingSubtitle: {
@@ -2001,6 +2000,6 @@ const styles = StyleSheet.create({
   overlappingItemPrice: {
     color: "#10b981",
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

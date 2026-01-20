@@ -100,7 +100,7 @@ export default function AdminUsersPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Users</h1>
+          <h1 className="text-2xl tracking-tight font-semibold text-slate-900">Users</h1>
           <p className="text-sm text-slate-600">Suspend/reactivate and adjust roles.</p>
         </div>
         <button
@@ -182,7 +182,7 @@ export default function AdminUsersPage() {
       {confirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-lg font-semibold text-slate-900">
               {confirm.action === "suspend" ? "Suspend user" : "Activate user"}
             </h2>
             <p className="mt-1 text-sm text-slate-600">User: {confirm.email}</p>
@@ -225,7 +225,7 @@ export default function AdminUsersPage() {
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">Delete user</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Delete user</h2>
             <p className="mt-1 text-sm text-slate-600">This removes the account, listings, and bookings.</p>
             <p className="mt-2 text-sm font-semibold text-slate-900">{deleteId.email}</p>
             <textarea

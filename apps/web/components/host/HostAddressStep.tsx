@@ -35,7 +35,7 @@ export function HostAddressStep({ data, onUpdate }: HostStepProps) {
       <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-4 shadow-inner">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Confirm on map</p>
+            <p className="text-xs font-semibold tracking-wide text-slate-700">Confirm on map</p>
             <p className="text-sm text-slate-600">We place a pin at your address. Confirm it looks right.</p>
           </div>
           <button
@@ -68,7 +68,7 @@ export function HostAddressStep({ data, onUpdate }: HostStepProps) {
       </div>
 
       <div className="space-y-2">
-        <label className="text-xs font-semibold uppercase tracking-wide text-slate-700">Address preview</label>
+        <label className="text-xs font-semibold tracking-wide text-slate-700">Address preview</label>
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
           {address || "No address selected yet"}
         </div>

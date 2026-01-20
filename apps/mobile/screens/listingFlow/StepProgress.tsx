@@ -36,14 +36,13 @@ const styles = StyleSheet.create({
   label: {
     color: colors.textMuted,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
     letterSpacing: 0.6,
-    textTransform: "uppercase",
   },
   percent: {
     color: colors.textSoft,
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   bar: {
     backgroundColor: colors.border,

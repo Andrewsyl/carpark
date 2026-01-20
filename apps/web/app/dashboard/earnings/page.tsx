@@ -111,8 +111,8 @@ export default function EarningsPage() {
   return (
     <div className="space-y-6 p-4 lg:p-6">
       <header className="flex flex-col gap-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Earnings</p>
-        <h1 className="text-3xl font-bold text-slate-900">Host payouts</h1>
+        <p className="text-xs font-semibold tracking-[0.18em] text-brand-700">Earnings</p>
+        <h1 className="text-3xl tracking-tight font-semibold text-slate-900">Host payouts</h1>
         <p className="text-sm text-slate-600">Connect Stripe, view balances, and download payout statements.</p>
       </header>
 
@@ -120,7 +120,7 @@ export default function EarningsPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Stripe connect</p>
+          <p className="text-xs font-semibold tracking-wide text-slate-500">Stripe connect</p>
           <div className="mt-2 flex items-center justify-between">
             <div>
               <p className="text-lg font-semibold text-slate-900">
@@ -210,15 +210,15 @@ function StatusPill({ tone, children }: { tone: "success" | "warning" | "danger"
     danger: "bg-rose-100 text-rose-700",
     muted: "bg-slate-100 text-slate-700",
   };
-  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${map[tone]}`}>{children}</span>;
+  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide ${map[tone]}`}>{children}</span>;
 }
 
 function BalanceCard({ title, amount, currency, tone }: { title: string; amount: number; currency: string; tone: "success" | "muted" }) {
   const colors = tone === "success" ? "bg-emerald-50 text-emerald-700 ring-emerald-100" : "bg-slate-50 text-slate-700 ring-slate-100";
   return (
     <div className={`rounded-2xl border border-slate-100 ${colors} p-4 shadow-sm ring-1`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
-      <p className="mt-1 text-2xl font-bold text-slate-900">
+      <p className="text-xs font-semibold tracking-wide text-slate-500">{title}</p>
+      <p className="mt-1 text-2xl tracking-tight font-semibold text-slate-900">
         €{amount.toFixed(2)} <span className="text-sm font-semibold text-slate-500">{currency.toUpperCase?.() ?? currency}</span>
       </p>
     </div>

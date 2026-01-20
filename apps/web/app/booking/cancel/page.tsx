@@ -18,8 +18,8 @@ function BookingCancelContent() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 text-center">
-      <p className="text-sm font-semibold uppercase tracking-wide text-amber-700">Booking canceled</p>
-      <h1 className="text-3xl font-bold text-slate-900">Payment not completed</h1>
+      <p className="text-sm font-semibold tracking-wide text-amber-700">Booking canceled</p>
+      <h1 className="text-3xl tracking-tight font-semibold text-slate-900">Payment not completed</h1>
       <p className="text-slate-600">Your booking was not confirmed. You can try again or choose another time.</p>
       {sessionId && (
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">

@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 22,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 6,
   },
   subtitle: {
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   optionTitle: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   optionBody: {
     color: colors.textMuted,
@@ -392,8 +392,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: colors.text,
     fontSize: 13,
-    fontWeight: "700",
-    textTransform: "uppercase",
+    fontWeight: "600",
     letterSpacing: 0.5,
   },
   toggleRow: {
@@ -417,7 +416,7 @@ const styles = StyleSheet.create({
   toggleChipText: {
     color: colors.textMuted,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   toggleChipTextActive: {
     color: colors.cardBg,
@@ -445,13 +444,12 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 11,
     fontWeight: "600",
-    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   timePillValue: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 6,
   },
   chipRow: {
@@ -505,6 +503,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.cardBg,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

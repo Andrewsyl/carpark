@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 28,
-    fontWeight: "800",
+    fontWeight: "600",
     marginTop: 6,
   },
   subtitle: {
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.text,
     marginBottom: 8,
   },
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: "#ffffff",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   error: {
     color: "#b42318",
@@ -307,6 +307,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 14,
     textAlign: "center",
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

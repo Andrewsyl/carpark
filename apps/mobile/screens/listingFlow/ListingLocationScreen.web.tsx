@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 22,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 6,
   },
   subtitle: {
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   clearButtonText: {
     color: colors.textMuted,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
     lineHeight: 18,
   },
   suggestions: {
@@ -286,6 +286,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.cardBg,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

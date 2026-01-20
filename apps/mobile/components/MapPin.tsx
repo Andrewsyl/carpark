@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   pinLabel: {
     color: "#ffffff",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   pinLabelActive: {
     color: "#ffffff",

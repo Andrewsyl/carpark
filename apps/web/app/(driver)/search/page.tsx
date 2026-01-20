@@ -304,8 +304,8 @@ function SearchPageContent() {
           <>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Stays in Dublin</p>
-                <h1 className="text-2xl font-bold text-slate-900">{results.length} spaces</h1>
+                <p className="text-xs font-semibold tracking-wide text-brand-700">Stays in Dublin</p>
+                <h1 className="text-2xl tracking-tight font-semibold text-slate-900">{results.length} spaces</h1>
                 <p className="text-sm text-slate-600">
                   {filters.mode === "monthly"
                     ? `${filters.date} → ${filters.endDate ?? "30 days out"}`
@@ -434,7 +434,7 @@ function SearchPageContent() {
           <div className="absolute inset-4 rounded-2xl bg-white shadow-2xl ring-1 ring-black/10">
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Map view</p>
+                <p className="text-xs font-semibold tracking-wide text-brand-700">Map view</p>
                 <p className="text-sm text-slate-600">{results.length} spaces</p>
               </div>
               <button
@@ -534,8 +534,8 @@ function ListingOverlay({ listing, onClose, onOpen }: { listing: Listing; onClos
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Listing</p>
-          <h2 className="text-lg font-bold text-slate-900">{listing.title}</h2>
+          <p className="text-xs font-semibold tracking-wide text-brand-700">Listing</p>
+          <h2 className="text-lg font-semibold text-slate-900">{listing.title}</h2>
           <p className="text-sm text-slate-600">{listing.address}</p>
         </div>
         <button
@@ -640,7 +640,7 @@ function FiltersPanel({
     <div className="flex h-full flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg lg:overflow-y-auto">
       <div className="flex items-center justify-between pb-1">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Filters</p>
+          <p className="text-xs font-semibold tracking-wide text-brand-700">Filters</p>
           <p className="text-sm text-slate-600">Refine by price, amenities, and booking type.</p>
         </div>
         <button
@@ -747,7 +747,7 @@ function FiltersPanel({
         </div>
 
         <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700">
-          <span className="text-xs uppercase tracking-wide text-slate-500">Amenities</span>
+          <span className="text-xs tracking-wide text-slate-500">Amenities</span>
           <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 hover:border-brand-200">
             <input
               type="checkbox"

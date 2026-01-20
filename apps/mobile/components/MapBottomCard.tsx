@@ -48,7 +48,7 @@ export function MapBottomCard({
     () =>
       translateAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [0, 160],
+        outputRange: [0, 120],
       }),
     [translateAnim]
   );
@@ -104,63 +104,69 @@ export function MapBottomCard({
         },
       ]}
     >
-      <View style={styles.content}>
-        <Pressable style={styles.bodyPress} onPress={onPress}>
-          <View style={styles.topRow}>
-            <View style={styles.imageColumn}>
-            {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={styles.thumbnail} resizeMode="cover" />
+      <Pressable onPress={onPress} style={styles.cardPress}>
+        {/* Image with rating badge overlay */}
+        <View style={styles.imageContainer}>
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Text style={styles.imagePlaceholderText}>No image</Text>
+            </View>
+          )}
+          
+          {/* Rating badge in top right corner of image */}
+          {reviewCount > 0 ? (
+            <View style={styles.ratingBadge}>
+              <Text style={styles.ratingText}>★ {rating.toFixed(1)}</Text>
+            </View>
+          ) : null}
+          
+          {/* Favorite button */}
+          {onToggleFavorite ? (
+            <Pressable
+              style={styles.favoriteButton}
+              onPress={onToggleFavorite}
+              hitSlop={8}
+            >
+              <Text style={[styles.favoriteIcon, isFavorite && styles.favoriteIconActive]}>
+                {isFavorite ? "♥︎" : "♡"}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+        
+        {/* Content section */}
+        <View style={styles.contentSection}>
+          {/* Title and details */}
+          <Text style={styles.title} numberOfLines={2}>
+            {title}
+          </Text>
+          
+          {/* Distance and time */}
+          <View style={styles.detailsRow}>
+            <Text style={styles.detailText}>🚶 {walkTime}</Text>
+            {reviewCount > 0 ? (
+              <Text style={styles.detailText}>• {reviewCount} reviews</Text>
             ) : (
-              <View style={styles.thumbnailPlaceholder}>
-                <Text style={styles.thumbnailText}>No image</Text>
-              </View>
+              <Text style={styles.detailText}>• New listing</Text>
             )}
           </View>
-            <View style={styles.textStack}>
-              {onToggleFavorite ? (
-                <Pressable
-                  style={styles.favButton}
-                  onPress={onToggleFavorite}
-                  hitSlop={8}
-                >
-                  <Text style={[styles.favText, isFavorite && styles.favTextActive]}>
-                    {isFavorite ? "♥︎" : "♡"}
-                  </Text>
-                </Pressable>
-              ) : null}
-              <Text style={styles.title} numberOfLines={2}>
-                {title}
-              </Text>
-              <View style={styles.metaRow}>
-                {reviewCount > 0 ? (
-                  <>
-                    <Text style={styles.iconStar}>★</Text>
-                    <Text style={styles.metaText}>{rating.toFixed(1)}</Text>
-                    <Text style={styles.metaText}>({reviewCount})</Text>
-                    <Text style={styles.metaSeparator}>•</Text>
-                  </>
-                ) : (
-                  <>
-                    <Text style={styles.metaText}>New listing</Text>
-                    <Text style={styles.metaSeparator}>•</Text>
-                  </>
-                )}
-                <View style={[styles.iconBlock, styles.iconWalk]} />
-                <Text style={styles.metaText}>{walkTime}</Text>
-              </View>
-            </View>
+          
+          {/* Dashed divider */}
+          <View style={styles.dashedDivider} />
+          
+          {/* Price section */}
+          <View style={styles.priceRow}>
+            <Text style={styles.priceLabel}>Reserve now</Text>
+            {isAvailable ? (
+              <Text style={styles.currentPrice}>{price}</Text>
+            ) : (
+              <Text style={styles.soldOutText}>SOLD OUT</Text>
+            )}
           </View>
-        </Pressable>
-        <Pressable
-          style={[styles.cta, !isAvailable && styles.ctaDisabled]}
-          onPress={onReserve}
-          disabled={!isAvailable}
-        >
-          <Text style={[styles.ctaText, !isAvailable && styles.ctaTextDisabled]}>
-            {isAvailable ? `Reserve for ${price}` : "Sold out"}
-          </Text>
-        </Pressable>
-      </View>
+        </View>
+      </Pressable>
     </Animated.View>
   );
 }
@@ -168,136 +174,167 @@ export function MapBottomCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#ffffff",
-    borderRadius: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     position: "absolute",
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 8,
-    overflow: "hidden",
-  },
-  imageColumn: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-  content: {
-    padding: 12,
-  },
-  bodyPress: {
-    marginBottom: 10,
-  },
-  favButton: {
-    alignItems: "center",
-    borderRadius: 999,
-    height: 28,
-    justifyContent: "center",
-    position: "absolute",
-    right: 0,
-    top: 0,
-    width: 28,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 12,
+    overflow: "hidden",
   },
-  favText: {
-    color: "#d1d5db",
-    fontSize: 14,
-    fontWeight: "600",
+  
+  cardPress: {
+    width: "100%",
   },
-  favTextActive: {
-    color: "#00d4aa",
-  },
-  topRow: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: 12,
-  },
-  thumbnail: {
-    height: 80,
-    width: 80,
-    borderRadius: 10,
-  },
-  thumbnailPlaceholder: {
-    alignItems: "center",
-    backgroundColor: "#f3f4f6",
-    height: 80,
-    width: 80,
-    borderRadius: 10,
-    justifyContent: "center",
-  },
-  thumbnailText: {
-    color: "#9ca3af",
-    fontSize: 9,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  textStack: {
-    flex: 1,
-    justifyContent: "flex-start",
-    gap: 6,
+  
+  // Image section
+  imageContainer: {
+    width: "100%",
+    height: 120,
     position: "relative",
   },
-  title: {
-    color: "#111827",
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 18,
-    paddingRight: 24,
+  
+  image: {
+    width: "100%",
+    height: "100%",
   },
-  metaRow: {
+  
+  imagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#F3F4F6",
     alignItems: "center",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 5,
+    justifyContent: "center",
   },
-  metaText: {
-    color: "#6b7280",
-    fontSize: 11,
+  
+  imagePlaceholderText: {
+    fontSize: 12,
+    color: "#9CA3AF",
+  },
+  
+  // Rating badge in top right corner of image
+  ratingBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+  },
+  
+  ratingText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+  
+  // Favorite button
+  favoriteButton: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  
+  favoriteIcon: {
+    fontSize: 14,
+    color: "#D1D5DB",
+    fontWeight: "600",
+  },
+  
+  favoriteIconActive: {
+    color: "#047857",
+  },
+  
+  // Content section
+  contentSection: {
+    padding: 12,
+    paddingTop: 10,
+  },
+  
+  title: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 6,
+    letterSpacing: -0.2,
+    lineHeight: 20,
+  },
+  
+  detailsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 10,
+  },
+  
+  detailText: {
+    fontSize: 12,
+    color: "#6B7280",
     fontWeight: "500",
   },
-  metaSeparator: {
-    color: "#d1d5db",
-    fontSize: 10,
+  
+  // Dashed divider (receipt style)
+  dashedDivider: {
+    height: 1,
+    borderStyle: "dashed",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginBottom: 10,
   },
-  iconStar: {
-    color: "#f59e0b",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  iconBlock: {
-    borderRadius: 3,
-    height: 9,
-    width: 9,
-  },
-  iconShield: {
-    backgroundColor: "#10b981",
-  },
-  iconWalk: {
-    backgroundColor: "#6b7280",
-  },
-  cta: {
+  
+  // Price section
+  priceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#00d4aa",
-    height: 44,
-    justifyContent: "center",
-    marginHorizontal: -12,
-    marginBottom: -12,
   },
-  ctaText: {
-    color: "#ffffff",
-    fontSize: 14,
+  
+  priceLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  
+  priceContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  
+  originalPrice: {
+    fontSize: 13,
+    color: "#9CA3AF",
+    textDecorationLine: "line-through",
+    fontWeight: "500",
+  },
+  
+  currentPrice: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#047857",
+    letterSpacing: -0.5,
+  },
+  
+  soldOutText: {
+    fontSize: 16,
     fontWeight: "700",
-  },
-  ctaDisabled: {
-    backgroundColor: "#e5e7eb",
-  },
-  ctaTextDisabled: {
-    color: "#9ca3af",
+    color: "#9CA3AF",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 });
