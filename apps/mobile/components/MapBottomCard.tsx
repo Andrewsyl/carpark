@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   // Image section
   imageContainer: {
     width: "100%",
-    height: 120,
+    height: 92,
     position: "relative",
   },
   
@@ -262,28 +262,28 @@ const styles = StyleSheet.create({
   
   // Content section
   contentSection: {
-    padding: 12,
-    paddingTop: 10,
+    padding: 10,
+    paddingTop: 8,
   },
   
   title: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: "#111827",
-    marginBottom: 6,
+    marginBottom: 4,
     letterSpacing: -0.2,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   
   detailsRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginBottom: 10,
+    marginBottom: 6,
   },
   
   detailText: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#6B7280",
     fontWeight: "500",
   },
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   
   // Price section
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   },
   
   priceLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
     color: "#6B7280",
   },
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   },
   
   currentPrice: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
     color: "#047857",
     letterSpacing: -0.5,

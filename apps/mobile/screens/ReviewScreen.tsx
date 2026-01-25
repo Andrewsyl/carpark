@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeIn,
@@ -44,6 +45,7 @@ export function ReviewScreen({ navigation, route }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [inputHeight, setInputHeight] = useState(120);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [existingRating, setExistingRating] = useState<number | null>(null);
 
   const end = new Date(booking.endTime);
   const canReview = booking.status === "confirmed" && end.getTime() <= Date.now();
@@ -57,12 +59,29 @@ export function ReviewScreen({ navigation, route }: Props) {
   }, [rating]);
 
   const submitLabel = useMemo(() => {
+    if (existingRating) return "Reviewed";
     if (rating >= 4) return "Share the love";
     return "Submit review";
-  }, [rating]);
+  }, [existingRating, rating]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(`bookingRating:${booking.id}`);
+        if (!stored) return;
+        const parsed = JSON.parse(stored) as { rating?: number };
+        if (typeof parsed.rating === "number") {
+          setExistingRating(parsed.rating);
+          setRating(parsed.rating);
+        }
+      } catch {
+        // Ignore stored rating errors.
+      }
+    })();
+  }, [booking.id]);
 
   const handleSubmit = async () => {
-    if (!token || !canReview) return;
+    if (!token || !canReview || existingRating) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -72,7 +91,12 @@ export function ReviewScreen({ navigation, route }: Props) {
         rating,
         comment: feedback.trim() ? feedback.trim() : undefined,
       });
+      await AsyncStorage.setItem(
+        `bookingRating:${booking.id}`,
+        JSON.stringify({ rating })
+      );
       setIsSubmitted(true);
+      setExistingRating(rating);
       setTimeout(() => {
         navigation.popToTop();
       }, 900);
@@ -126,11 +150,25 @@ export function ReviewScreen({ navigation, route }: Props) {
               </Animated.View>
             ) : null}
 
+            {existingRating ? (
+              <Animated.View entering={FadeInDown.delay(80)} style={styles.noticeCard}>
+                <Text style={styles.noticeTitle}>Already reviewed</Text>
+                <Text style={styles.noticeText}>
+                  You rated this booking {existingRating} out of 5.
+                </Text>
+              </Animated.View>
+            ) : null}
+
             <Animated.View entering={FadeInDown.delay(100)} style={styles.card}>
               <Text style={styles.cardTitle}>Rate your experience</Text>
               <Text style={styles.cardSubtitle}>Tap a star to rate the space</Text>
               <View style={styles.ratingContainer}>
-                <StarRating rating={rating} onRatingChange={setRating} size={52} />
+                <StarRating
+                  rating={rating}
+                  onRatingChange={setRating}
+                  size={52}
+                  disabled={!!existingRating}
+                />
               </View>
               {rating > 0 ? (
                 <Animated.Text entering={FadeIn} exiting={FadeOut} style={styles.ratingFeedback}>
@@ -151,7 +189,7 @@ export function ReviewScreen({ navigation, route }: Props) {
                 style={[styles.textInput, { height: Math.max(120, inputHeight) }]}
                 textAlignVertical="top"
                 onContentSizeChange={(event) => setInputHeight(event.nativeEvent.contentSize.height)}
-                editable={canReview}
+                editable={canReview && !existingRating}
               />
               <View style={styles.feedbackFooter}>
                 <Text style={styles.characterCount}>{feedback.length} characters</Text>
@@ -167,7 +205,7 @@ export function ReviewScreen({ navigation, route }: Props) {
 
             <Animated.View entering={FadeInDown.delay(400)}>
               <SubmitButton
-                disabled={!canReview || rating === 0}
+                disabled={!canReview || rating === 0 || !!existingRating}
                 isSubmitted={isSubmitted}
                 loading={submitting}
                 label={submitLabel}

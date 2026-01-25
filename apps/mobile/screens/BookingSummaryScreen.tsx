@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -12,6 +13,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Switch,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,8 +21,8 @@ import { useStripe } from "@stripe/stripe-react-native";
 import * as Notifications from "expo-notifications";
 import DatePicker from "react-native-date-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { MapPin, Clock, CreditCard } from "lucide-react-native";
-import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { cardShadow, colors, radius, spacing } from "../styles/theme";
 import {
   confirmBookingPayment,
   createBookingPaymentIntent,
@@ -45,6 +47,16 @@ const snapTo5Minutes = (date: Date) => {
   return next;
 };
 
+const formatIrishReg = (value: string) => {
+  const raw = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const year = raw.replace(/\D/g, "").slice(0, 3);
+  const rest = raw.slice(year.length);
+  const county = rest.replace(/[^A-Z]/g, "").slice(0, 1);
+  const serial = rest.replace(/\D/g, "");
+  const parts = [year, county, serial].filter(Boolean);
+  return parts.join("-");
+};
+
 export function BookingSummaryScreen({ navigation, route }: Props) {
   const { id, from, to } = route.params;
   const { token, user } = useAuth();
@@ -56,9 +68,9 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
   const [bookingBusy, setBookingBusy] = useState(false);
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
   const [confirmingBooking, setConfirmingBooking] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "google">("card");
   const [paymentFailed, setPaymentFailed] = useState(false);
   const [paymentFailureMessage, setPaymentFailureMessage] = useState<string | null>(null);
+  const [insuranceEnabled, setInsuranceEnabled] = useState(true);
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [startAt, setStartAt] = useState(() => new Date(from));
   const [endAt, setEndAt] = useState(() => new Date(to));
@@ -129,6 +141,19 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
     return { days, total, totalCents: Math.round(total * 100) };
   }, [durationHours, listing]);
 
+  const pricing = useMemo(() => {
+    const parkingFee = priceSummary?.total ?? 0;
+    const insuranceFee = 2.99;
+    const transactionFee = 1.5;
+    const finalPrice = parkingFee + transactionFee + (insuranceEnabled ? insuranceFee : 0);
+    return {
+      parkingFee,
+      insuranceFee,
+      transactionFee,
+      finalPrice,
+    };
+  }, [insuranceEnabled, priceSummary]);
+
   const openPicker = (field: "start" | "end") => {
     setPickerField(field);
     const current = field === "start" ? startAt : endAt;
@@ -191,6 +216,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
     setError(null);
     setPaymentFailed(false);
     setPaymentFailureMessage(null);
+    const normalizedPlate = vehiclePlate.trim().replace(/-/g, " ");
     let didConfirm = false;
     try {
       logInfo("Booking started", {
@@ -203,7 +229,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
         from: startAt.toISOString(),
         to: endAt.toISOString(),
         amountCents: priceSummary.totalCents,
-        vehiclePlate: vehiclePlate.trim() ? vehiclePlate.trim() : undefined,
+        vehiclePlate: normalizedPlate ? normalizedPlate : undefined,
         token,
       });
       const paymentIntentId = payment.paymentIntentId ?? "";
@@ -330,7 +356,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
       <BookingProgressBar currentStep={bookingBusy || confirmingBooking ? 3 : 2} />
       {loadingListing ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="small" color="#00d4aa" />
+          <ActivityIndicator size="small" color="#247881" />
           <Text style={styles.muted}>Loading booking…</Text>
         </View>
       ) : !user ? (
@@ -344,65 +370,112 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
       ) : listing ? (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          
-          <Text style={styles.pageTitle}>Confirm booking</Text>
-          
-          <View style={styles.section}>
-            <Text style={styles.listingName}>{listing.title}</Text>
-            <Text style={styles.address}>{listing.address}</Text>
-          </View>
-          
-          <View style={styles.divider} />
-          
-          <View style={styles.section}>
-            <View style={styles.timeRow}>
-              <View style={styles.timeBlock}>
-                <Text style={styles.timeLabel}>From</Text>
-                <Text style={styles.timeDate}>{formatDateLabel(start)}</Text>
-                <Text style={styles.timeValue}>{formatTimeLabel(start)}</Text>
-              </View>
-              <View style={styles.timeBlock}>
-                <Text style={styles.timeLabel}>Until</Text>
-                <Text style={styles.timeDate}>{formatDateLabel(end)}</Text>
-                <Text style={styles.timeValue}>{formatTimeLabel(end)}</Text>
+
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardHeaderTitle}>{listing.title || "Adam House Car Park"}</Text>
+              <View style={styles.cardHeaderSubtitleRow}>
+                <Ionicons name="location-outline" size={18} color={colors.text} />
+                <Text style={styles.cardHeaderSubtitle}>
+                  {listing.address || "24 Adam Street, Dublin"}
+                </Text>
               </View>
             </View>
-            <Text style={styles.durationText}>{durationHours} {durationHours === 1 ? 'hour' : 'hours'} total</Text>
-          </View>
-          
-          <View style={styles.divider} />
-          
-          <View style={styles.section}>
-            <Text style={styles.inputLabel}>License plate (optional)</Text>
-            <View style={styles.plateRow}>
-              <View style={styles.plateCountry}>
-                <Text style={styles.plateCountryText}>IRL</Text>
-              </View>
-              <TextInput
-                value={vehiclePlate}
-                onChangeText={(value) =>
-                  setVehiclePlate(value.toUpperCase().replace(/\s+/g, " "))
-                }
-                placeholder="12-D-12345"
-                placeholderTextColor="#9ca3af"
-                autoCapitalize="characters"
-                autoCorrect={false}
-                maxLength={12}
-                style={styles.plateInput}
-              />
-            </View>
-          </View>
-          
-          <View style={styles.divider} />
-          
-          {priceSummary ? (
-            <View style={styles.section}>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalAmount}>€{priceSummary.total.toFixed(2)}</Text>
+            <View style={styles.cardBody}>
+              <View style={styles.dateRow}>
+                <View style={styles.dateColumn}>
+                  <Text style={styles.dateLabel}>Parking from</Text>
+                  <TouchableOpacity onPress={() => openPicker("start")}>
+                    <Text style={styles.dateValue}>{formatDateTimeLabel(start)}</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.durationColumn}>
+                  <Text style={styles.durationValue}>{durationHours}h</Text>
+                </View>
+                <View style={styles.dateColumn}>
+                  <Text style={styles.dateLabel}>Parking until</Text>
+                  <TouchableOpacity onPress={() => openPicker("end")}>
+                    <Text style={styles.dateValue}>{formatDateTimeLabel(end)}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          ) : null}
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.cardBody}>
+              <Text style={styles.fieldLabel}>Registration number</Text>
+              <View style={styles.plateRow}>
+                <View style={styles.plateCountry}>
+                  <Text style={styles.plateCountryText}>IRL</Text>
+                </View>
+                <TextInput
+                  value={vehiclePlate}
+                  onChangeText={(value) => setVehiclePlate(formatIrishReg(value))}
+                  placeholder="12-D-12345"
+                  placeholderTextColor="#9ca3af"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  maxLength={12}
+                  style={styles.plateInput}
+                />
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.cardBody}>
+              <View style={styles.rowBetween}>
+                <View style={styles.rowLeft}>
+                  <Switch
+                    value={insuranceEnabled}
+                    onValueChange={setInsuranceEnabled}
+                    trackColor={{ false: "#d1d5db", true: "#247881" }}
+                    thumbColor={insuranceEnabled ? "#247881" : "#f3f4f6"}
+                  />
+                  <View style={styles.rowLabelGroup}>
+                    <Text style={styles.rowLabel}>Insurance</Text>
+                    <MaterialCommunityIcons name="information-outline" size={16} color="#94a3b8" />
+                  </View>
+                </View>
+                <Text style={styles.rowValue}>€{pricing.insuranceFee.toFixed(2)}</Text>
+              </View>
+              <Text style={styles.rowSubtext}>
+                Covers accidental damage and extends your booking protection.
+              </Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.cardBody}>
+              <View style={styles.rowBetween}>
+                <View style={styles.rowLabelGroup}>
+                  <Text style={styles.rowLabel}>Parking fee</Text>
+                  <MaterialCommunityIcons name="information-outline" size={16} color="#94a3b8" />
+                </View>
+                <Text style={styles.rowValue}>€{pricing.parkingFee.toFixed(2)}</Text>
+              </View>
+              <View style={styles.rowBetween}>
+                <View style={styles.rowLabelGroup}>
+                  <Text style={styles.rowLabel}>Transaction fee</Text>
+                  <MaterialCommunityIcons name="information-outline" size={16} color="#94a3b8" />
+                </View>
+                <Text style={styles.rowValue}>€{pricing.transactionFee.toFixed(2)}</Text>
+              </View>
+              <View style={styles.finalRow}>
+                <Text style={styles.finalLabel}>Final price</Text>
+                <Text style={styles.finalValue}>€{pricing.finalPrice.toFixed(2)}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.trustRow}>
+              <View style={styles.rowLabelGroup}>
+                <MaterialCommunityIcons name="shield-check" size={20} color="#247881" />
+                <Text style={styles.rowLabel}>Best Price Guarantee</Text>
+              </View>
+              <MaterialCommunityIcons name="information-outline" size={18} color="#94a3b8" />
+            </View>
+          </View>
 
           {paymentFailed ? (
             <View style={styles.noticeCard}>
@@ -419,29 +492,25 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
         </View>
       )}
       {listing && user ? (
-        <View style={[styles.bottomBar, { paddingBottom: 24 + insets.bottom }]}>
-          <View style={styles.priceInfo}>
-            <Text style={styles.priceFrom}>From</Text>
-            <Text style={styles.bottomPrice}>
-              €{priceSummary ? priceSummary.total.toFixed(2) : "--"}
-            </Text>
-            <Text style={styles.bottomDuration}>{durationHours} {durationHours === 1 ? 'hour' : 'hours'}</Text>
-          </View>
+        <View style={[styles.footerBar, { paddingBottom: 12 + insets.bottom }]}>
           <TouchableOpacity
             style={[
-              styles.reserveButton,
-              (bookingBusy || bookingConfirmed) && styles.reserveButtonDisabled,
+              styles.footerButton,
+              (bookingBusy || bookingConfirmed) && styles.footerButtonDisabled,
             ]}
             onPress={handlePayment}
             disabled={bookingBusy || bookingConfirmed}
           >
-            <Text style={styles.reserveButtonText}>
-              {bookingBusy
-                ? confirmingBooking
-                  ? "Finalizing..."
-                  : "Processing..."
-                : "Pay & reserve"}
-            </Text>
+            <View style={styles.footerButtonContent}>
+              <MaterialCommunityIcons name="credit-card-outline" size={18} color={colors.text} />
+              <Text style={styles.footerButtonText}>
+                {bookingBusy
+                  ? confirmingBooking
+                    ? "Finalizing..."
+                    : "Processing..."
+                  : `€${pricing.finalPrice.toFixed(2)} - Pay and reserve`}
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
       ) : null}
@@ -493,7 +562,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#F8F9FA",
   },
   gradientWrapper: {
     flex: 0,
@@ -515,116 +584,175 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    padding: 15,
     paddingBottom: 120,
-  },
-  pageTitle: {
-    fontSize: 26,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 24,
-    letterSpacing: -0.6,
-  },
-  section: {
-    paddingVertical: 16,
   },
   divider: {
     height: 1,
     backgroundColor: '#F3F4F6',
   },
-  listingName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-    letterSpacing: -0.3,
+  card: {
+    backgroundColor: "#ffffff",
+    borderRadius: 8,
+    marginBottom: 16,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  address: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#6B7280',
-    lineHeight: 20,
+  cardHeader: {
+    backgroundColor: "#1B2B39",
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  timeRow: {
-    flexDirection: 'row',
-    gap: 24,
-    marginBottom: 12,
+  cardHeaderTitle: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "700",
   },
-  timeBlock: {
+  cardHeaderSubtitle: {
+    color: "#cbd5e1",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  cardBody: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  dateColumn: {
     flex: 1,
   },
-  timeLabel: {
+  dateLabel: {
+    color: "#64748b",
     fontSize: 12,
-    color: '#9CA3AF',
+    fontWeight: "600",
     marginBottom: 6,
-    letterSpacing: 0.5,
-    fontWeight: '600',
   },
-  timeDate: {
+  dateValue: {
+    color: "#247881",
+    fontSize: 13,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+    textDecorationColor: "#247881",
+  },
+  durationColumn: {
+    width: 60,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  durationValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  rowBetween: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  rowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  rowLabelGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  rowLabel: {
+    color: "#1f2937",
     fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 2,
+    fontWeight: "600",
   },
-  timeValue: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
-    letterSpacing: -0.3,
-  },
-  durationText: {
+  rowValue: {
+    color: "#111827",
     fontSize: 14,
-    color: '#6B7280',
+    fontWeight: "600",
   },
-  inputLabel: {
+  rowSubtext: {
+    marginTop: 8,
+    color: "#94a3b8",
     fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
+    lineHeight: 16,
+  },
+  finalRow: {
+    marginTop: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  finalLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  finalValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  trustRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  fieldLabel: {
+    color: "#1f2937",
+    fontSize: 14,
+    fontWeight: "600",
     marginBottom: 10,
   },
-  plateRow: {
-    flexDirection: 'row',
-    borderRadius: 12,
+  fieldInput: {
+    backgroundColor: "#F8F9FA",
+    borderColor: "#e2e8f0",
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    overflow: 'hidden',
-    backgroundColor: '#ffffff',
-  },
-  plateCountry: {
-    width: 54,
-    backgroundColor: '#1d4ed8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  plateCountryText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  plateInput: {
-    flex: 1,
-    color: '#111827',
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 1.5,
+    color: "#111827",
+    fontSize: 15,
     paddingHorizontal: 12,
     paddingVertical: 12,
   },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
+  plateRow: {
+    flexDirection: "row",
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: "#0f172a",
+    overflow: "hidden",
+    backgroundColor: "#f8fafc",
   },
-  totalLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#6B7280',
+  plateCountry: {
+    width: 56,
+    backgroundColor: "#1e3a8a",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  totalAmount: {
-    fontSize: 32,
-    fontWeight: '600',
-    color: '#111827',
-    letterSpacing: -0.8,
+  plateCountryText: {
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+  },
+  plateInput: {
+    flex: 1,
+    color: "#0f172a",
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: "#fefefe",
   },
   centered: {
     alignItems: "center",
@@ -702,54 +830,31 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontWeight: "600",
   },
-  bottomBar: {
+  footerBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    backgroundColor: "#F8F9FA",
+    paddingHorizontal: 15,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: "#e2e8f0",
   },
-  bottomPrice: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 2,
+  footerButton: {
+    backgroundColor: "#BCCAD1",
+    borderRadius: 8,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  bottomDuration: {
-    fontSize: 12,
-    color: '#9CA3AF',
+  footerButtonDisabled: {
+    opacity: 0.7,
   },
-  reserveButton: {
-    backgroundColor: '#059669',
-    paddingVertical: 16,
-    paddingHorizontal: 48,
-    borderRadius: 12,
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  reserveButtonDisabled: {
-    backgroundColor: '#E5E7EB',
-    shadowOpacity: 0,
-  },
-  reserveButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  footerButtonText: {
+    color: "#243b4a",
+    fontSize: 15,
+    fontWeight: "700",
   },
   successOverlay: {
     ...StyleSheet.absoluteFillObject,

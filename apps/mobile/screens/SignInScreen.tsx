@@ -3,11 +3,11 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,7 +16,6 @@ import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-si
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../auth";
 import { requestEmailVerification } from "../api";
-import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import type { RootStackParamList } from "../types";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -150,14 +149,18 @@ export function SignInScreen({ navigation }: Props) {
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Text style={styles.kicker}>Welcome back</Text>
-            <Text style={styles.title}>Sign in</Text>
-            <Text style={styles.subtitle}>Access your bookings and host dashboard.</Text>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="chevron-back" size={24} color="#4A9EFF" />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.card}>
-            <View style={styles.field}>
-              <Text style={styles.label}>Email</Text>
+            <Text style={styles.cardTitle}>Sign In</Text>
+            <Text style={styles.cardSubtitle}>Access your bookings and host dashboard.</Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email</Text>
               <TextInput
                 style={styles.input}
                 value={email}
@@ -165,28 +168,31 @@ export function SignInScreen({ navigation }: Props) {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 placeholder="you@example.com"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor="#9CA3AF"
               />
             </View>
-            <View style={styles.field}>
-              <Text style={styles.label}>Password</Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Password</Text>
               <TextInput
                 style={styles.input}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
                 placeholder="••••••••"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor="#9CA3AF"
               />
             </View>
-            <Pressable
+
+            <TouchableOpacity
               style={styles.forgotRow}
               onPress={() => navigation.navigate("ResetPassword")}
             >
               <Text style={styles.forgotText}>Forgot password?</Text>
-            </Pressable>
-            <Pressable
-              style={styles.legalRow}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.checkboxRow}
               onPress={() => setAcceptLegalChecked((value) => !value)}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: acceptLegalChecked }}
@@ -194,25 +200,28 @@ export function SignInScreen({ navigation }: Props) {
               <MaterialIcons
                 name={acceptLegalChecked ? "check-box" : "check-box-outline-blank"}
                 size={20}
-                color={acceptLegalChecked ? "#00d4aa" : "#9ca3af"}
+                color={acceptLegalChecked ? "#4A9EFF" : "#9CA3AF"}
               />
-              <Text style={styles.legalText}>
+              <Text style={styles.checkboxText}>
                 I agree to the{" "}
-                <Text style={styles.legalLink} onPress={() => navigation.navigate("Legal")}>
+                <Text style={styles.link} onPress={() => navigation.navigate("Legal")}>
                   Terms & Privacy
                 </Text>
                 .
               </Text>
-            </Pressable>
-            <Pressable
-              style={styles.primaryButton}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.signInButton}
               onPress={handleLogin}
               disabled={submitting}
               testID="sign-in-button"
             >
-              <Text style={styles.primaryButtonText}>{submitting ? "Signing in..." : "Sign in"}</Text>
-            </Pressable>
-            <Pressable
+              <Text style={styles.buttonText}>{submitting ? "Signing in..." : "Sign In"}</Text>
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[
                 styles.secondaryButton,
                 (!acceptLegalChecked || submitting) && styles.secondaryButtonDisabled,
@@ -221,14 +230,16 @@ export function SignInScreen({ navigation }: Props) {
               disabled={submitting || !acceptLegalChecked}
             >
               <Text style={styles.secondaryButtonText}>Create account</Text>
-            </Pressable>
-            <View style={styles.dividerRow}>
+            </TouchableOpacity>
+
+            <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
+              <Text style={styles.dividerText}>or sign in with</Text>
               <View style={styles.dividerLine} />
             </View>
-            <Pressable
-              style={styles.oauthButton}
+
+            <TouchableOpacity
+              style={styles.socialButton}
               onPress={async () => {
                 setError(null);
                 setNotice(null);
@@ -254,29 +265,33 @@ export function SignInScreen({ navigation }: Props) {
                   }
                   const message = err instanceof Error ? err.message : "Google sign-in failed";
                   console.warn("Google sign-in failed", err);
-                  setError(
-                    errorCode ? `${message} (${errorCode})` : message
-                  );
+                  setError(errorCode ? `${message} (${errorCode})` : message);
                 }
               }}
             >
-              <Text style={styles.oauthButtonText}>Continue with Google</Text>
-            </Pressable>
+              <Ionicons name="logo-google" size={20} color="#DB4437" />
+              <Text style={styles.socialText}>Google</Text>
+            </TouchableOpacity>
+
             <Text style={styles.legalNote}>
               By continuing, you agree to the{" "}
-              <Text style={styles.legalLink} onPress={() => navigation.navigate("Legal")}>
+              <Text style={styles.link} onPress={() => navigation.navigate("Legal")}>
                 Terms & Privacy
               </Text>
               .
             </Text>
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-            {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {notice ? <Text style={styles.noticeText}>{notice}</Text> : null}
             {previewUrl ? (
-              <Pressable style={styles.linkButton} onPress={() => Linking.openURL(previewUrl)}>
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() => Linking.openURL(previewUrl)}
+              >
                 <Text style={styles.linkButtonText}>Open verification link</Text>
-              </Pressable>
+              </TouchableOpacity>
             ) : null}
-            <Pressable
+            <TouchableOpacity
               style={styles.linkButton}
               onPress={handleResend}
               disabled={submitting || resendCooldown > 0}
@@ -286,16 +301,10 @@ export function SignInScreen({ navigation }: Props) {
                   ? `Resend available in ${resendCooldown}s`
                   : "Resend verification email"}
               </Text>
-            </Pressable>
-            <Pressable
-              style={styles.ghostButton}
-              onPress={() => navigation.replace("Search")}
-            >
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
-              <Text style={styles.ghostButtonText}>Search</Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </ScrollView>
+
         {authSuccess ? (
           <View style={styles.successOverlay}>
             <View style={styles.successCard}>
@@ -312,193 +321,182 @@ export function SignInScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.appBg,
+    backgroundColor: "#F5F7FA",
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: spacing.screenX,
-    paddingBottom: 32,
-    paddingTop: spacing.screenY,
+    paddingBottom: 24,
   },
   header: {
-    alignItems: "flex-start",
-    marginBottom: spacing.gap,
+    padding: 20,
   },
-  kicker: textStyles.kicker,
-  title: {
-    ...textStyles.title,
-    fontSize: 30,
-    marginTop: 6,
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
-  subtitle: {
-    ...textStyles.subtitle,
-    marginTop: 6,
+  backText: {
+    fontSize: 16,
+    color: "#4A9EFF",
   },
   card: {
-    backgroundColor: colors.cardBg,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    padding: spacing.card,
-    ...cardShadow,
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    padding: 32,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  field: {
-    marginBottom: 12,
+  cardTitle: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    marginBottom: 8,
   },
-  label: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 6,
+  cardSubtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginBottom: 24,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 13,
+    color: "#9CA3AF",
+    marginBottom: 8,
+    fontWeight: "500",
+  },
+  input: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+    paddingVertical: 12,
+    fontSize: 16,
+    color: "#1A1A1A",
   },
   forgotRow: {
     alignItems: "flex-end",
     marginBottom: 12,
-    marginTop: -4,
+    marginTop: -8,
   },
   forgotText: {
-    color: colors.accent,
+    color: "#4A9EFF",
     fontSize: 13,
     fontWeight: "600",
   },
-  input: {
-    backgroundColor: "#f9fafb",
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: 14,
-    paddingHorizontal: 12,
-    paddingVertical: Platform.OS === "ios" ? 12 : 10,
-  },
-  primaryButton: {
+  checkboxRow: {
+    flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: 12,
-    marginTop: 6,
-    paddingVertical: 12,
+    gap: 12,
+    marginTop: 8,
+    marginBottom: 24,
   },
-  primaryButtonText: {
-    color: "#ffffff",
-    fontSize: 14,
+  checkboxText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#6B7280",
+  },
+  link: {
+    color: "#4A9EFF",
+    fontWeight: "500",
+  },
+  signInButton: {
+    backgroundColor: "#4A9EFF",
+    borderRadius: 28,
+    paddingVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    marginBottom: 16,
+    shadowColor: "#4A9EFF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
     fontWeight: "600",
   },
   secondaryButton: {
     alignItems: "center",
-    borderColor: colors.border,
+    borderColor: "#E5E7EB",
     borderRadius: 12,
     borderWidth: 1,
-    marginTop: 10,
     paddingVertical: 12,
   },
   secondaryButtonDisabled: {
     opacity: 0.6,
   },
   secondaryButtonText: {
-    color: colors.text,
+    color: "#1A1A1A",
     fontSize: 14,
     fontWeight: "600",
   },
-  dividerRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 14,
-  },
-  legalRow: {
+  divider: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
     marginBottom: 16,
+    marginTop: 24,
   },
-  legalText: {
+  dividerLine: {
     flex: 1,
-    color: colors.textMuted,
+    height: 1,
+    backgroundColor: "#E5E7EB",
+  },
+  dividerText: {
+    marginHorizontal: 16,
     fontSize: 13,
-    lineHeight: 18,
+    color: "#9CA3AF",
+  },
+  socialButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingVertical: 14,
+  },
+  socialText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#4A4A4A",
   },
   legalNote: {
-    marginTop: 10,
-    color: colors.textMuted,
+    marginTop: 12,
+    color: "#6B7280",
     fontSize: 12,
     lineHeight: 18,
     textAlign: "center",
   },
-  legalLink: {
-    color: colors.accent,
-    fontWeight: "600",
-  },
-  dividerLine: {
-    backgroundColor: "#e5e7eb",
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    color: "#9ca3af",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  oauthButton: {
-    alignItems: "center",
-    backgroundColor: colors.cardBg,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 10,
-    paddingVertical: 12,
-  },
-  oauthButtonText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  error: {
-    color: colors.danger,
-    fontSize: 12,
+  errorText: {
+    color: "#b42318",
+    fontSize: 13,
     marginTop: 12,
     textAlign: "center",
   },
-  notice: {
-    color: colors.accent,
+  noticeText: {
+    color: "#4A9EFF",
     fontSize: 12,
-    marginTop: 10,
+    marginTop: 8,
     textAlign: "center",
   },
   linkButton: {
     alignItems: "center",
-    marginTop: 14,
+    marginTop: 12,
   },
   linkButtonText: {
-    color: "#00a889",
+    color: "#4A9EFF",
     fontSize: 12,
-    fontWeight: "600",
-  },
-  ghostButton: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 14,
-  },
-  ghostButtonText: {
-    color: "#64748b",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  backCircle: {
-    alignItems: "center",
-    justifyContent: "center",
-    height: 32,
-    width: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.cardBg,
-  },
-  backIcon: {
-    color: colors.text,
-    fontSize: 14,
-    lineHeight: 14,
-    textAlign: "center",
     fontWeight: "600",
   },
   successOverlay: {

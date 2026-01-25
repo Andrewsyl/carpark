@@ -1,13 +1,13 @@
 import { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
   withSequence,
   Easing,
+  withRepeat,
 } from "react-native-reanimated";
-import LottieView from "lottie-react-native";
 import { colors, spacing } from "../styles/theme";
 
 interface LoadingOverlayProps {
@@ -18,6 +18,7 @@ interface LoadingOverlayProps {
 export function LoadingOverlay({ visible, message = "Loading..." }: LoadingOverlayProps) {
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.8);
+  const rotation = useSharedValue(0);
 
   useEffect(() => {
     if (visible) {
@@ -26,9 +27,15 @@ export function LoadingOverlay({ visible, message = "Loading..." }: LoadingOverl
         withTiming(1.05, { duration: 200, easing: Easing.out(Easing.ease) }),
         withTiming(1, { duration: 150, easing: Easing.inOut(Easing.ease) })
       );
+      rotation.value = withRepeat(
+        withTiming(1, { duration: 700, easing: Easing.linear }),
+        -1,
+        false
+      );
     } else {
       opacity.value = withTiming(0, { duration: 150, easing: Easing.in(Easing.ease) });
       scale.value = withTiming(0.8, { duration: 150, easing: Easing.in(Easing.ease) });
+      rotation.value = 0;
     }
   }, [visible]);
 
@@ -40,18 +47,23 @@ export function LoadingOverlay({ visible, message = "Loading..." }: LoadingOverl
     transform: [{ scale: scale.value }],
   }));
 
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value * 360}deg` }],
+  }));
+
   if (!visible && opacity.value === 0) return null;
 
   return (
     <Animated.View style={[styles.overlay, overlayStyle]} pointerEvents={visible ? "auto" : "none"}>
       <Animated.View style={[styles.content, contentStyle]}>
         <View style={styles.animationContainer}>
-          <LottieView
-            source={require("../assets/Insider-loading.json")}
-            autoPlay
-            loop
-            style={styles.lottie}
-          />
+          <Animated.View style={iconStyle}>
+            <Image
+              source={require("../assets/parkingsign.png")}
+              style={styles.icon}
+              resizeMode="contain"
+            />
+          </Animated.View>
         </View>
         <Text style={styles.message}>{message}</Text>
       </Animated.View>
@@ -81,9 +93,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  lottie: {
-    width: 120,
-    height: 120,
+  icon: {
+    width: 92,
+    height: 92,
   },
   message: {
     fontSize: 16,

@@ -307,7 +307,7 @@ export function ListingScreen({ navigation, route }: Props) {
   const handleToggleFavorite = async () => {
     if (!listing) return;
     if (!user) {
-      navigation.navigate("SignIn");
+      navigation.navigate("Welcome");
       return;
     }
     const wasFavorite = isFavorite(id);
@@ -682,7 +682,12 @@ export function ListingScreen({ navigation, route }: Props) {
       ) : null}
 
       {/* Image Viewer Modal */}
-      <Modal visible={showImageViewer} transparent animationType="fade">
+      <Modal
+        visible={showImageViewer}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowImageViewer(false)}
+      >
         <View style={styles.viewerBackdrop}>
           <ImageViewer
             imageUrls={imageUrls.map((url) => ({ url }))}

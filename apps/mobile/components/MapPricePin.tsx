@@ -12,7 +12,7 @@ export function MapPricePin({ price, selected = false, soldOut = false }: MapPri
   const priceText = soldOut ? "Sold out" : `€${price}`;
   
   // Airbnb-style: larger pins when selected for better visibility
-  const scale = selected ? 1.15 : 1;
+  const scale = 1;
   
   const dimensions = useMemo(() => {
     const textLength = priceText.length;
@@ -61,21 +61,16 @@ export function MapPricePin({ price, selected = false, soldOut = false }: MapPri
 
   return (
     <View style={[styles.container, { width: viewBoxWidth * scale, height: viewBoxHeight * scale }]}>
-      <Svg width={viewBoxWidth * scale} height={viewBoxHeight * scale} viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}>
-        {selected && !soldOut && (
-          <Defs>
-            <SvgLinearGradient id="pinGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <Stop offset="0%" stopColor="#10b981" stopOpacity="1" />
-              <Stop offset="100%" stopColor="#14b8a6" stopOpacity="1" />
-            </SvgLinearGradient>
-          </Defs>
-        )}
-        
+      <Svg
+        width={viewBoxWidth * scale}
+        height={viewBoxHeight * scale}
+        viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+      >
         <Path
           d={pinPath}
-          fill={soldOut ? "#f1f5f9" : (selected ? "url(#pinGradient)" : "#FFFFFF")}
-          stroke={soldOut ? "#cbd5e1" : (selected ? "#10B981" : "#a7f3d0")}
-          strokeWidth={strokeWidth}
+          fill={soldOut ? "#f1f5f9" : selected ? "#000000" : "#FFFFFF"}
+          stroke="rgba(0,0,0,0.16)"
+          strokeWidth={1.25}
           strokeLinejoin="round"
         />
       </Svg>
@@ -95,10 +90,10 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     // Airbnb-style: add drop shadow for better depth perception
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
   },
   textContainer: {
     position: "absolute",
@@ -110,7 +105,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   priceText: {
-    color: "#047857",
+    color: "#000000",
     fontSize: 13,
     fontWeight: "600",
   },

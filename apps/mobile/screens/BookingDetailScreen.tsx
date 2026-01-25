@@ -1,6 +1,7 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from "react-native";
-import { useRef, useState } from "react";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
@@ -41,6 +42,43 @@ export function BookingDetailScreen({ navigation, route }: Props) {
   const isRefunded = booking.refundStatus === "succeeded";
   const refundedAt = booking.refundedAt ? new Date(booking.refundedAt) : null;
   const canReview = end.getTime() <= now && booking.status === "confirmed";
+  const [reviewed, setReviewed] = useState(false);
+  const [reviewedRating, setReviewedRating] = useState<number | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void (async () => {
+        try {
+          const stored = await AsyncStorage.getItem(`bookingRating:${booking.id}`);
+          if (!stored) {
+            if (active) {
+              setReviewed(false);
+              setReviewedRating(null);
+            }
+            return;
+          }
+          const parsed = JSON.parse(stored) as { rating?: number };
+          if (!active) return;
+          if (typeof parsed.rating === "number") {
+            setReviewed(true);
+            setReviewedRating(parsed.rating);
+          } else {
+            setReviewed(false);
+            setReviewedRating(null);
+          }
+        } catch {
+          if (active) {
+            setReviewed(false);
+            setReviewedRating(null);
+          }
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, [booking.id])
+  );
   
   const statusLabel = isRefunded 
     ? "Refunded" 
@@ -181,48 +219,6 @@ export function BookingDetailScreen({ navigation, route }: Props) {
         {/* Map Section - for upcoming/active bookings */}
         {(isUpcoming || isInProgress) && localStatus !== "canceled" ? (
           <View style={styles.mapSection}>
-            <Text style={styles.mapTitle}>{booking.title}</Text>
-            <Text style={styles.mapAddress}>{booking.address}</Text>
-            
-            {booking.latitude && booking.longitude ? (
-              <TouchableOpacity
-                onPress={() => {
-                  Alert.alert(
-                    "Open Navigation",
-                    "Navigate to this parking spot in Google Maps?",
-                    [
-                      {
-                        text: "Cancel",
-                        style: "cancel"
-                      },
-                      {
-                        text: "Open Maps",
-                        onPress: () => {
-                          const destination = `${booking.latitude},${booking.longitude}`;
-                          const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
-                          Linking.openURL(url);
-                        }
-                      }
-                    ]
-                  );
-                }}
-                activeOpacity={0.8}
-              >
-                <Image
-                  source={{
-                    uri: `https://maps.googleapis.com/maps/api/staticmap?center=${booking.latitude},${booking.longitude}&zoom=16&size=600x300&markers=color:green%7C${booking.latitude},${booking.longitude}&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}`,
-                  }}
-                  style={styles.parkingImage}
-                  resizeMode="cover"
-                />
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.mapPlaceholder}>
-                <Ionicons name="location" size={48} color="#10B981" />
-                <Text style={styles.mapPlaceholderText}>Map preview unavailable</Text>
-              </View>
-            )}
-            
             <TouchableOpacity 
               style={styles.mapButton}
               onPress={() => {
@@ -248,8 +244,8 @@ export function BookingDetailScreen({ navigation, route }: Props) {
                 );
               }}
             >
-              <Ionicons name="navigate" size={20} color="#10B981" />
-              <Text style={styles.mapButtonText}>Open in Google Maps</Text>
+              <Ionicons name="navigate" size={20} color="#247881" />
+              <Text style={styles.mapButtonText}>Get directions</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -282,9 +278,9 @@ export function BookingDetailScreen({ navigation, route }: Props) {
           <View style={styles.innerWhiteContent}>
             {/* Listing Header */}
             <View style={styles.listingRow}>
-              <View style={styles.carIcon}>
-                <Ionicons name="car" size={32} color="#10B981" />
-              </View>
+            <View style={styles.carIcon}>
+              <Ionicons name="location" size={36} color="#247881" />
+            </View>
               <View style={styles.listingText}>
                 <Text style={styles.listingName} numberOfLines={2}>{booking.title}</Text>
                 <Text style={styles.listingSubtitle} numberOfLines={2}>{booking.address}</Text>
@@ -357,13 +353,31 @@ export function BookingDetailScreen({ navigation, route }: Props) {
 
         {/* Review Card */}
         {canReview ? (
-          <TouchableOpacity 
-            style={styles.reviewButton}
-            onPress={() => navigation.navigate("Review", { booking })}
-          >
-            <Ionicons name="star-outline" size={20} color="#10B981" />
-            <Text style={styles.reviewButtonText}>Leave a review</Text>
-          </TouchableOpacity>
+          reviewed ? (
+            <View style={styles.reviewButton}>
+              <View style={styles.reviewedStars}>
+                {Array.from({ length: 5 }).map((_, index) => {
+                  const filled = reviewedRating != null && index < Math.round(reviewedRating);
+                  return (
+                    <Ionicons
+                      key={`review-star-${index}`}
+                      name="star"
+                      size={16}
+                      color={filled ? "#FBBF24" : "#E5E7EB"}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity 
+              style={styles.reviewButton}
+              onPress={() => navigation.navigate("Review", { booking })}
+            >
+              <Ionicons name="star-outline" size={20} color="#247881" />
+              <Text style={styles.reviewButtonText}>Leave a review</Text>
+            </TouchableOpacity>
+          )
         ) : null}
 
         {/* Action Buttons */}
@@ -405,7 +419,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
 
         {/* Help Button */}
         <TouchableOpacity style={styles.helpButton}>
-          <Ionicons name="help-circle-outline" size={28} color="#10B981" />
+          <Ionicons name="help-circle-outline" size={28} color="#247881" />
           <Text style={styles.helpText}>Need help?</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -466,7 +480,7 @@ const styles = StyleSheet.create({
   
   // Review card
   reviewCard: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#247881',
     paddingVertical: 24,
     paddingHorizontal: 24,
     borderBottomLeftRadius: 24,
@@ -513,10 +527,20 @@ const styles = StyleSheet.create({
     color: '#111827',
     letterSpacing: -0.2,
   },
+  reviewedStars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  reviewedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
   
   // Outer Green Card - creates the "frame" effect
   outerGreenCard: {
-    backgroundColor: '#047857', // Dark green
+    backgroundColor: '#247881', // Dark green
     marginHorizontal: 20,
     borderRadius: 28, // Outer corner radius
     paddingHorizontal: 4, // Thin green "border" on sides
@@ -575,10 +599,8 @@ const styles = StyleSheet.create({
   },
   
   carIcon: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#D1FAE5',
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -724,10 +746,15 @@ const styles = StyleSheet.create({
   mapButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
     gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderWidth: 1,
+    borderColor: '#247881',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+    marginBottom: 4,
   },
   
   mapButtonText: {
@@ -738,7 +765,7 @@ const styles = StyleSheet.create({
   
   // Action buttons
   actionBtn: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#247881',
     paddingVertical: 16,
     borderRadius: 16,
     marginHorizontal: 20,
@@ -799,6 +826,6 @@ const styles = StyleSheet.create({
   helpText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#10B981',
+    color: '#247881',
   },
 });

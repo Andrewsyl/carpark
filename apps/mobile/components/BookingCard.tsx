@@ -10,6 +10,7 @@ type Props = {
   statusTone: "confirmed" | "completed" | "pending" | "canceled" | "refunded" | "active";
   dateLabel: string;
   timeLabel: string;
+  rating?: number;
   onPress: () => void;
 };
 
@@ -31,16 +32,18 @@ export function BookingCard({
   statusTone,
   dateLabel,
   timeLabel,
+  rating,
   onPress,
 }: Props) {
   const badgeStyle = STATUS_STYLES[statusTone];
+  const ratingValue = typeof rating === "number" ? Math.round(rating) : null;
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        { borderLeftWidth: 4, borderLeftColor: badgeStyle.border },
+        { borderLeftWidth: 0 },
         pressed && styles.cardPressed,
       ]}
       android_ripple={null}
@@ -71,6 +74,19 @@ export function BookingCard({
             <Ionicons name="time-outline" size={14} color={colors.textMuted} />
             <Text style={styles.timeText}>{timeLabel}</Text>
           </View>
+
+          {ratingValue ? (
+            <View style={styles.ratingRow}>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Ionicons
+                  key={`rating-${booking.id}-${index}`}
+                  name={index < ratingValue ? "star" : "star-outline"}
+                  size={13}
+                  color={index < ratingValue ? "#111827" : "#D1D5DB"}
+                />
+              ))}
+            </View>
+          ) : null}
 
           <View style={styles.footer}>
             <Text style={styles.reference}>{formatBookingReference(booking.id)}</Text>
@@ -160,6 +176,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textMuted,
     fontWeight: "500",
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
   },
   footer: {
     flexDirection: "row",

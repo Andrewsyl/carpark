@@ -144,7 +144,7 @@ export function ListingsScreen({ navigation }: Props) {
             <Text style={styles.cardBody}>
               Log in to manage listings and start earning from your space.
             </Text>
-            <Pressable style={styles.primaryButton} onPress={() => navigation.navigate("SignIn")}>
+            <Pressable style={styles.primaryButton} onPress={() => navigation.navigate("Welcome")}>
               <Text style={styles.primaryButtonText}>Sign in</Text>
             </Pressable>
           </View>

@@ -79,7 +79,7 @@ export function ResetPasswordScreen({ navigation }: Props) {
     try {
       await resetPassword(token.trim(), password);
       setNotice("Password updated. You can sign in now.");
-      navigation.replace("SignIn");
+      navigation.replace("Welcome");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Reset failed");
     } finally {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -194,6 +195,11 @@ export function SearchScreen({ navigation }: Props) {
   );
   const searchRequestIdRef = useRef(0);
   const searchStartedAtRef = useRef(0);
+  const mapReadyEventsRef = useRef({ ready: false, loaded: false });
+  const mapReadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mapReadyFailSafeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mapSpinnerAnim = useRef(new Animated.Value(0)).current;
+  const mapSpinnerLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const mapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
@@ -311,10 +317,20 @@ export function SearchScreen({ navigation }: Props) {
     [buildSearchParams]
   );
 
-  const handleMapReady = () => {
-    setMapReady(true);
-    // Auto-search the visible area when map first loads (JustPark style)
-    if (!results.length && !loading) {
+  const scheduleMapReady = useCallback(() => {
+    if (!mapReadyEventsRef.current.ready || !mapReadyEventsRef.current.loaded) return;
+    if (mapReadyTimerRef.current) {
+      clearTimeout(mapReadyTimerRef.current);
+    }
+    mapReadyTimerRef.current = setTimeout(() => {
+      setMapReady(true);
+    }, 620);
+  }, []);
+
+  const handleMapReady = (type: "ready" | "loaded") => {
+    mapReadyEventsRef.current[type] = true;
+    scheduleMapReady();
+    if (!results.length && !loading && type === "ready") {
       void runSearch();
     }
   };
@@ -526,6 +542,12 @@ export function SearchScreen({ navigation }: Props) {
     useCallback(() => {
       setSelectedId(null);
       setSearchSheetOpen(false);
+      setMapReady(false);
+      mapReadyEventsRef.current = { ready: false, loaded: false };
+      if (mapReadyTimerRef.current) {
+        clearTimeout(mapReadyTimerRef.current);
+        mapReadyTimerRef.current = null;
+      }
       void (async () => {
         const deletedListingId = await AsyncStorage.getItem("deletedListingId");
         if (deletedListingId) {
@@ -544,6 +566,40 @@ export function SearchScreen({ navigation }: Props) {
       })();
     }, [runSearch])
   );
+
+  useEffect(() => {
+    if (launchComplete && !mapReady) {
+      if (mapReadyFailSafeRef.current) {
+        clearTimeout(mapReadyFailSafeRef.current);
+      }
+      mapReadyFailSafeRef.current = setTimeout(() => {
+        setMapReady(true);
+      }, 2000);
+      mapSpinnerAnim.setValue(0);
+      mapSpinnerLoopRef.current = Animated.loop(
+        Animated.timing(mapSpinnerAnim, {
+          toValue: 1,
+          duration: 1400,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+      mapSpinnerLoopRef.current.start();
+    } else {
+      mapSpinnerLoopRef.current?.stop();
+      if (mapReadyFailSafeRef.current) {
+        clearTimeout(mapReadyFailSafeRef.current);
+        mapReadyFailSafeRef.current = null;
+      }
+    }
+    return () => {
+      mapSpinnerLoopRef.current?.stop();
+      if (mapReadyFailSafeRef.current) {
+        clearTimeout(mapReadyFailSafeRef.current);
+        mapReadyFailSafeRef.current = null;
+      }
+    };
+  }, [launchComplete, mapReady, mapSpinnerAnim]);
 
   useEffect(() => {
     if (showFilters) {
@@ -694,8 +750,8 @@ export function SearchScreen({ navigation }: Props) {
             selectedId={selectedId}
             mapRef={mapRef}
             freezeMarkers={loading}
-            onMapLoaded={handleMapReady}
-            onMapReady={handleMapReady}
+            onMapLoaded={() => handleMapReady("loaded")}
+            onMapReady={() => handleMapReady("ready")}
             onOverlappingPins={setOverlappingPins}
           />
         ) : (
@@ -704,12 +760,24 @@ export function SearchScreen({ navigation }: Props) {
         {launchComplete && !mapReady ? (
           <View style={styles.mapLoadingOverlay} pointerEvents="none">
             <View style={styles.mapLoadingBubble}>
-              <LottieView
-                source={require("../assets/Insider-loading.json")}
-                autoPlay
-                loop
-                style={styles.mapLoadingLottie}
-              />
+              <Animated.View
+                style={{
+                  transform: [
+                    {
+                      rotate: mapSpinnerAnim.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: ["-6deg", "6deg", "-6deg"],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                <Image
+                  source={require("../assets/parkingsign.png")}
+                  style={styles.mapLoadingIcon}
+                  resizeMode="contain"
+                />
+              </Animated.View>
               <Text style={styles.mapLoadingText}>Loading map…</Text>
             </View>
           </View>
@@ -975,7 +1043,6 @@ export function SearchScreen({ navigation }: Props) {
                   <TextInput
                     style={styles.searchOverlayInput}
                     value={addressQuery}
-                    autoFocus
                     onChangeText={(value) => {
                       setAddressQuery(value);
                       if (!value.trim()) {
@@ -1293,6 +1360,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.16)",
   },
   mapLoadingBubble: {
     alignItems: "center",
@@ -1301,9 +1369,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 12,
   },
-  mapLoadingLottie: {
-    height: 84,
-    width: 84,
+  mapLoadingIcon: {
+    height: 120,
+    width: 120,
   },
   mapLoadingText: {
     color: colors.textMuted,

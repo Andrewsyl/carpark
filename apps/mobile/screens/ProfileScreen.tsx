@@ -136,7 +136,7 @@ export function ProfileScreen({ navigation }: Props) {
         <View style={styles.emptyState}>
           <Text style={styles.title}>Account settings</Text>
           <Text style={styles.subtitle}>Sign in to manage your profile and security.</Text>
-          <Pressable style={styles.primaryButton} onPress={() => navigation.navigate("SignIn")}>
+          <Pressable style={styles.primaryButton} onPress={() => navigation.navigate("Welcome")}>
             <Text style={styles.primaryButtonText}>Sign in</Text>
           </Pressable>
           <Pressable

@@ -87,6 +87,12 @@ export default function MapSection({
   const renderedResultsRef = useRef(nextResults);
   const captureRefs = useRef(new Map<string, ViewShotRef>());
   const pendingCaptures = useRef(new Set<string>());
+  const lastTapRef = useRef<{
+    ids: string[];
+    key: string;
+    index: number;
+    ts: number;
+  } | null>(null);
   const [pinImages, setPinImages] = useState<Record<string, string>>({});
   const pinLabelById = useMemo(
     () =>
@@ -198,29 +204,38 @@ export default function MapSection({
           });
           
           if (candidates.length === 0) {
+            if (onOverlappingPins) {
+              onOverlappingPins([]);
+            }
             onSelect(null as any);
             return;
           }
-          
+
           candidates.sort((a, b) => a.distance - b.distance);
-          
-          // Airbnb-style: Show picker only if pins are really close (within 15m)
-          if (candidates.length > 1) {
-            const closestDistance = candidates[0].distance;
-            const secondDistance = candidates[1].distance;
-            
-            // If the closest is clearly closer (>15m difference), just select it
-            if (secondDistance - closestDistance > 15 && onOverlappingPins) {
-              onSelect(candidates[0].listing.id);
-            } else if (onOverlappingPins) {
-              // Otherwise show picker for truly overlapping pins
-              onOverlappingPins(candidates.map(c => c.listing));
-            } else {
-              onSelect(candidates[0].listing.id);
-            }
-          } else {
-            onSelect(candidates[0].listing.id);
+          if (onOverlappingPins) {
+            onOverlappingPins([]);
           }
+
+          // Airbnb-style: cycle through nearby pins on repeated taps
+          if (candidates.length > 1) {
+            const ids = candidates.map((c) => c.listing.id);
+            const key = [...ids].sort().join("|");
+            const nowMs = Date.now();
+            const last = lastTapRef.current;
+            const isSameSet = !!last && nowMs - last.ts < 1500 && last.key === key;
+            const idsToUse = isSameSet ? last!.ids : ids;
+            const nextIndex = isSameSet ? (last!.index + 1) % idsToUse.length : 0;
+            lastTapRef.current = {
+              ids: idsToUse,
+              key,
+              index: nextIndex,
+              ts: nowMs,
+            };
+            onSelect(idsToUse[nextIndex]);
+            return;
+          }
+
+          onSelect(candidates[0].listing.id);
         }}
         mapPadding={mapPadding}
         moveOnMarkerPress={false}

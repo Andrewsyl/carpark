@@ -5,6 +5,7 @@ import { Animated, BackHandler, Easing, FlatList, InteractionManager, Pressable,
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import LottieView from "lottie-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { listMyBookings, type BookingSummary } from "../api";
 import { useAuth } from "../auth";
 import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
@@ -27,6 +28,7 @@ export function HistoryScreen({ navigation, route }: Props) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [newBookingId, setNewBookingId] = useState<string | null>(null);
   const [mapCtaVisible, setMapCtaVisible] = useState(false);
+  const [ratingByBookingId, setRatingByBookingId] = useState<Record<string, number>>({});
   const tabAnim = useRef(new Animated.Value(1)).current;
   const segmentWidth = useRef(0);
   const segmentAnim = useRef(new Animated.Value(0)).current;
@@ -54,6 +56,35 @@ export function HistoryScreen({ navigation, route }: Props) {
       active = false;
     };
   }, [token]);
+
+  useEffect(() => {
+    if (!bookings.length) {
+      setRatingByBookingId({});
+      return;
+    }
+    const keys = bookings.map((booking) => `bookingRating:${booking.id}`);
+    void (async () => {
+      try {
+        const entries = await AsyncStorage.multiGet(keys);
+        const nextRatings: Record<string, number> = {};
+        entries.forEach(([key, value]) => {
+          if (!value) return;
+          try {
+            const parsed = JSON.parse(value) as { rating?: number };
+            if (typeof parsed.rating === "number") {
+              const bookingId = key.replace("bookingRating:", "");
+              nextRatings[bookingId] = parsed.rating;
+            }
+          } catch {
+            // Ignore malformed ratings.
+          }
+        });
+        setRatingByBookingId(nextRatings);
+      } catch {
+        setRatingByBookingId({});
+      }
+    })();
+  }, [bookings]);
 
   useEffect(() => {
     void loadBookings();
@@ -237,6 +268,7 @@ export function HistoryScreen({ navigation, route }: Props) {
         statusTone={statusTone}
         dateLabel={dateLabel}
         timeLabel={timeLabel}
+        rating={ratingByBookingId[booking.id]}
         onPress={() => navigation.navigate("BookingDetail", { booking })}
       />
     );
@@ -380,7 +412,7 @@ export function HistoryScreen({ navigation, route }: Props) {
                 <Text style={styles.cardBody}>
                   Log in to see your upcoming reservations and past stays.
                 </Text>
-                <Pressable style={styles.primaryButton} onPress={() => navigation.navigate("SignIn")}>
+                <Pressable style={styles.primaryButton} onPress={() => navigation.navigate("Welcome")}>
                   <Text style={styles.primaryButtonText}>Sign in</Text>
                 </Pressable>
               </View>
