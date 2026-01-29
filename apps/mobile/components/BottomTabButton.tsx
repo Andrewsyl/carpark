@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, View } from "react-native";
-import { colors, radius, spacing } from "../styles/theme";
+import { colors, radius } from "../styles/theme";
 
 type Props = {
   children: ReactNode;
@@ -39,8 +39,8 @@ export function BottomTabButton({ children, onPress, accessibilityState }: Props
   };
 
   return (
-    <Pressable 
-      onPress={onPress} 
+    <Pressable
+      onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={styles.pressable}
@@ -54,21 +54,21 @@ export function BottomTabButton({ children, onPress, accessibilityState }: Props
 }
 
 const styles = StyleSheet.create({
-  pressable: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+  indicator: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    height: 3,
+    marginTop: 4,
+    width: 18,
   },
   item: {
     alignItems: "center",
-    justifyContent: "center",
     gap: 4,
+    justifyContent: "center",
   },
-  indicator: {
-    marginTop: 4,
-    height: 3,
-    width: 18,
-    borderRadius: radius.pill,
-    backgroundColor: colors.accent,
+  pressable: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
   },
 });

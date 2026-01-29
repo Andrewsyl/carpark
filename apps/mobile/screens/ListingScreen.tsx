@@ -1498,12 +1498,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   dateTimeLabel: {
-    fontSize: 14,
+    fontSize: 9,
     color: '#6B7280',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   dateTimeValue: {
-    fontSize: 20,
+    fontSize: 12,
     fontWeight: '600',
     color: '#111827',
   },

@@ -42,8 +42,9 @@ import type { RootStackParamList } from "./types";
 import { registerPushToken } from "./api";
 import { Ionicons } from "@expo/vector-icons";
 import { LoadingOverlay } from "./components/LoadingOverlay";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LottieView from "lottie-react-native";
+import carAnimation from "./assets/car.json";
+import { colors } from "./theme/colors";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -144,7 +145,7 @@ export default function App() {
         <Animated.View style={[styles.splashOverlay, { opacity: overlayOpacity }]}>
           <Animated.View style={[styles.startupLayer, { opacity: splashOpacity }]}>
             <LottieView
-              source={require("./assets/car.json")}
+              source={carAnimation}
               autoPlay={false}
               loop={false}
               progress={0}
@@ -153,7 +154,7 @@ export default function App() {
           </Animated.View>
           <Animated.View style={[styles.startupLayer, { opacity: carOpacity }]}>
             <LottieView
-              source={require("./assets/car.json")}
+              source={carAnimation}
               autoPlay
               loop={false}
               style={styles.carAnimation}
@@ -333,7 +334,7 @@ function PushRegistration() {
     return () => {
       active = false;
     };
-  }, [token, user?.id]);
+  }, [token, user]);
 
   return null;
 }
@@ -342,101 +343,62 @@ const styles = StyleSheet.create({
   app: {
     flex: 1,
   },
-  splashOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    backgroundColor: "#F8F1E7",
-    justifyContent: "center",
-    zIndex: 999,
-  },
-  startupLayer: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   carAnimation: {
     height: 220,
     width: 220,
-  },
-  legalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    backgroundColor: "rgba(15, 23, 42, 0.6)",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    zIndex: 1000,
-  },
-  legalCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 20,
-    padding: 20,
-    width: "100%",
-  },
-  legalTitle: {
-    color: "#0f172a",
-    fontSize: 18,
-    fontWeight: "600",
-    letterSpacing: -0.1,
-  },
-  legalBody: {
-    color: "#64748b",
-    fontSize: 13,
-    marginTop: 8,
-    lineHeight: 18,
-  },
-  legalRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    marginTop: 14,
-  },
-  legalCheckbox: {
-    borderColor: "#cbd5f5",
-    borderRadius: 6,
-    borderWidth: 1,
-    height: 20,
-    marginRight: 10,
-    width: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  legalCheckboxChecked: {
-    borderColor: "#00d4aa",
-    backgroundColor: "#00d4aa",
-  },
-  legalCheckboxInner: {
-    backgroundColor: "#ffffff",
-    borderRadius: 2,
-    height: 6,
-    width: 6,
-  },
-  legalText: {
-    color: "#0f172a",
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  legalError: {
-    color: "#dc2626",
-    fontSize: 12,
-    marginTop: 10,
   },
   legalActions: {
     flexDirection: "row",
     justifyContent: "flex-end",
     marginTop: 16,
   },
-  legalSecondary: {
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  legalSecondaryText: {
-    color: "#475569",
+  legalBody: {
+    color: colors.text.muted,
     fontSize: 13,
-    fontWeight: "600",
-    letterSpacing: 0,
+    lineHeight: 18,
+    marginTop: 8,
+  },
+  legalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 20,
+    width: "100%",
+  },
+  legalCheckbox: {
+    alignItems: "center",
+    borderColor: colors.brand.tealSoft,
+    borderRadius: 6,
+    borderWidth: 1,
+    height: 20,
+    justifyContent: "center",
+    marginRight: 10,
+    width: 20,
+  },
+  legalCheckboxChecked: {
+    backgroundColor: colors.brand.teal,
+    borderColor: colors.brand.teal,
+  },
+  legalCheckboxInner: {
+    backgroundColor: colors.surface,
+    borderRadius: 2,
+    height: 6,
+    width: 6,
+  },
+  legalError: {
+    color: colors.error.strong,
+    fontSize: 12,
+    marginTop: 10,
+  },
+  legalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    backgroundColor: colors.overlay.strong,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    zIndex: 1000,
   },
   legalPrimary: {
-    backgroundColor: "#00d4aa",
+    backgroundColor: colors.brand.teal,
     borderRadius: 12,
     marginLeft: 8,
     paddingHorizontal: 16,
@@ -446,9 +408,48 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   legalPrimaryText: {
-    color: "#ffffff",
+    color: colors.text.inverse,
     fontSize: 13,
     fontWeight: "600",
     letterSpacing: 0,
+  },
+  legalRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    marginTop: 14,
+  },
+  legalSecondary: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  legalSecondaryText: {
+    color: colors.text.slate,
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 0,
+  },
+  legalText: {
+    color: colors.text.dark,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  legalTitle: {
+    color: colors.text.dark,
+    fontSize: 18,
+    fontWeight: "600",
+    letterSpacing: -0.1,
+  },
+  splashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    backgroundColor: colors.background.splash,
+    justifyContent: "center",
+    zIndex: 999,
+  },
+  startupLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

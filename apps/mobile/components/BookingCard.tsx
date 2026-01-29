@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing } from "../styles/theme";
+import { colors } from "../styles/theme";
 import type { BookingSummary } from "../api";
 import { formatBookingReference } from "../utils/bookingFormat";
 
@@ -18,17 +18,48 @@ const STATUS_STYLES: Record<
   Props["statusTone"],
   { background: string; text: string; icon: string; border: string }
 > = {
-  confirmed: { background: "#ecfdf5", text: "#047857", icon: "checkmark-circle", border: "#10b981" },
-  active: { background: "#ede9fe", text: "#6b21a8", icon: "play-circle", border: "#a855f7" },
-  completed: { background: "#f3f4f6", text: "#6b7280", icon: "checkmark-circle-outline", border: "#6b7280" },
-  pending: { background: "#fef3c7", text: "#b45309", icon: "time", border: "#f59e0b" },
-  canceled: { background: "#fee2e2", text: "#991b1b", icon: "close-circle-outline", border: "#ef4444" },
-  refunded: { background: "#dbeafe", text: "#1e40af", icon: "arrow-undo", border: "#3b82f6" },
+  confirmed: {
+    background: colors.status.confirmed.background,
+    text: colors.status.confirmed.text,
+    icon: "checkmark-circle",
+    border: colors.status.confirmed.border,
+  },
+  active: {
+    background: colors.status.active.background,
+    text: colors.status.active.text,
+    icon: "play-circle",
+    border: colors.status.active.border,
+  },
+  completed: {
+    background: colors.status.completed.background,
+    text: colors.status.completed.text,
+    icon: "checkmark-circle-outline",
+    border: colors.status.completed.border,
+  },
+  pending: {
+    background: colors.status.pending.background,
+    text: colors.status.pending.text,
+    icon: "time",
+    border: colors.status.pending.border,
+  },
+  canceled: {
+    background: colors.status.canceled.background,
+    text: colors.status.canceled.text,
+    icon: "close-circle-outline",
+    border: colors.status.canceled.border,
+  },
+  refunded: {
+    background: colors.status.refunded.background,
+    text: colors.status.refunded.text,
+    icon: "arrow-undo",
+    border: colors.status.refunded.border,
+  },
 };
+
 
 export function BookingCard({
   booking,
-  statusLabel,
+  statusLabel: _statusLabel,
   statusTone,
   dateLabel,
   timeLabel,
@@ -82,7 +113,7 @@ export function BookingCard({
                   key={`rating-${booking.id}-${index}`}
                   name={index < ratingValue ? "star" : "star-outline"}
                   size={13}
-                  color={index < ratingValue ? "#111827" : "#D1D5DB"}
+                  color={index < ratingValue ? colors.star.active : colors.star.inactive}
                 />
               ))}
             </View>
@@ -102,91 +133,55 @@ export function BookingCard({
 }
 
 const styles = StyleSheet.create({
+  address: {
+    color: colors.textMuted,
+    flex: 1,
+    fontSize: 13,
+  },
+  addressRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+  },
   card: {
     backgroundColor: colors.cardBg,
     borderRadius: 16,
+    elevation: 1,
+    overflow: "hidden",
     padding: 0,
-    shadowColor: "#0f172a",
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
-    elevation: 1,
-    overflow: "hidden",
   },
   cardPressed: {
-    transform: [{ scale: 0.98 }],
     shadowOpacity: 0.08,
+    transform: [{ scale: 0.98 }],
+  },
+  dateText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  footer: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingTop: 4,
+  },
+  header: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
   },
   mainContent: {
     flexDirection: "row",
   },
-  textContent: {
-    flex: 1,
-    padding: 16,
-    gap: 12,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  titleSection: {
-    flex: 1,
-    gap: 4,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "600",
-    lineHeight: 22,
-  },
-  addressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  address: {
-    color: colors.textMuted,
-    fontSize: 13,
-    flex: 1,
-  },
-  statusBadge: {
-    borderRadius: 999,
-    padding: 6,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  timeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  dateText: {
-    fontSize: 13,
-    color: colors.text,
-    fontWeight: "500",
-  },
-  separator: {
-    fontSize: 13,
-    color: colors.textMuted,
-    fontWeight: "500",
-  },
-  timeText: {
-    fontSize: 13,
-    color: colors.textMuted,
-    fontWeight: "500",
-  },
   ratingRow: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     gap: 2,
-  },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 4,
   },
   reference: {
     color: colors.textSoft,
@@ -194,14 +189,51 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: 0.3,
   },
-  viewDetailsRow: {
-    flexDirection: "row",
+  separator: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  statusBadge: {
     alignItems: "center",
+    borderRadius: 999,
+    justifyContent: "center",
+    padding: 6,
+  },
+  textContent: {
+    flex: 1,
+    gap: 12,
+    padding: 16,
+  },
+  timeRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
+  timeText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  title: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "600",
+    lineHeight: 22,
+  },
+  titleSection: {
+    flex: 1,
     gap: 4,
   },
   viewDetails: {
+    color: colors.accent,
     fontSize: 13,
     fontWeight: "600",
-    color: colors.accent,
+  },
+  viewDetailsRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
   },
 });
+

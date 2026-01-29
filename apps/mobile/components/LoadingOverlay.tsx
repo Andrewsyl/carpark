@@ -8,7 +8,7 @@ import Animated, {
   Easing,
   withRepeat,
 } from "react-native-reanimated";
-import { colors, spacing } from "../styles/theme";
+import { colors } from "../styles/theme";
 
 interface LoadingOverlayProps {
   visible: boolean;
@@ -37,7 +37,7 @@ export function LoadingOverlay({ visible, message = "Loading..." }: LoadingOverl
       scale.value = withTiming(0.8, { duration: 150, easing: Easing.in(Easing.ease) });
       rotation.value = 0;
     }
-  }, [visible]);
+  }, [opacity, rotation, scale, visible]);
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -51,7 +51,7 @@ export function LoadingOverlay({ visible, message = "Loading..." }: LoadingOverl
     <Animated.View style={[styles.overlay, overlayStyle]} pointerEvents={visible ? "auto" : "none"}>
       <Animated.View style={[styles.content, contentStyle]}>
         <View style={styles.animationContainer}>
-          <ActivityIndicator size="large" color="#9ca3af" />
+          <ActivityIndicator size="large" color={colors.textSoft} />
         </View>
         <Text style={styles.message}>{message}</Text>
       </Animated.View>
@@ -60,32 +60,32 @@ export function LoadingOverlay({ visible, message = "Loading..." }: LoadingOverl
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
+  animationContainer: {
     alignItems: "center",
+    height: 120,
     justifyContent: "center",
-    zIndex: 9999,
+    width: 120,
   },
   content: {
     alignItems: "center",
     justifyContent: "center",
   },
-  animationContainer: {
-    width: 120,
-    height: 120,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   message: {
+    color: colors.text,
     fontSize: 16,
     fontWeight: "600",
-    color: colors.text,
     marginTop: 12,
     textAlign: "center",
+  },
+  overlay: {
+    alignItems: "center",
+    backgroundColor: colors.overlayLight,
+    bottom: 0,
+    justifyContent: "center",
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    zIndex: 9999,
   },
 });
