@@ -14,7 +14,7 @@ import { getNotificationImageAttachment } from "../notifications";
 import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import type { RootStackParamList } from "../types";
 import { Ionicons } from "@expo/vector-icons";
-import { formatDateTimeLabel } from "../utils/dateFormat";
+import { format } from "../utils/dateFormat";
 import { formatBookingReference } from "../utils/bookingFormat";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingDetail">;
@@ -195,27 +195,27 @@ export function BookingDetailScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </Pressable>
       </View>
-      
+
       <ScrollView contentContainerStyle={styles.content} ref={scrollRef}>
         {/* Map Section */}
         <View style={styles.mapSection}>
           <Text style={styles.sectionTitle}>{booking.title}</Text>
           <Text style={styles.address}>{booking.address}</Text>
-          
+
           {staticMapUrl ? (
             <Pressable style={styles.mapWrapper} onPress={handleOpenMaps}>
               <Image source={{ uri: staticMapUrl }} style={styles.mapImage} resizeMode="cover" />
             </Pressable>
           ) : null}
-          
+
           <TouchableOpacity style={styles.actionButton} onPress={handleOpenMaps}>
             <Ionicons name="navigate" size={20} color="#10B981" />
             <Text style={styles.actionButtonText}>Open in Google Maps</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate("Listing", { 
+            onPress={() => navigation.navigate("Listing", {
               id: booking.listingId,
               from: booking.startTime,
               to: booking.endTime,
@@ -229,7 +229,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
 
         {/* Review Prompt Card */}
         {canReview ? (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.reviewPromptCard}
             onPress={() => navigation.navigate("Review", { booking })}
           >
@@ -252,10 +252,10 @@ export function BookingDetailScreen({ navigation, route }: Props) {
             isCanceled && styles.statusBadgeCanceled,
             isRefunded && styles.statusBadgeRefunded
           ]}>
-            <Ionicons 
-              name={isCanceled ? "close-circle" : isRefunded ? "arrow-undo" : "checkmark-circle"} 
-              size={20} 
-              color="#FFFFFF" 
+            <Ionicons
+              name={isCanceled ? "close-circle" : isRefunded ? "arrow-undo" : "checkmark-circle"}
+              size={20}
+              color="#FFFFFF"
             />
             <Text style={styles.statusText}>{statusLabel}</Text>
           </View>
@@ -275,18 +275,18 @@ export function BookingDetailScreen({ navigation, route }: Props) {
           <View style={styles.detailsSection}>
             {checkedInAt ? (
               <>
-                <DetailRow label="CHECKED IN" value={formatDateTimeLabel(checkedInAt)} />
+                <DetailRow label="CHECKED IN" value={format(checkedInAt)} />
                 <View style={styles.divider} />
               </>
             ) : null}
             {isRefunded && refundedAt ? (
               <>
-                <DetailRow label="REFUNDED" value={formatDateTimeLabel(refundedAt)} />
+                <DetailRow label="REFUNDED" value={format(refundedAt)} />
                 <View style={styles.divider} />
               </>
             ) : null}
-            <DetailRow label="START TIME" value={formatDateTimeLabel(start)} />
-            <DetailRow label="END TIME" value={formatDateTimeLabel(end)} />
+            <DetailRow label="START TIME" value={format(start)} />
+            <DetailRow label="END TIME" value={format(end)} />
             <View style={styles.divider} />
             <DetailRow label="ORDER ID" value={formatBookingReference(booking.id)} />
             {vehiclePlate ? (
@@ -297,18 +297,18 @@ export function BookingDetailScreen({ navigation, route }: Props) {
             ) : null}
             <View style={styles.divider} />
             <DetailRow label="PARKING SPOT" value="1 x Parking Space" />
-            <DetailRow 
-              label="TOTAL" 
+            <DetailRow
+              label="TOTAL"
               value={`€${(localAmountCents / 100).toFixed(2)}`}
-              valueStyle={styles.totalValue} 
+              valueStyle={styles.totalValue}
             />
             {receiptUrl ? (
               <>
                 <View style={styles.divider} />
                 <TouchableOpacity onPress={() => Linking.openURL(receiptUrl)}>
-                  <DetailRow 
-                    label="RECEIPT" 
-                    value="View receipt →" 
+                  <DetailRow
+                    label="RECEIPT"
+                    value="View receipt →"
                     valueStyle={styles.linkValue}
                   />
                 </TouchableOpacity>
@@ -400,10 +400,10 @@ export function BookingDetailScreen({ navigation, route }: Props) {
 }
 
 // DetailRow Component
-function DetailRow({ 
-  label, 
-  value, 
-  valueStyle = {}, 
+function DetailRow({
+  label,
+  value,
+  valueStyle = {},
 }: {
   label: string;
   value: string;
@@ -424,29 +424,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FDF8F3', // Light cream/beige
   },
-  
+
   header: {
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  
+
   backButton: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   content: {
     paddingHorizontal: 20,
     paddingBottom: 32,
   },
-  
+
   // Map section
   mapSection: {
     marginBottom: 16,
   },
-  
+
   sectionTitle: {
     fontSize: 28,
     fontWeight: '600',
@@ -454,25 +454,25 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     letterSpacing: -0.4,
   },
-  
+
   address: {
     fontSize: 16,
     color: '#6B7280',
     marginBottom: 16,
   },
-  
+
   mapWrapper: {
     borderRadius: 16,
     overflow: 'hidden',
     height: 200,
     marginVertical: 16,
   },
-  
+
   mapImage: {
     width: '100%',
     height: '100%',
   },
-  
+
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -481,13 +481,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  
+
   actionButtonText: {
     fontSize: 16,
     color: '#111827',
     fontWeight: '500',
   },
-  
+
   // Review prompt card
   reviewPromptCard: {
     backgroundColor: '#10B981',
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     alignItems: 'center',
   },
-  
+
   reviewPromptTitle: {
     fontSize: 24,
     fontWeight: '600',
@@ -505,13 +505,13 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     letterSpacing: -0.3,
   },
-  
+
   starsRow: {
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'center',
   },
-  
+
   // Details card
   detailsCard: {
     backgroundColor: '#FFFFFF',
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#047857', // Dark green border
   },
-  
+
   // Status badge
   statusBadge: {
     backgroundColor: '#047857',
@@ -533,21 +533,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     gap: 8,
   },
-  
+
   statusBadgeCanceled: {
     backgroundColor: '#DC2626',
   },
-  
+
   statusBadgeRefunded: {
     backgroundColor: '#3B82F6',
   },
-  
+
   statusText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
-  
+
   // Listing header
   listingHeader: {
     flexDirection: 'row',
@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     gap: 16,
   },
-  
+
   listingIcon: {
     width: 60,
     height: 60,
@@ -564,11 +564,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   listingInfo: {
     flex: 1,
   },
-  
+
   listingName: {
     fontSize: 20,
     fontWeight: '600',
@@ -576,23 +576,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     letterSpacing: -0.2,
   },
-  
+
   listingSubtitle: {
     fontSize: 14,
     color: '#6B7280',
   },
-  
+
   // Details section
   detailsSection: {
     gap: 16,
   },
-  
+
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  
+
   detailLabel: {
     fontSize: 12,
     fontWeight: '600',
@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     flex: 1,
   },
-  
+
   detailValue: {
     fontSize: 14,
     fontWeight: '500',
@@ -608,22 +608,22 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     flex: 1,
   },
-  
+
   totalValue: {
     fontSize: 16,
     fontWeight: '600',
   },
-  
+
   linkValue: {
     color: '#10B981',
   },
-  
+
   divider: {
     height: 1,
     backgroundColor: '#E5E7EB',
     marginVertical: 8,
   },
-  
+
   // Notice card
   noticeCard: {
     backgroundColor: '#ECFDF5',
@@ -631,20 +631,20 @@ const styles = StyleSheet.create({
     padding: 20,
     marginTop: 16,
   },
-  
+
   noticeTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#047857',
     marginBottom: 8,
   },
-  
+
   noticeText: {
     fontSize: 14,
     color: '#059669',
     lineHeight: 20,
   },
-  
+
   // Leave review button
   leaveReviewButton: {
     backgroundColor: '#10B981',
@@ -653,17 +653,17 @@ const styles = StyleSheet.create({
     marginTop: 24,
     alignItems: 'center',
   },
-  
+
   leaveReviewButtonDisabled: {
     opacity: 0.6,
   },
-  
+
   leaveReviewText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
   },
-  
+
   // Danger button
   dangerButton: {
     borderWidth: 1,
@@ -674,17 +674,17 @@ const styles = StyleSheet.create({
     marginTop: 16,
     alignItems: 'center',
   },
-  
+
   dangerButtonText: {
     color: '#DC2626',
     fontSize: 16,
     fontWeight: '600',
   },
-  
+
   dangerButtonDisabled: {
     opacity: 0.6,
   },
-  
+
   helperText: {
     color: '#10B981',
     fontSize: 14,
@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
   },
-  
+
   error: {
     color: '#DC2626',
     fontSize: 14,

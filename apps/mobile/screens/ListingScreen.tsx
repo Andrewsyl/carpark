@@ -14,6 +14,13 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import Animated, {
+  Extrapolate,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from "react-native-reanimated";
 import ImageViewer from "react-native-image-zoom-viewer";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -277,6 +284,18 @@ export function ListingScreen({ navigation, route }: Props) {
   const hostRating = hasReviews && listing?.rating ? listing.rating.toFixed(1) : null;
   const hostReviews = hasReviews ? listing?.rating_count ?? 0 : 0;
   const heroHeight = Math.round(width * 0.75);
+  const heroMinHeight = 140;
+  const scrollY = useSharedValue(0);
+  const heroAnimatedStyle = useAnimatedStyle(() => {
+    const maxDelta = Math.max(1, heroHeight - heroMinHeight);
+    const height = interpolate(scrollY.value, [0, maxDelta], [heroHeight, heroMinHeight], Extrapolate.CLAMP);
+    return { height };
+  }, [heroHeight, heroMinHeight]);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
   const distanceLabel = listing?.distance_m
     ? `${(listing.distance_m / 1000).toFixed(1)} km`
     : "0.8 km";
@@ -331,7 +350,7 @@ export function ListingScreen({ navigation, route }: Props) {
         ) : listing ? (
           <>
             {/* Hero Image Section */}
-            <View style={[styles.header, { height: 300 }]}>
+            <Animated.View style={[styles.header, heroAnimatedStyle]}>
               {imageUrls.length ? (
                 <ScrollView
                   horizontal
@@ -350,15 +369,12 @@ export function ListingScreen({ navigation, route }: Props) {
                         setShowImageViewer(true);
                       }}
                     >
-                      <Image
-                        source={{ uri: url }}
-                        style={[styles.heroImage, { width, height: 300 }]}
-                      />
+                      <Image source={{ uri: url }} style={[styles.heroImage, { width, height: "100%" }]} />
                     </Pressable>
                   ))}
                 </ScrollView>
               ) : (
-                <View style={[styles.heroPlaceholder, { height: 300 }]}>
+                <View style={[styles.heroPlaceholder, { height: "100%" }]}>
                   <Text style={styles.heroPlaceholderText}>No image</Text>
                 </View>
               )}
@@ -395,10 +411,15 @@ export function ListingScreen({ navigation, route }: Props) {
                   ))}
                 </View>
               ) : null}
-            </View>
+            </Animated.View>
 
             {/* Content Card */}
-            <ScrollView style={styles.contentCard} showsVerticalScrollIndicator={false}>
+            <Animated.ScrollView
+              style={styles.contentCard}
+              showsVerticalScrollIndicator={false}
+              onScroll={scrollHandler}
+              scrollEventThrottle={16}
+            >
               {/* Title Section */}
               <View style={styles.titleSection}>
                 <Text style={styles.category}>PARKING SPACE</Text>
@@ -422,21 +443,17 @@ export function ListingScreen({ navigation, route }: Props) {
 
               {/* Date/Time Picker Row */}
               <View style={styles.timePickerSection}>
-                <Pressable style={styles.dateTimeCard} onPress={() => openPicker("start")}>
-                  <Ionicons name="calendar-outline" size={18} color="#10B981" />
-                  <View style={styles.dateTimeInfo}>
-                    <Text style={styles.dateTimeLabel}>Start</Text>
+                <View style={styles.timePickerCard}>
+                  <Pressable style={styles.timePickerColumn} onPress={() => openPicker("start")}>
+                    <Text style={styles.dateTimeLabel}>From</Text>
                     <Text style={styles.dateTimeValue}>{formatDateTimeLabel(startAt)}</Text>
-                  </View>
-                </Pressable>
-                <Ionicons name="arrow-forward" size={20} color="#9CA3AF" />
-                <Pressable style={styles.dateTimeCard} onPress={() => openPicker("end")}>
-                  <Ionicons name="calendar-outline" size={18} color="#10B981" />
-                  <View style={styles.dateTimeInfo}>
-                    <Text style={styles.dateTimeLabel}>End</Text>
+                  </Pressable>
+                  <View style={styles.timePickerDivider} />
+                  <Pressable style={styles.timePickerColumn} onPress={() => openPicker("end")}>
+                    <Text style={styles.dateTimeLabel}>Until</Text>
                     <Text style={styles.dateTimeValue}>{formatDateTimeLabel(endAt)}</Text>
-                  </View>
-                </Pressable>
+                  </Pressable>
+                </View>
               </View>
 
               {/* Content Sections */}
@@ -599,7 +616,7 @@ export function ListingScreen({ navigation, route }: Props) {
                 {/* Extra padding for bottom button */}
                 <View style={{ height: 200 }} />
               </View>
-            </ScrollView>
+            </Animated.ScrollView>
 
             {/* Fixed Bottom Button */}
             {priceSummary && user ? (
@@ -1455,32 +1472,38 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   timePickerSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 16,
-    gap: 12,
   },
-  dateTimeCard: {
-    flex: 1,
+  timePickerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    padding: 12,
-    borderRadius: 12,
-    gap: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 8,
   },
-  dateTimeInfo: {
+  timePickerColumn: {
     flex: 1,
   },
+  timePickerDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 16,
+  },
   dateTimeLabel: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginBottom: 2,
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 6,
   },
   dateTimeValue: {
-    fontSize: 13,
+    fontSize: 20,
     fontWeight: '600',
     color: '#111827',
   },

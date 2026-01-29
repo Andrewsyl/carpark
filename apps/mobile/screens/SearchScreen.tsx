@@ -100,14 +100,14 @@ const formatDateLabel = (date: Date) => {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const dateToCheck = new Date(date);
   dateToCheck.setHours(0, 0, 0, 0);
-  
+
   if (dateToCheck.getTime() === today.getTime()) {
     return "Today";
   }
   if (dateToCheck.getTime() === tomorrow.getTime()) {
     return "Tomorrow";
   }
-  
+
   return `${weekdayNames[date.getDay()]} ${date.getDate()}${ordinalSuffix(date.getDate())} ${
     monthNames[date.getMonth()]
   }`;
@@ -757,31 +757,7 @@ export function SearchScreen({ navigation }: Props) {
         ) : (
           <View style={styles.mapPlaceholder} />
         )}
-        {launchComplete && !mapReady ? (
-          <View style={styles.mapLoadingOverlay} pointerEvents="none">
-            <View style={styles.mapLoadingBubble}>
-              <Animated.View
-                style={{
-                  transform: [
-                    {
-                      rotate: mapSpinnerAnim.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: ["-6deg", "6deg", "-6deg"],
-                      }),
-                    },
-                  ],
-                }}
-              >
-                <Image
-                  source={require("../assets/parkingsign.png")}
-                  style={styles.mapLoadingIcon}
-                  resizeMode="contain"
-                />
-              </Animated.View>
-              <Text style={styles.mapLoadingText}>Loading map…</Text>
-            </View>
-          </View>
-        ) : null}
+        {launchComplete && !mapReady ? null : null}
         <View style={[styles.overlay, { top: insets.top + 18 }]}>
           <View style={styles.overlayHeader} />
           <View style={styles.searchGroup}>
@@ -830,25 +806,26 @@ export function SearchScreen({ navigation }: Props) {
                 <View style={styles.filterDot} />
               ) : null}
             </Pressable>
+            <View style={styles.searchDivider} />
           <View style={styles.dateRow}>
-            <Pressable 
-              style={styles.dateTimePill} 
+            <Pressable
+              style={styles.dateTimeColumn}
               onPress={() => openPicker("start")}
               android_ripple={null}
             >
-              <Ionicons name="calendar-outline" size={13} color={colors.accent} />
-              <Text style={styles.dateTimeText} numberOfLines={1} ellipsizeMode="tail">
+              <Text style={styles.dateTimeLabel}>From</Text>
+              <Text style={styles.dateTimeValue} numberOfLines={1} ellipsizeMode="tail">
                 {formatDateTimeLabel(startAt)}
               </Text>
             </Pressable>
-            <Ionicons name="arrow-forward" size={12} color={colors.textMuted} />
-            <Pressable 
-              style={styles.dateTimePill} 
+            <Ionicons name="arrow-forward" size={18} color="#9CA3AF" style={styles.dateArrowIcon} />
+            <Pressable
+              style={styles.dateTimeColumn}
               onPress={() => openPicker("end")}
               android_ripple={null}
             >
-              <Ionicons name="calendar-outline" size={13} color={colors.accent} />
-              <Text style={styles.dateTimeText} numberOfLines={1} ellipsizeMode="tail">
+              <Text style={styles.dateTimeLabel}>Until</Text>
+              <Text style={styles.dateTimeValue} numberOfLines={1} ellipsizeMode="tail">
                 {formatDateTimeLabel(endAt)}
               </Text>
             </Pressable>
@@ -1390,9 +1367,9 @@ const styles = StyleSheet.create({
   },
   searchGroup: {
     backgroundColor: colors.cardBg,
-    borderRadius: 18,
+    borderRadius: 20,
     overflow: "hidden",
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     position: "relative",
     ...cardShadow,
@@ -1401,13 +1378,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: 10,
-    paddingRight: 46,
+    paddingRight: 40,
   },
   searchInput: {
     color: colors.text,
     flex: 1,
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   clearButton: {
     alignItems: "center",
@@ -1427,17 +1404,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#ffffff",
     borderRadius: radius.pill,
-    height: 36,
+    height: 32,
     justifyContent: "center",
     position: "absolute",
     right: 10,
-    top: 10,
-    width: 36,
+    top: 8,
+    width: 32,
     shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  searchDivider: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+    opacity: 0.5,
+    marginTop: 10,
+    marginBottom: 10,
   },
   filterFabActive: {
     borderColor: colors.accent,
@@ -1840,34 +1824,25 @@ const styles = StyleSheet.create({
   },
   dateRow: {
     flexDirection: "row",
-    gap: 6,
-    marginTop: 12,
     alignItems: "center",
+    gap: 10,
   },
-  dateTimePill: {
-    alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    flexDirection: "row",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+  dateTimeColumn: {
     flex: 1,
     minWidth: 0,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
-    elevation: 1,
   },
-  dateTimeText: {
-    color: "#101828",
-    fontSize: 10,
+  dateTimeLabel: {
+    fontSize: 11,
+    color: "#6B7280",
+    marginBottom: 4,
+  },
+  dateTimeValue: {
+    color: "#111827",
+    fontSize: 12,
     fontWeight: "600",
-    flex: 1,
-    flexShrink: 1,
+  },
+  dateArrowIcon: {
+    marginHorizontal: 4,
   },
   dateArrow: {
     alignItems: "center",

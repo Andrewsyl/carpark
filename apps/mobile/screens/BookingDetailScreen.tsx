@@ -13,7 +13,7 @@ import { useAuth } from "../auth";
 import { getNotificationImageAttachment } from "../notifications";
 import type { RootStackParamList } from "../types";
 import { Ionicons } from "@expo/vector-icons";
-import { formatDateTimeLabel } from "../utils/dateFormat";
+import { format } from "../utils/dateFormat";
 import { formatBookingReference } from "../utils/bookingFormat";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingDetail">;
@@ -79,17 +79,17 @@ export function BookingDetailScreen({ navigation, route }: Props) {
       };
     }, [booking.id])
   );
-  
-  const statusLabel = isRefunded 
-    ? "Refunded" 
-    : isCanceled 
-    ? "Cancelled" 
-    : isInProgress 
-    ? "In Progress" 
-    : isUpcoming 
-    ? "Upcoming" 
+
+  const statusLabel = isRefunded
+    ? "Refunded"
+    : isCanceled
+    ? "Cancelled"
+    : isInProgress
+    ? "In Progress"
+    : isUpcoming
+    ? "Upcoming"
     : "Completed";
-    
+
   const receiptUrl = booking.receiptUrl ?? null;
   const vehiclePlate = booking.vehiclePlate?.trim();
   const accessCode = booking.accessCode?.trim();
@@ -214,12 +214,12 @@ export function BookingDetailScreen({ navigation, route }: Props) {
         <Text style={styles.headerTitle}>Booking Details</Text>
         <View style={{ width: 40 }} />
       </View>
-      
+
       <ScrollView contentContainerStyle={styles.scrollContent} ref={scrollRef}>
         {/* Map Section - for upcoming/active bookings */}
         {(isUpcoming || isInProgress) && localStatus !== "canceled" ? (
           <View style={styles.mapSection}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.mapButton}
               onPress={() => {
                 Alert.alert(
@@ -233,7 +233,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
                     {
                       text: "Open Maps",
                       onPress: () => {
-                        const destination = booking.latitude && booking.longitude 
+                        const destination = booking.latitude && booking.longitude
                           ? `${booking.latitude},${booking.longitude}`
                           : encodeURIComponent(booking.address);
                         const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
@@ -260,16 +260,16 @@ export function BookingDetailScreen({ navigation, route }: Props) {
         ]}>
           {/* Status Header */}
           <View style={styles.statusHeader}>
-            <Ionicons 
+            <Ionicons
               name={
-                isCanceled ? "close-circle" 
-                : isRefunded ? "arrow-undo" 
-                : isInProgress ? "time" 
-                : isUpcoming ? "calendar" 
+                isCanceled ? "close-circle"
+                : isRefunded ? "arrow-undo"
+                : isInProgress ? "time"
+                : isUpcoming ? "calendar"
                 : "checkmark-circle"
-              } 
-              size={14} 
-              color="#FFFFFF" 
+              }
+              size={14}
+              color="#FFFFFF"
             />
             <Text style={styles.statusHeaderText}>{statusLabel}</Text>
           </View>
@@ -292,58 +292,58 @@ export function BookingDetailScreen({ navigation, route }: Props) {
               <>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>CHECKED IN</Text>
-                  <Text style={styles.detailValue}>{formatDateTimeLabel(checkedInAt)}</Text>
+                  <Text style={styles.detailValue}>{format(checkedInAt)}</Text>
                 </View>
               </>
             ) : null}
-            
+
             {isRefunded && refundedAt ? (
               <>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>REFUNDED</Text>
-                  <Text style={styles.detailValue}>{formatDateTimeLabel(refundedAt)}</Text>
+                  <Text style={styles.detailValue}>{format(refundedAt)}</Text>
                 </View>
               </>
             ) : null}
-          
+
           {/* Start and End Time - Side by Side */}
           <View style={styles.detailRowDouble}>
             <View style={styles.detailRowDoubleItem}>
               <Text style={styles.detailLabel}>START TIME</Text>
-              <Text style={styles.detailValue}>{formatDateTimeLabel(start)}</Text>
+              <Text style={styles.detailValue}>{format(start)}</Text>
             </View>
             <View style={styles.detailRowDoubleItem}>
               <Text style={styles.detailLabel}>END TIME</Text>
               <Text style={styles.detailValue}>{formatDateTimeLabel(end)}</Text>
             </View>
           </View>
-          
+
           <View style={styles.detailRowHorizontal}>
             <Text style={styles.detailLabel}>ORDER ID</Text>
             <Text style={styles.detailValue}>{formatBookingReference(booking.id)}</Text>
           </View>
-          
+
           {vehiclePlate ? (
             <View style={styles.detailRowHorizontal}>
               <Text style={styles.detailLabel}>VEHICLE</Text>
               <Text style={styles.detailValue}>{vehiclePlate}</Text>
             </View>
           ) : null}
-          
+
           {showAccessCode ? (
             <View style={styles.detailRowHorizontal}>
               <Text style={styles.detailLabel}>ACCESS CODE</Text>
               <Text style={styles.detailValue}>{accessCode}</Text>
             </View>
           ) : null}
-          
+
           <View style={styles.divider} />
-          
+
           <View style={styles.detailRowHorizontal}>
             <Text style={styles.detailLabel}>PARKING SPOT</Text>
             <Text style={styles.detailValue}>1 x Parking Space</Text>
           </View>
-          
+
           <View style={styles.detailRowHorizontal}>
             <Text style={styles.detailLabel}>TOTAL</Text>
             <Text style={[styles.detailValue, styles.totalValue]}>€{(localAmountCents / 100).toFixed(2)}</Text>
@@ -370,7 +370,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
               </View>
             </View>
           ) : (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.reviewButton}
               onPress={() => navigation.navigate("Review", { booking })}
             >
@@ -388,7 +388,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
                 <Text style={styles.actionBtnText}>Check In</Text>
               </TouchableOpacity>
             ) : null}
-            
+
             <TouchableOpacity
               style={[styles.actionBtn, extendBusy && styles.actionBtnDisabled]}
               onPress={() => setExtendOpen(true)}
@@ -398,7 +398,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
                 {extendBusy ? "Extending..." : "Extend Booking"}
               </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[styles.dangerButton, canceling && styles.dangerButtonDisabled]}
               onPress={handleCancel}
@@ -408,7 +408,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
                 {canceling ? "Canceling..." : "Cancel Booking"}
               </Text>
             </TouchableOpacity>
-            
+
             {extendError ? <Text style={styles.errorText}>{extendError}</Text> : null}
           </>
         ) : receiptUrl ? (
@@ -423,7 +423,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
           <Text style={styles.helpText}>Need help?</Text>
         </TouchableOpacity>
       </ScrollView>
-      
+
       <DatePicker
         modal
         open={extendOpen}
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB', // Match ListingScreen
   },
-  
+
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16, // Slightly more breathing room
@@ -459,25 +459,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  
+
   backButton: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   headerTitle: {
     fontSize: 20, // Slightly larger
     fontWeight: '700', // Bolder to match ListingScreen
     color: '#111827',
     letterSpacing: -0.3,
   },
-  
+
   scrollContent: {
     paddingBottom: 40,
   },
-  
+
   // Review card
   reviewCard: {
     backgroundColor: '#247881',
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     alignItems: 'center',
   },
-  
+
   reviewTitle: {
     fontSize: 22,
     fontWeight: '600',
@@ -498,13 +498,13 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     letterSpacing: -0.3,
   },
-  
+
   starsRow: {
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'center',
   },
-  
+
   // Review button
   reviewButton: {
     backgroundColor: '#FFFFFF',
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#E5E7EB',
   },
-  
+
   reviewButtonText: {
     fontSize: 16,
     fontWeight: '600',
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
   },
-  
+
   // Outer Green Card - creates the "frame" effect
   outerGreenCard: {
     backgroundColor: '#247881', // Dark green
@@ -547,23 +547,23 @@ const styles = StyleSheet.create({
     paddingBottom: 4, // Thin green "border" at bottom
     overflow: 'hidden',
   },
-  
+
   outerGreenCardCanceled: {
     backgroundColor: '#DC2626',
   },
-  
+
   outerGreenCardRefunded: {
     backgroundColor: '#3B82F6',
   },
-  
+
   outerGreenCardInProgress: {
     backgroundColor: '#F59E0B', // Amber/Orange
   },
-  
+
   outerGreenCardUpcoming: {
     backgroundColor: '#8B5CF6', // Purple
   },
-  
+
   // Status Header - dark green area at top
   statusHeader: {
     flexDirection: 'row',
@@ -572,14 +572,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     gap: 4,
   },
-  
+
   statusHeaderText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  
+
   // Inner White Content - has its own rounded corners
   innerWhiteContent: {
     backgroundColor: '#FFFFFF',
@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 24, // Match outer container radius
     padding: 20,
   },
-  
+
   // Listing row
   listingRow: {
     flexDirection: 'row',
@@ -597,18 +597,18 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     gap: 16,
   },
-  
+
   carIcon: {
     width: 36,
     height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
+
   listingText: {
     flex: 1,
   },
-  
+
   listingName: {
     fontSize: 22,
     fontWeight: '600',
@@ -616,18 +616,18 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     letterSpacing: -0.2,
   },
-  
+
   listingSubtitle: {
     fontSize: 16,
     color: '#6B7280',
   },
-  
+
   // Detail rows - vertical stacked layout
   detailRow: {
     paddingVertical: 12,
     alignItems: 'flex-start',
   },
-  
+
   // Detail rows - horizontal layout (label left, value right)
   detailRowHorizontal: {
     paddingVertical: 12,
@@ -635,19 +635,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  
+
   // Detail rows - two columns side by side
   detailRowDouble: {
     paddingVertical: 12,
     flexDirection: 'row',
     gap: 16,
   },
-  
+
   detailRowDoubleItem: {
     flex: 1,
     alignItems: 'flex-start',
   },
-  
+
   detailLabel: {
     fontSize: 12,
     fontWeight: '700',
@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     fontFamily: 'System',
   },
-  
+
   label: {
     fontSize: 12,
     fontWeight: '700',
@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     fontFamily: 'System',
   },
-  
+
   detailValue: {
     fontSize: 16,
     fontWeight: '600',
@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontFamily: 'System',
   },
-  
+
   value: {
     fontSize: 16,
     fontWeight: '600',
@@ -683,24 +683,24 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontFamily: 'System',
   },
-  
+
   totalValue: {
     fontSize: 20,
     fontWeight: '800',
   },
-  
+
   divider: {
     height: 1,
     backgroundColor: '#E5E7EB',
     marginVertical: 8,
   },
-  
+
   // Map section
   mapSection: {
     marginHorizontal: 20,
     marginBottom: 20,
   },
-  
+
   mapTitle: {
     fontSize: 24,
     fontWeight: '600',
@@ -708,26 +708,26 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     letterSpacing: -0.3,
   },
-  
+
   mapAddress: {
     fontSize: 15,
     color: '#6B7280',
     marginBottom: 16,
   },
-  
+
   parkingImage: {
     height: 200,
     borderRadius: 16,
     marginBottom: 12,
     backgroundColor: '#F3F4F6',
   },
-  
+
   map: {
     height: 200,
     borderRadius: 16,
     marginBottom: 12,
   },
-  
+
   mapPlaceholder: {
     height: 200,
     backgroundColor: '#F3F4F6',
@@ -736,13 +736,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
-  
+
   mapPlaceholderText: {
     fontSize: 14,
     color: '#6B7280',
     marginTop: 8,
   },
-  
+
   mapButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -756,13 +756,13 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     marginBottom: 4,
   },
-  
+
   mapButtonText: {
     fontSize: 16,
     fontWeight: '500',
     color: '#111827',
   },
-  
+
   // Action buttons
   actionBtn: {
     backgroundColor: '#247881',
@@ -772,17 +772,17 @@ const styles = StyleSheet.create({
     marginTop: 16,
     alignItems: 'center',
   },
-  
+
   actionBtnDisabled: {
     opacity: 0.6,
   },
-  
+
   actionBtnText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
   },
-  
+
   dangerButton: {
     borderWidth: 2,
     borderColor: '#FCA5A5',
@@ -793,17 +793,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
     alignItems: 'center',
   },
-  
+
   dangerButtonText: {
     color: '#DC2626',
     fontSize: 16,
     fontWeight: '600',
   },
-  
+
   dangerButtonDisabled: {
     opacity: 0.6,
   },
-  
+
   errorText: {
     color: '#DC2626',
     fontSize: 14,
@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginHorizontal: 20,
   },
-  
+
   // Help button
   helpButton: {
     flexDirection: 'row',
@@ -822,7 +822,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginHorizontal: 20,
   },
-  
+
   helpText: {
     fontSize: 18,
     fontWeight: '600',

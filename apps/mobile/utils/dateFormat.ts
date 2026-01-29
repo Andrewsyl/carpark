@@ -18,5 +18,5 @@ export const formatDateLabel = (date: Date) => {
 export const formatTimeLabel = (date: Date) =>
   date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 
-export const formatDateTimeLabel = (date: Date) => 
+export const format = (date: Date) =>
   `${formatDateLabel(date)}, ${formatTimeLabel(date)}`;

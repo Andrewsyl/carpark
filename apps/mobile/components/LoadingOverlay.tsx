@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -47,23 +47,11 @@ export function LoadingOverlay({ visible, message = "Loading..." }: LoadingOverl
     transform: [{ scale: scale.value }],
   }));
 
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value * 360}deg` }],
-  }));
-
-  if (!visible && opacity.value === 0) return null;
-
   return (
     <Animated.View style={[styles.overlay, overlayStyle]} pointerEvents={visible ? "auto" : "none"}>
       <Animated.View style={[styles.content, contentStyle]}>
         <View style={styles.animationContainer}>
-          <Animated.View style={iconStyle}>
-            <Image
-              source={require("../assets/parkingsign.png")}
-              style={styles.icon}
-              resizeMode="contain"
-            />
-          </Animated.View>
+          <ActivityIndicator size="large" color="#9ca3af" />
         </View>
         <Text style={styles.message}>{message}</Text>
       </Animated.View>
@@ -92,10 +80,6 @@ const styles = StyleSheet.create({
     height: 120,
     alignItems: "center",
     justifyContent: "center",
-  },
-  icon: {
-    width: 92,
-    height: 92,
   },
   message: {
     fontSize: 16,

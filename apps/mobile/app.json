@@ -31,11 +31,6 @@
     "assetBundlePatterns": [
       "**/*"
     ],
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F8F1E7"
-    },
     "android": {
       "userInterfaceStyle": "light",
       "package": "com.andrewsyl.carparking",

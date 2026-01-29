@@ -41,7 +41,6 @@ import { AdminScreen } from "./screens/AdminScreen";
 import type { RootStackParamList } from "./types";
 import { registerPushToken } from "./api";
 import { Ionicons } from "@expo/vector-icons";
-import { BottomTabButton } from "./components/BottomTabButton";
 import { LoadingOverlay } from "./components/LoadingOverlay";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LottieView from "lottie-react-native";
@@ -182,36 +181,10 @@ function GlobalLoadingOverlay() {
 }
 
 function MainTabs() {
-  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#047857",
-        tabBarInactiveTintColor: "#9ca3af",
-        tabBarStyle: {
-          backgroundColor: "#ffffff",
-          borderTopWidth: 0,
-          height: 60 + insets.bottom,
-          paddingBottom: Math.max(6, insets.bottom),
-          paddingTop: 8,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.04,
-          shadowRadius: 8,
-          elevation: 8,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: "500",
-          marginTop: 4,
-          letterSpacing: 0,
-        },
-        tabBarButton: (props) => <BottomTabButton {...props} />,
-        tabBarItemStyle: {
-          paddingVertical: 0,
-          paddingTop: 0,
-        },
       }}
     >
       <Tab.Screen
