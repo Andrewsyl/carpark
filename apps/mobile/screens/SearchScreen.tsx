@@ -200,6 +200,8 @@ export function SearchScreen({ navigation }: Props) {
   const mapReadyFailSafeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mapSpinnerAnim = useRef(new Animated.Value(0)).current;
   const mapSpinnerLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const mapRegionSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialRegionHandledRef = useRef(false);
 
   const mapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
@@ -212,12 +214,39 @@ export function SearchScreen({ navigation }: Props) {
     latitudeDelta: 0.025, // Wider area view
     longitudeDelta: 0.025,
   };
+  const [mapInitialRegion, setMapInitialRegion] = useState<typeof mapRegion | null>(null);
   const ignoreNextRegionChangeRef = useRef(false);
   const lastSearchCenterRef = useRef<{ lat: number; lng: number } | null>(null);
   const mapRef = useRef<MapView | null>(null);
   const skipAutocompleteRef = useRef(0);
   const historyLoadedRef = useRef(false);
   const HISTORY_KEY = "searchHistory";
+  const MAP_REGION_KEY = "search.mapRegion";
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(MAP_REGION_KEY);
+        if (!active || !stored) return;
+        const parsed = JSON.parse(stored) as typeof mapRegion;
+        if (
+          typeof parsed?.latitude === "number" &&
+          typeof parsed?.longitude === "number" &&
+          typeof parsed?.latitudeDelta === "number" &&
+          typeof parsed?.longitudeDelta === "number"
+        ) {
+          setMapInitialRegion(parsed);
+        }
+      } catch {
+        // Ignore persisted region errors.
+      }
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const buildSearchParams = useCallback(
     (overrides?: Partial<SearchParams>): SearchParams => {
@@ -288,6 +317,7 @@ export function SearchScreen({ navigation }: Props) {
       }
       try {
         const spaces = await searchListings(params);
+        if (searchRequestIdRef.current !== requestId) return;
         setResults(spaces);
         setSelectedId((prev) => {
           if (
@@ -303,7 +333,9 @@ export function SearchScreen({ navigation }: Props) {
         const message = err instanceof Error ? err.message : "Search failed";
         logError("Search error", { message });
         setError(message);
-        setResults([]);
+        if (searchRequestIdRef.current === requestId) {
+          setResults([]);
+        }
       } finally {
         const elapsed = Date.now() - searchStartedAtRef.current;
         const remaining = Math.max(0, 1000 - elapsed);
@@ -330,6 +362,7 @@ export function SearchScreen({ navigation }: Props) {
   const handleMapReady = (type: "ready" | "loaded") => {
     mapReadyEventsRef.current[type] = true;
     scheduleMapReady();
+    initialRegionHandledRef.current = true;
     if (!results.length && !loading && type === "ready") {
       void runSearch();
     }
@@ -542,8 +575,9 @@ export function SearchScreen({ navigation }: Props) {
     useCallback(() => {
       setSelectedId(null);
       setSearchSheetOpen(false);
-      setMapReady(false);
-      mapReadyEventsRef.current = { ready: false, loaded: false };
+      // Don't reset mapReady when switching tabs - keep map mounted
+      // setMapReady(false);
+      // mapReadyEventsRef.current = { ready: false, loaded: false };
       if (mapReadyTimerRef.current) {
         clearTimeout(mapReadyTimerRef.current);
         mapReadyTimerRef.current = null;
@@ -695,6 +729,16 @@ export function SearchScreen({ navigation }: Props) {
       ignoreNextRegionChangeRef.current = false;
       return;
     }
+    if (!initialRegionHandledRef.current) {
+      initialRegionHandledRef.current = true;
+      return;
+    }
+    if (mapRegionSaveTimerRef.current) {
+      clearTimeout(mapRegionSaveTimerRef.current);
+    }
+    mapRegionSaveTimerRef.current = setTimeout(() => {
+      void AsyncStorage.setItem(MAP_REGION_KEY, JSON.stringify(nextRegion));
+    }, 350);
     const last = lastSearchCenterRef.current ?? {
       lat: mapRegion.latitude,
       lng: mapRegion.longitude,
@@ -736,7 +780,7 @@ export function SearchScreen({ navigation }: Props) {
       <View style={styles.mapShell}>
         {launchComplete ? (
           <MapSection
-            initialRegion={mapRegion}
+            initialRegion={mapInitialRegion ?? mapRegion}
             results={results}
             style={styles.map}
             mapPadding={{
@@ -1194,20 +1238,49 @@ export function SearchScreen({ navigation }: Props) {
               <View style={styles.pickerBackdrop}>
                 <View style={styles.pickerSheet}>
                   <View style={styles.pickerHeader}>
+                    <Text style={styles.pickerTitle}>When do you want to leave?</Text>
+                    <Text style={styles.pickerSubtitle}>
+                      Starting {formatDateTimeLabel(startAt)}
+                    </Text>
+                  </View>
+                  <Text style={styles.pickerQuickTitle}>Quick select a duration</Text>
+                  <View style={styles.pickerQuickRow}>
+                    {[2, 4, 6].map((hours) => (
+                      <Pressable
+                        key={hours}
+                        style={styles.pickerQuickPill}
+                        onPress={() => applyQuickDuration(hours)}
+                      >
+                        <Text style={styles.pickerQuickText}>{hours} hr</Text>
+                      </Pressable>
+                    ))}
                     <Pressable
-                      style={styles.pickerCancel}
+                      style={styles.pickerQuickPill}
+                      onPress={() => applyQuickDuration(24 * 30)}
+                    >
+                      <Text style={styles.pickerQuickText}>Monthly</Text>
+                    </Pressable>
+                  </View>
+                  <DatePicker
+                    date={draftDate ?? (pickerField === "start" ? startAt : endAt)}
+                    mode="datetime"
+                    androidVariant="iosClone"
+                    minuteInterval={5}
+                    textColor="#101828"
+                    onDateChange={(date) => setDraftDate(snapTo5Minutes(date))}
+                  />
+                  <View style={styles.pickerFooter}>
+                    <Pressable
+                      style={styles.pickerFooterGhost}
                       onPress={() => {
                         setPickerVisible(false);
                         setDraftDate(null);
                       }}
                     >
-                      <Text style={styles.pickerCancelText}>Cancel</Text>
+                      <Text style={styles.pickerFooterGhostText}>Back</Text>
                     </Pressable>
-                    <Text style={styles.pickerTitle}>
-                      {pickerField === "start" ? "Start" : "End"}
-                    </Text>
                     <Pressable
-                      style={styles.pickerDone}
+                      style={styles.pickerFooterPrimary}
                       onPress={() => {
                         const next = draftDate ?? (pickerField === "start" ? startAt : endAt);
                         if (pickerField === "start") {
@@ -1223,32 +1296,9 @@ export function SearchScreen({ navigation }: Props) {
                         setDraftDate(null);
                       }}
                     >
-                      <Text style={styles.pickerDoneText}>
-                        {pickerField === "start" ? "Next" : "Done"}
-                      </Text>
+                      <Text style={styles.pickerFooterPrimaryText}>Search</Text>
                     </Pressable>
                   </View>
-                  <DatePicker
-                    date={draftDate ?? (pickerField === "start" ? startAt : endAt)}
-                    mode="datetime"
-                    androidVariant="iosClone"
-                    minuteInterval={5}
-                    textColor="#101828"
-                    onDateChange={(date) => setDraftDate(snapTo5Minutes(date))}
-                  />
-                  {pickerField === "end" ? (
-                    <View style={styles.durationRow}>
-                      {[2, 4, 6].map((hours) => (
-                        <Pressable
-                          key={hours}
-                          style={styles.durationPill}
-                          onPress={() => applyQuickDuration(hours)}
-                        >
-                          <Text style={styles.durationText}>{hours} hours</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  ) : null}
                 </View>
               </View>
             </Modal>
@@ -1832,7 +1882,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   dateTimeLabel: {
-    fontSize: 11,
+    fontSize: 9,
     color: "#6B7280",
     marginBottom: 4,
   },
@@ -1912,42 +1962,78 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     marginBottom: 48,
-    paddingBottom: 20,
+    paddingBottom: 24,
     paddingHorizontal: 20,
     paddingTop: 12,
     marginHorizontal: 16,
   },
   pickerHeader: {
     alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  pickerCancel: {
-    backgroundColor: "#f2f4f7",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  pickerCancelText: {
-    color: "#475467",
-    fontSize: 12,
-    fontWeight: "600",
+    marginBottom: 12,
   },
   pickerTitle: {
     color: "#0f172a",
     fontSize: 15,
     fontWeight: "600",
+    textAlign: "center",
   },
-  pickerDone: {
-    backgroundColor: "#0f172a",
+  pickerSubtitle: {
+    color: "#98a2b3",
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: "center",
+  },
+  pickerQuickTitle: {
+    color: "#98a2b3",
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  pickerQuickRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 8,
+    marginBottom: 8,
+    flexWrap: "wrap",
+  },
+  pickerQuickPill: {
+    backgroundColor: "#F3F4F6",
     borderRadius: 999,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
   },
-  pickerDoneText: {
-    color: "#ffffff",
+  pickerQuickText: {
+    color: "#6B7280",
     fontSize: 12,
+    fontWeight: "600",
+  },
+  pickerFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 16,
+  },
+  pickerFooterGhost: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  pickerFooterGhostText: {
+    color: "#16a34a",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  pickerFooterPrimary: {
+    backgroundColor: "#16a34a",
+    borderRadius: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    minWidth: 90,
+    alignItems: "center",
+  },
+  pickerFooterPrimaryText: {
+    color: "#ffffff",
+    fontSize: 13,
     fontWeight: "600",
   },
   suggestionItem: {

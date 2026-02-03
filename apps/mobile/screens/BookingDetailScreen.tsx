@@ -13,7 +13,7 @@ import { useAuth } from "../auth";
 import { getNotificationImageAttachment } from "../notifications";
 import type { RootStackParamList } from "../types";
 import { Ionicons } from "@expo/vector-icons";
-import { format } from "../utils/dateFormat";
+import { format, formatDateTimeLabel } from "../utils/dateFormat";
 import { formatBookingReference } from "../utils/bookingFormat";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingDetail">;

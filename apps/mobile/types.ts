@@ -12,6 +12,7 @@ export type RootStackParamList = {
     from: string;
     to: string;
   };
+  VehicleType: undefined;
   Welcome: undefined;
   SignIn: undefined;
   Register: undefined;

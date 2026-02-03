@@ -87,6 +87,9 @@ export default function MapSection({
   const renderedResultsRef = useRef(nextResults);
   const captureRefs = useRef(new Map<string, ViewShotRef>());
   const pendingCaptures = useRef(new Set<string>());
+  const localMapRef = useRef<MapView | null>(null);
+  const lastRegionRef = useRef<MapRegion>(region ?? initialRegion);
+  const lastSelectedIdRef = useRef<string | null | undefined>(undefined);
   const lastTapRef = useRef<{
     ids: string[];
     key: string;
@@ -124,6 +127,20 @@ export default function MapSection({
       : provider === "default"
         ? PROVIDER_DEFAULT
         : undefined;
+
+  if (region) {
+    lastRegionRef.current = region;
+  }
+
+  const attachMapRef = (instance: MapView | null) => {
+    localMapRef.current = instance;
+    if (!mapRef) return;
+    if (typeof mapRef === "function") {
+      mapRef(instance);
+      return;
+    }
+    (mapRef as React.MutableRefObject<MapView | null>).current = instance;
+  };
   useEffect(() => {
     if (freezeMarkers && renderedResultsRef.current.length) return;
     renderedResultsRef.current = nextResults;
@@ -160,17 +177,44 @@ export default function MapSection({
         });
     });
   }, [labelKeys, pinImages]);
+
+  useEffect(() => {
+    if (!selectedId || lastSelectedIdRef.current === selectedId) return;
+    lastSelectedIdRef.current = selectedId;
+    const selected = nextResults.find((listing) => listing.id === selectedId);
+    if (!selected || typeof selected.latitude !== "number" || typeof selected.longitude !== "number") {
+      return;
+    }
+    const map = localMapRef.current;
+    if (!map) return;
+    const regionRef = lastRegionRef.current ?? initialRegion;
+    map.animateToRegion(
+      {
+        latitude: selected.latitude,
+        longitude: selected.longitude,
+        latitudeDelta: regionRef.latitudeDelta,
+        longitudeDelta: regionRef.longitudeDelta,
+      },
+      280
+    );
+  }, [selectedId, nextResults, initialRegion]);
   const getPinKey = (label: string, selected: boolean) =>
     `${label}|${selected ? "selected" : "default"}|${PIN_STYLE_VERSION}`;
   return (
     <View style={styles.container}>
       <MapView
         style={[styles.map, style]}
-        ref={mapRef}
+        ref={attachMapRef}
         provider={providerValue}
         initialRegion={initialRegion}
         region={region}
-        onRegionChangeComplete={onRegionChangeComplete}
+        cacheEnabled
+        loadingEnabled
+        loadingBackgroundColor="#F9FAFB"
+        onRegionChangeComplete={(nextRegion) => {
+          lastRegionRef.current = nextRegion;
+          onRegionChangeComplete?.(nextRegion);
+        }}
         onMapLoaded={onMapLoaded}
         onMapReady={onMapReady}
         googleMapId={googleMapId}

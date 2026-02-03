@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Animated,
-  Easing,
   Platform,
   Pressable,
   StyleSheet,
@@ -15,12 +13,15 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { StatusBar } from "expo-status-bar";
 import Constants from "expo-constants";
 import { StripeProvider } from "@stripe/stripe-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { enableScreens } from "react-native-screens";
 import { AuthProvider, useAuth } from "./auth";
 import { AppLaunchContext } from "./appLaunch";
 import { FavoritesProvider } from "./favorites";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { FavoritesScreen } from "./screens/FavoritesScreen";
 import { BookingSummaryScreen } from "./screens/BookingSummaryScreen";
+import { VehicleTypeScreen } from "./screens/VehicleTypeScreen";
 import { ListingScreen } from "./screens/ListingScreen";
 import { ListingsScreen } from "./screens/ListingsScreen";
 import { PaymentsScreen } from "./screens/PaymentsScreen";
@@ -41,39 +42,17 @@ import { AdminScreen } from "./screens/AdminScreen";
 import type { RootStackParamList } from "./types";
 import { registerPushToken } from "./api";
 import { Ionicons } from "@expo/vector-icons";
+import { BottomTabButton } from "./components/BottomTabButton";
 import { LoadingOverlay } from "./components/LoadingOverlay";
-import LottieView from "lottie-react-native";
-import carAnimation from "./assets/car.json";
 import { colors } from "./theme/colors";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
-export default function App() {
-  const [showStartupAnim, setShowStartupAnim] = useState(true);
-  const [launchComplete, setLaunchComplete] = useState(true);
-  const splashOpacity = useRef(new Animated.Value(1)).current;
-  const carOpacity = useRef(new Animated.Value(0)).current;
-  const overlayOpacity = useRef(new Animated.Value(1)).current;
-  const animationFinishedRef = useRef(false);
+enableScreens(true);
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(splashOpacity, {
-        toValue: 0,
-        duration: 520,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(carOpacity, {
-        toValue: 1,
-        duration: 520,
-        delay: 140,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [carOpacity, splashOpacity]);
+export default function App() {
+  const [launchComplete, setLaunchComplete] = useState(true);
 
   useEffect(() => {
     Notifications.setNotificationHandler({
@@ -111,11 +90,16 @@ export default function App() {
           <FavoritesProvider>
             <AppLaunchContext.Provider value={appLaunchValue}>
               <NavigationContainer>
-                <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Tabs">
+                <Stack.Navigator
+                  screenOptions={{ headerShown: false }}
+                  initialRouteName="Tabs"
+                  detachInactiveScreens={false}
+                >
                   <Stack.Screen name="Tabs" component={MainTabs} />
                   <Stack.Screen name="Listing" component={ListingScreen} />
                   <Stack.Screen name="Listings" component={ListingsScreen} />
                   <Stack.Screen name="BookingSummary" component={BookingSummaryScreen} />
+                  <Stack.Screen name="VehicleType" component={VehicleTypeScreen} />
                   <Stack.Screen name="Welcome" component={WelcomeScreen} />
                   <Stack.Screen name="SignIn" component={SignInScreen} />
                   <Stack.Screen name="Register" component={RegisterScreen} />
@@ -141,37 +125,6 @@ export default function App() {
           </FavoritesProvider>
         </AuthProvider>
       </StripeProvider>
-      {showStartupAnim ? (
-        <Animated.View style={[styles.splashOverlay, { opacity: overlayOpacity }]}>
-          <Animated.View style={[styles.startupLayer, { opacity: splashOpacity }]}>
-            <LottieView
-              source={carAnimation}
-              autoPlay={false}
-              loop={false}
-              progress={0}
-              style={styles.carAnimation}
-            />
-          </Animated.View>
-          <Animated.View style={[styles.startupLayer, { opacity: carOpacity }]}>
-            <LottieView
-              source={carAnimation}
-              autoPlay
-              loop={false}
-              style={styles.carAnimation}
-              onAnimationFinish={() => {
-                if (animationFinishedRef.current) return;
-                animationFinishedRef.current = true;
-                Animated.timing(overlayOpacity, {
-                  toValue: 0,
-                  duration: 280,
-                  easing: Easing.out(Easing.cubic),
-                  useNativeDriver: true,
-                }).start(() => setShowStartupAnim(false));
-              }}
-            />
-          </Animated.View>
-        </Animated.View>
-      ) : null}
     </View>
   );
 }
@@ -182,19 +135,50 @@ function GlobalLoadingOverlay() {
 }
 
 function MainTabs() {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
+      detachInactiveScreens={false}
+      lazy={false}
       screenOptions={{
         headerShown: false,
+        tabBarActiveTintColor: colors.brand.teal,
+        tabBarInactiveTintColor: colors.text.muted,
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#E5E7EB',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          elevation: 6,
+          paddingTop: 6,
+          paddingBottom: Math.max(12, insets.bottom),
+          height: 60 + Math.max(12, insets.bottom),
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '600',
+          marginTop: 2,
+          letterSpacing: 0.1,
+        },
+        tabBarButton: (props) => <BottomTabButton {...props} />,
+        lazy: false,
       }}
+      detachInactiveScreens={false}
     >
       <Tab.Screen
         name="Search"
         component={SearchScreen}
         options={{
           tabBarLabel: "Search",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search" size={size ?? 22} color={color} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? "search" : "search-outline"} 
+              size={24} 
+              color={color} 
+            />
           ),
         }}
       />
@@ -203,8 +187,12 @@ function MainTabs() {
         component={HistoryScreen}
         options={{
           tabBarLabel: "Bookings",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar" size={size ?? 22} color={color} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? "calendar" : "calendar-outline"} 
+              size={24} 
+              color={color} 
+            />
           ),
         }}
       />
@@ -213,8 +201,12 @@ function MainTabs() {
         component={ProfileScreen}
         options={{
           tabBarLabel: "Account",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size ?? 22} color={color} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? "person" : "person-outline"} 
+              size={24} 
+              color={color} 
+            />
           ),
         }}
       />
@@ -343,10 +335,6 @@ const styles = StyleSheet.create({
   app: {
     flex: 1,
   },
-  carAnimation: {
-    height: 220,
-    width: 220,
-  },
   legalActions: {
     flexDirection: "row",
     justifyContent: "flex-end",
@@ -439,17 +427,5 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     letterSpacing: -0.1,
-  },
-  splashOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    backgroundColor: colors.background.splash,
-    justifyContent: "center",
-    zIndex: 999,
-  },
-  startupLayer: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
   },
 });

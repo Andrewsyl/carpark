@@ -10,18 +10,17 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   Switch,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { useStripe } from "@stripe/stripe-react-native";
 import * as Notifications from "expo-notifications";
 import DatePicker from "react-native-date-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { cardShadow, colors, radius, spacing } from "../styles/theme";
 import {
   confirmBookingPayment,
@@ -47,15 +46,8 @@ const snapTo5Minutes = (date: Date) => {
   return next;
 };
 
-const formatIrishReg = (value: string) => {
-  const raw = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const year = raw.replace(/\D/g, "").slice(0, 3);
-  const rest = raw.slice(year.length);
-  const county = rest.replace(/[^A-Z]/g, "").slice(0, 1);
-  const serial = rest.replace(/\D/g, "");
-  const parts = [year, county, serial].filter(Boolean);
-  return parts.join("-");
-};
+const VEHICLE_MAKE_KEY = "vehicle.make";
+const VEHICLE_COLOR_KEY = "vehicle.color";
 
 export function BookingSummaryScreen({ navigation, route }: Props) {
   const { id, from, to } = route.params;
@@ -71,7 +63,8 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
   const [paymentFailed, setPaymentFailed] = useState(false);
   const [paymentFailureMessage, setPaymentFailureMessage] = useState<string | null>(null);
   const [insuranceEnabled, setInsuranceEnabled] = useState(true);
-  const [vehiclePlate, setVehiclePlate] = useState("");
+  const [vehicleMake, setVehicleMake] = useState("");
+  const [vehicleColor, setVehicleColor] = useState("");
   const [startAt, setStartAt] = useState(() => new Date(from));
   const [endAt, setEndAt] = useState(() => new Date(to));
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -126,6 +119,27 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
     setStartAt(new Date(from));
     setEndAt(new Date(to));
   }, [from, to]);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const [savedMake, savedColor] = await Promise.all([
+          AsyncStorage.getItem(VEHICLE_MAKE_KEY),
+          AsyncStorage.getItem(VEHICLE_COLOR_KEY),
+        ]);
+        if (!active) return;
+        if (savedMake) setVehicleMake(savedMake);
+        if (savedColor) setVehicleColor(savedColor);
+      } catch {
+        // Ignore lookup failures.
+      }
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const start = useMemo(() => startAt, [startAt]);
   const end = useMemo(() => endAt, [endAt]);
@@ -216,7 +230,6 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
     setError(null);
     setPaymentFailed(false);
     setPaymentFailureMessage(null);
-    const normalizedPlate = vehiclePlate.trim().replace(/-/g, " ");
     let didConfirm = false;
     try {
       logInfo("Booking started", {
@@ -229,7 +242,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
         from: startAt.toISOString(),
         to: endAt.toISOString(),
         amountCents: priceSummary.totalCents,
-        vehiclePlate: normalizedPlate ? normalizedPlate : undefined,
+        vehiclePlate: undefined,
         token,
       });
       const paymentIntentId = payment.paymentIntentId ?? "";
@@ -340,18 +353,19 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <View style={styles.gradientWrapper}>
-        <LinearGradient colors={["#ECFDF5", "#F9FAFB"]} style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.headerBackButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            disabled={bookingBusy || bookingConfirmed}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Booking summary</Text>
-        </LinearGradient>
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          disabled={bookingBusy || bookingConfirmed}
+        >
+          <View style={styles.backCircle}>
+            <Ionicons name="arrow-back" size={16} color={colors.text} />
+          </View>
+        </TouchableOpacity>
+        <Text style={styles.topTitle}>Booking summary</Text>
+        <View style={styles.backButton} />
       </View>
       <BookingProgressBar currentStep={bookingBusy || confirmingBooking ? 3 : 2} />
       {loadingListing ? (
@@ -372,30 +386,33 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardHeaderTitle}>{listing.title || "Adam House Car Park"}</Text>
-              <View style={styles.cardHeaderSubtitleRow}>
-                <Ionicons name="location-outline" size={18} color={colors.text} />
-                <Text style={styles.cardHeaderSubtitle}>
+            <View style={styles.cardBody}>
+              <Text style={styles.listingTitle}>{listing.title || "Adam House Car Park"}</Text>
+              <View style={styles.addressRow}>
+                <View style={styles.addressDot} />
+                <Text style={styles.addressText}>
                   {listing.address || "24 Adam Street, Dublin"}
                 </Text>
               </View>
             </View>
+            <View style={styles.divider} />
             <View style={styles.cardBody}>
               <View style={styles.dateRow}>
                 <View style={styles.dateColumn}>
                   <Text style={styles.dateLabel}>Parking from</Text>
-                  <TouchableOpacity onPress={() => openPicker("start")}>
-                    <Text style={styles.dateValue}>{formatDateTimeLabel(start)}</Text>
+                  <TouchableOpacity onPress={() => openPicker("start")} style={styles.dateTimePill}>
+                    <Ionicons name="time-outline" size={14} color={colors.text} />
+                    <Text style={styles.dateTimeText}>{formatDateTimeLabel(start)}</Text>
                   </TouchableOpacity>
                 </View>
-                <View style={styles.durationColumn}>
+                <View style={styles.durationPill}>
                   <Text style={styles.durationValue}>{durationHours}h</Text>
                 </View>
                 <View style={styles.dateColumn}>
                   <Text style={styles.dateLabel}>Parking until</Text>
-                  <TouchableOpacity onPress={() => openPicker("end")}>
-                    <Text style={styles.dateValue}>{formatDateTimeLabel(end)}</Text>
+                  <TouchableOpacity onPress={() => openPicker("end")} style={styles.dateTimePill}>
+                    <Ionicons name="time-outline" size={14} color={colors.text} />
+                    <Text style={styles.dateTimeText}>{formatDateTimeLabel(end)}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -404,22 +421,23 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 
           <View style={styles.card}>
             <View style={styles.cardBody}>
-              <Text style={styles.fieldLabel}>Registration number</Text>
-              <View style={styles.plateRow}>
+              <Text style={styles.fieldLabel}>Vehicle registration</Text>
+              <Pressable
+                style={styles.regRow}
+                onPress={() => navigation.navigate("VehicleType")}
+              >
                 <View style={styles.plateCountry}>
                   <Text style={styles.plateCountryText}>IRL</Text>
                 </View>
-                <TextInput
-                  value={vehiclePlate}
-                  onChangeText={(value) => setVehiclePlate(formatIrishReg(value))}
-                  placeholder="12-D-12345"
-                  placeholderTextColor="#9ca3af"
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  maxLength={12}
-                  style={styles.plateInput}
-                />
-              </View>
+                <View style={styles.regDetails}>
+                  <Text style={styles.regPlaceholder}>
+                    {vehicleMake
+                      ? `${vehicleMake}${vehicleColor ? ` · ${vehicleColor}` : ""}`
+                      : "REGISTER VEHICLE"}
+                  </Text>
+                  <Text style={styles.regHint}>Select vehicle type & color</Text>
+                </View>
+              </Pressable>
             </View>
           </View>
 
@@ -501,16 +519,13 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
             onPress={handlePayment}
             disabled={bookingBusy || bookingConfirmed}
           >
-            <View style={styles.footerButtonContent}>
-              <MaterialCommunityIcons name="credit-card-outline" size={18} color={colors.text} />
-              <Text style={styles.footerButtonText}>
-                {bookingBusy
-                  ? confirmingBooking
-                    ? "Finalizing..."
-                    : "Processing..."
-                  : `€${pricing.finalPrice.toFixed(2)} - Pay and reserve`}
-              </Text>
-            </View>
+            <Text style={styles.footerButtonText}>
+              {bookingBusy
+                ? confirmingBooking
+                  ? "Finalizing..."
+                  : "Processing..."
+                : `€${pricing.finalPrice.toFixed(2)} - Pay and reserve`}
+            </Text>
           </TouchableOpacity>
         </View>
       ) : null}
@@ -562,97 +577,130 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "#F9FAFB",
   },
-  gradientWrapper: {
-    flex: 0,
-  },
-  header: {
+  topBar: {
     alignItems: "center",
+    backgroundColor: colors.headerTint,
     flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: spacing.screenX,
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
-  headerBackButton: {
-    padding: 8,
-    marginRight: 8,
+  backButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 6,
+    width: 56,
   },
-  headerTitle: {
+  backCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  topTitle: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: "600",
-    flex: 1,
+    letterSpacing: 0.3,
   },
   scrollContent: {
-    padding: 15,
+    padding: 16,
     paddingBottom: 120,
   },
   divider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 8,
+    backgroundColor: colors.cardBg,
+    borderRadius: 16,
     marginBottom: 16,
     shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 3,
-  },
-  cardHeader: {
-    backgroundColor: "#1B2B39",
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  cardHeaderTitle: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  cardHeaderSubtitle: {
-    color: "#cbd5e1",
-    fontSize: 12,
-    marginTop: 4,
+    elevation: 2,
   },
   cardBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+  },
+  listingTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: "600",
+    letterSpacing: -0.3,
+  },
+  addressRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 6,
+  },
+  addressDot: {
+    backgroundColor: colors.textSoft,
+    borderRadius: 999,
+    height: 6,
+    width: 6,
+  },
+  addressText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: "600",
   },
   dateRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 10,
+    gap: 12,
   },
   dateColumn: {
     flex: 1,
   },
   dateLabel: {
-    color: "#64748b",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 6,
   },
-  dateValue: {
-    color: "#247881",
-    fontSize: 13,
-    fontWeight: "600",
-    textDecorationLine: "underline",
-    textDecorationColor: "#247881",
+  dateTimePill: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: colors.border,
+    borderRadius: 10,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
-  durationColumn: {
-    width: 60,
+  dateTimeText: {
+    color: "#101828",
+    fontSize: 11,
+    fontWeight: "600",
+    flex: 1,
+  },
+  durationPill: {
+    alignItems: "center",
+    backgroundColor: colors.appBg,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     alignItems: "center",
     justifyContent: "center",
   },
   durationValue: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#111827",
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.text,
   },
   rowBetween: {
     flexDirection: "row",
@@ -670,13 +718,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   rowLabel: {
-    color: "#1f2937",
-    fontSize: 14,
+    color: colors.text,
+    fontSize: 13,
     fontWeight: "600",
   },
   rowValue: {
-    color: "#111827",
-    fontSize: 14,
+    color: colors.text,
+    fontSize: 13,
     fontWeight: "600",
   },
   rowSubtext: {
@@ -692,14 +740,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   finalLabel: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0f172a",
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.text,
   },
   finalValue: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
-    color: "#0f172a",
+    color: colors.text,
   },
   trustRow: {
     paddingHorizontal: 16,
@@ -709,8 +757,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   fieldLabel: {
-    color: "#1f2937",
-    fontSize: 14,
+    color: colors.text,
+    fontSize: 13,
     fontWeight: "600",
     marginBottom: 10,
   },
@@ -724,35 +772,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
   },
-  plateRow: {
+  regRow: {
     flexDirection: "row",
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "#0f172a",
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#cbd5e1",
     overflow: "hidden",
     backgroundColor: "#f8fafc",
+    alignItems: "center",
+  },
+  regDetails: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    justifyContent: "center",
   },
   plateCountry: {
-    width: 56,
+    width: 48,
     backgroundColor: "#1e3a8a",
     alignItems: "center",
     justifyContent: "center",
   },
   plateCountryText: {
     color: "#ffffff",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
     letterSpacing: 1.2,
   },
-  plateInput: {
-    flex: 1,
-    color: "#0f172a",
-    fontSize: 17,
+  regPlaceholder: {
+    color: colors.text,
+    fontSize: 13,
     fontWeight: "700",
-    letterSpacing: 2,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: "#fefefe",
+    letterSpacing: 1.6,
+  },
+  regHint: {
+    color: "#94a3b8",
+    fontSize: 11,
+    marginTop: 4,
   },
   centered: {
     alignItems: "center",
@@ -835,25 +891,32 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#F8F9FA",
-    paddingHorizontal: 15,
-    paddingTop: 10,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: "#e2e8f0",
+    borderTopColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
   footerButton: {
-    backgroundColor: "#BCCAD1",
-    borderRadius: 8,
-    height: 56,
+    backgroundColor: "#0F766E",
+    borderRadius: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    minHeight: 48,
     alignItems: "center",
     justifyContent: "center",
   },
   footerButtonDisabled: {
-    opacity: 0.7,
+    backgroundColor: "#E5E7EB",
   },
   footerButtonText: {
-    color: "#243b4a",
-    fontSize: 15,
+    color: "#FFFFFF",
+    fontSize: 14,
     fontWeight: "700",
   },
   successOverlay: {
