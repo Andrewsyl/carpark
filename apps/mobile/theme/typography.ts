@@ -25,27 +25,27 @@ const fontFamily = {
 };
 
 export const typography = {
-  // Page headers / Screen titles - Inter SemiBold, tighter spacing
+  // Page headers / Screen titles - bold and prominent
   display: {
     fontFamily: fontFamily.semiBold,
+    fontSize: 32,
+    fontWeight: "800" as const,
+    lineHeight: 38,
+    color: colors.text.primary,
+    letterSpacing: -0.5,
+  },
+  h1: {
+    fontFamily: fontFamily.semiBold,
     fontSize: 28,
-    fontWeight: "600" as const,
+    fontWeight: "800" as const,
     lineHeight: 34,
     color: colors.text.primary,
     letterSpacing: -0.4,
   },
-  h1: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: 24,
-    fontWeight: "600" as const,
-    lineHeight: 30,
-    color: colors.text.primary,
-    letterSpacing: -0.3,
-  },
   h2: {
     fontFamily: fontFamily.semiBold,
     fontSize: 20,
-    fontWeight: "600" as const,
+    fontWeight: "700" as const,
     lineHeight: 26,
     color: colors.text.primary,
     letterSpacing: -0.2,
@@ -53,7 +53,7 @@ export const typography = {
   h3: {
     fontFamily: fontFamily.semiBold,
     fontSize: 18,
-    fontWeight: "600" as const,
+    fontWeight: "700" as const,
     lineHeight: 24,
     color: colors.text.primary,
     letterSpacing: -0.1,
@@ -61,23 +61,23 @@ export const typography = {
   h4: {
     fontFamily: fontFamily.semiBold,
     fontSize: 16,
-    fontWeight: "600" as const,
+    fontWeight: "700" as const,
     lineHeight: 22,
     color: colors.text.primary,
   },
-  // Body text - Inter Regular, high legibility
+  // Body text - larger and more readable
   body: {
     fontFamily: fontFamily.regular,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "400" as const,
-    lineHeight: 24,
+    lineHeight: 22,
     color: colors.text.primary,
   },
   bodyMedium: {
     fontFamily: fontFamily.medium,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "500" as const,
-    lineHeight: 24,
+    lineHeight: 22,
     color: colors.text.primary,
   },
   bodySmall: {
@@ -87,7 +87,7 @@ export const typography = {
     lineHeight: 20,
     color: colors.text.secondary,
   },
-  // CTAs and primary actions - Inter SemiBold, no all-caps
+  // CTAs and primary actions - bolder
   button: {
     fontFamily: fontFamily.semiBold,
     fontSize: 16,
@@ -102,11 +102,11 @@ export const typography = {
     lineHeight: 20,
     letterSpacing: 0,
   },
-  // Tab labels - Inter Medium, restrained contrast
+  // Tab labels - slightly bolder
   tabLabel: {
     fontFamily: fontFamily.medium,
     fontSize: 12,
-    fontWeight: "500" as const,
+    fontWeight: "600" as const,
     lineHeight: 16,
     letterSpacing: 0,
   },
@@ -118,13 +118,13 @@ export const typography = {
     lineHeight: 16,
     color: colors.text.tertiary,
   },
-  // Labels - reduced visual weight, no uppercase
+  // Labels - bolder for better visibility
   label: {
     fontFamily: fontFamily.medium,
-    fontSize: 12,
-    fontWeight: "500" as const,
-    lineHeight: 16,
-    letterSpacing: 0,
+    fontSize: 13,
+    fontWeight: "600" as const,
+    lineHeight: 18,
+    letterSpacing: 0.5,
     color: colors.text.secondary,
   },
 };

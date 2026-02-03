@@ -178,6 +178,7 @@ export function SearchScreen({ navigation }: Props) {
     radiusKm: string;
   } | null>(null);
   const [showSearchArea, setShowSearchArea] = useState(false);
+  const isProgrammaticMoveRef = useRef(false);
   const { user } = useAuth();
   const { launchComplete } = useAppLaunch();
   const { favorites, isFavorite, toggle } = useFavorites();
@@ -204,6 +205,10 @@ export function SearchScreen({ navigation }: Props) {
   const initialRegionHandledRef = useRef(false);
 
   const mapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+
+  useEffect(() => {
+    navigation.setParams({ hideTabBar: searchSheetOpen });
+  }, [navigation, searchSheetOpen]);
 
   const parsedLat = Number.parseFloat(lat);
   const parsedLng = Number.parseFloat(lng);
@@ -364,6 +369,7 @@ export function SearchScreen({ navigation }: Props) {
     scheduleMapReady();
     initialRegionHandledRef.current = true;
     if (!results.length && !loading && type === "ready") {
+      isProgrammaticMoveRef.current = true;
       void runSearch();
     }
   };
@@ -383,10 +389,8 @@ export function SearchScreen({ navigation }: Props) {
         setEndAt(bumped);
       }
       setStartAt(next);
-      void runSearch({ from: next.toISOString(), to: nextEnd.toISOString() });
     } else {
       setEndAt(next);
-      void runSearch({ from: startAt.toISOString(), to: next.toISOString() });
     }
   };
 
@@ -402,7 +406,6 @@ export function SearchScreen({ navigation }: Props) {
     nextEnd.setHours(nextEnd.getHours() + hours);
     setEndAt(nextEnd);
     setDraftDate(nextEnd);
-    void runSearch({ from: startAt.toISOString(), to: nextEnd.toISOString() });
   };
 
 
@@ -460,6 +463,9 @@ export function SearchScreen({ navigation }: Props) {
         setLng(nextLng);
         lastSearchCenterRef.current = { lat: location.lat, lng: location.lng };
         setSelectedId(null);
+        setShowSearchArea(false);
+        setPendingSearch(null);
+        isProgrammaticMoveRef.current = true;
         mapRef.current?.animateToRegion(
           {
             latitude: location.lat,
@@ -500,6 +506,9 @@ export function SearchScreen({ navigation }: Props) {
         lng: position.coords.longitude,
       };
       setSelectedId(null);
+      setShowSearchArea(false);
+      setPendingSearch(null);
+      isProgrammaticMoveRef.current = true;
       mapRef.current?.animateToRegion(
         {
           latitude: position.coords.latitude,
@@ -531,6 +540,9 @@ export function SearchScreen({ navigation }: Props) {
       lng: Number.parseFloat(nextLng),
     };
     setSelectedId(null);
+    setShowSearchArea(false);
+    setPendingSearch(null);
+    isProgrammaticMoveRef.current = true;
     mapRef.current?.animateToRegion(
       {
         latitude: Number.parseFloat(nextLat),
@@ -739,6 +751,13 @@ export function SearchScreen({ navigation }: Props) {
     mapRegionSaveTimerRef.current = setTimeout(() => {
       void AsyncStorage.setItem(MAP_REGION_KEY, JSON.stringify(nextRegion));
     }, 350);
+    
+    // Don't show "Search this area" if this was a programmatic map movement
+    if (isProgrammaticMoveRef.current) {
+      isProgrammaticMoveRef.current = false;
+      return;
+    }
+    
     const last = lastSearchCenterRef.current ?? {
       lat: mapRegion.latitude,
       lng: mapRegion.longitude,
@@ -1243,24 +1262,28 @@ export function SearchScreen({ navigation }: Props) {
                       Starting {formatDateTimeLabel(startAt)}
                     </Text>
                   </View>
-                  <Text style={styles.pickerQuickTitle}>Quick select a duration</Text>
-                  <View style={styles.pickerQuickRow}>
-                    {[2, 4, 6].map((hours) => (
-                      <Pressable
-                        key={hours}
-                        style={styles.pickerQuickPill}
-                        onPress={() => applyQuickDuration(hours)}
-                      >
-                        <Text style={styles.pickerQuickText}>{hours} hr</Text>
-                      </Pressable>
-                    ))}
-                    <Pressable
-                      style={styles.pickerQuickPill}
-                      onPress={() => applyQuickDuration(24 * 30)}
-                    >
-                      <Text style={styles.pickerQuickText}>Monthly</Text>
-                    </Pressable>
-                  </View>
+                  {pickerField === "end" ? (
+                    <>
+                      <Text style={styles.pickerQuickTitle}>Quick select a duration</Text>
+                      <View style={styles.pickerQuickRow}>
+                        {[2, 4, 6].map((hours) => (
+                          <Pressable
+                            key={hours}
+                            style={styles.pickerQuickPill}
+                            onPress={() => applyQuickDuration(hours)}
+                          >
+                            <Text style={styles.pickerQuickText}>{hours} hr</Text>
+                          </Pressable>
+                        ))}
+                        <Pressable
+                          style={styles.pickerQuickPill}
+                          onPress={() => applyQuickDuration(24 * 30)}
+                        >
+                          <Text style={styles.pickerQuickText}>Monthly</Text>
+                        </Pressable>
+                      </View>
+                    </>
+                  ) : null}
                   <DatePicker
                     date={draftDate ?? (pickerField === "start" ? startAt : endAt)}
                     mode="datetime"
@@ -1296,7 +1319,9 @@ export function SearchScreen({ navigation }: Props) {
                         setDraftDate(null);
                       }}
                     >
-                      <Text style={styles.pickerFooterPrimaryText}>Search</Text>
+                      <Text style={styles.pickerFooterPrimaryText}>
+                        {pickerField === "start" ? "Next" : "Search"}
+                      </Text>
                     </Pressable>
                   </View>
                 </View>
@@ -1312,10 +1337,20 @@ export function SearchScreen({ navigation }: Props) {
               minuteInterval={5}
               textColor="#101828"
               onConfirm={(date) => {
-                setPickerVisible(false);
                 const snapped = snapTo5Minutes(date);
                 setDraftDate(snapped);
+                if (pickerField === "start") {
+                  applyPickedDate(snapped);
+                  const suggestedEnd = new Date(snapped);
+                  suggestedEnd.setHours(suggestedEnd.getHours() + 2);
+                  setPickerField("end");
+                  setDraftDate(suggestedEnd);
+                  setTimeout(() => setPickerVisible(true), 0);
+                  return;
+                }
                 applyPickedDate(snapped);
+                setPickerVisible(false);
+                setDraftDate(null);
               }}
               onCancel={() => {
                 setPickerVisible(false);

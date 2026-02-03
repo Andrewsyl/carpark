@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../styles/theme";
 import type { BookingSummary } from "../api";
@@ -68,63 +68,77 @@ export function BookingCard({
 }: Props) {
   const badgeStyle = STATUS_STYLES[statusTone];
   const ratingValue = typeof rating === "number" ? Math.round(rating) : null;
+  const price = (booking.amountCents / 100).toFixed(2);
+  const mapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+  const imageUrl =
+    booking.imageUrls?.[0] ??
+    (mapsKey && booking.latitude != null && booking.longitude != null
+      ? `https://maps.googleapis.com/maps/api/streetview?size=240x240&location=${booking.latitude},${booking.longitude}&fov=70&key=${mapsKey}`
+      : undefined);
+  const [startTime, endTime] = timeLabel.split("–").map((item) => item.trim());
 
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        { borderLeftWidth: 0 },
-        pressed && styles.cardPressed,
-      ]}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       android_ripple={null}
     >
       <View style={styles.mainContent}>
+        <View style={styles.imageWrap}>
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={styles.thumb} />
+          ) : (
+            <View style={styles.thumbPlaceholder} />
+          )}
+        </View>
         <View style={styles.textContent}>
           <View style={styles.header}>
             <View style={styles.titleSection}>
-              <Text style={styles.title} numberOfLines={1}>
+              <Text style={styles.reference}>Booking ID: {formatBookingReference(booking.id)}</Text>
+              <Text style={styles.title} numberOfLines={2}>
                 {booking.title}
               </Text>
-              <View style={styles.addressRow}>
-                <Ionicons name="location-outline" size={12} color={colors.textSoft} />
-                <Text style={styles.address} numberOfLines={1}>
-                  {booking.address}
-                </Text>
-              </View>
+              <Text style={styles.address} numberOfLines={1}>
+                {booking.address}
+              </Text>
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: badgeStyle.background }]}>
-              <Ionicons name={badgeStyle.icon as any} size={12} color={badgeStyle.text} />
+            <View style={styles.priceGroup}>
+              <Text style={styles.priceText}>€{price}</Text>
             </View>
           </View>
 
-          <View style={styles.timeRow}>
-            <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
-            <Text style={styles.dateText}>{dateLabel}</Text>
-            <Text style={styles.separator}>•</Text>
-            <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-            <Text style={styles.timeText}>{timeLabel}</Text>
+          <View style={styles.metaRow}>
+            <View style={styles.metaItem}>
+              <Ionicons name="car-outline" size={14} color={colors.textSoft} />
+              <Text style={styles.metaText}>
+                {booking.vehiclePlate ? booking.vehiclePlate : "Not selected"}
+              </Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Ionicons name="calendar-outline" size={14} color={colors.textSoft} />
+              <Text style={styles.metaText}>{dateLabel}</Text>
+            </View>
           </View>
 
-          {ratingValue ? (
-            <View style={styles.ratingRow}>
-              {Array.from({ length: 5 }).map((_, index) => (
-                <Ionicons
-                  key={`rating-${booking.id}-${index}`}
-                  name={index < ratingValue ? "star" : "star-outline"}
-                  size={13}
-                  color={index < ratingValue ? colors.star.active : colors.star.inactive}
-                />
-              ))}
+          <View style={styles.timeBlock}>
+            <View style={styles.timeColumn}>
+              <Text style={styles.timeLabel}>Arrival</Text>
+              <Text style={styles.timeValue}>{startTime}</Text>
+              <Text style={styles.timeDate}>{dateLabel}</Text>
             </View>
-          ) : null}
+            <View style={styles.timeArrow}>
+              <Ionicons name="arrow-forward" size={16} color={colors.accent} />
+            </View>
+            <View style={styles.timeColumn}>
+              <Text style={styles.timeLabel}>Departure</Text>
+              <Text style={styles.timeValue}>{endTime}</Text>
+              <Text style={styles.timeDate}>{dateLabel}</Text>
+            </View>
+          </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.reference}>{formatBookingReference(booking.id)}</Text>
-            <View style={styles.viewDetailsRow}>
-              <Text style={styles.viewDetails}>View details</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.accent} />
-            </View>
+          <View style={styles.viewMoreRow}>
+            <Text style={styles.viewMoreText}>VIEW MORE</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.accent} />
           </View>
         </View>
       </View>
@@ -133,16 +147,6 @@ export function BookingCard({
 }
 
 const styles = StyleSheet.create({
-  address: {
-    color: colors.textMuted,
-    flex: 1,
-    fontSize: 13,
-  },
-  addressRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 4,
-  },
   card: {
     backgroundColor: colors.cardBg,
     borderRadius: 16,
@@ -158,82 +162,125 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     transform: [{ scale: 0.98 }],
   },
-  dateText: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  footer: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingTop: 4,
-  },
   header: {
-    alignItems: "flex-start",
     flexDirection: "row",
-    gap: 12,
     justifyContent: "space-between",
+    gap: 8,
   },
   mainContent: {
     flexDirection: "row",
   },
-  ratingRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 2,
+  imageWrap: {
+    width: 104,
+    paddingLeft: 12,
+    paddingTop: 16,
+    paddingBottom: 0,
+    justifyContent: "flex-start",
+  },
+  thumb: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+  },
+  thumbPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: colors.border,
   },
   reference: {
     color: colors.textSoft,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "600",
-    letterSpacing: 0.3,
-  },
-  separator: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  statusBadge: {
-    alignItems: "center",
-    borderRadius: 999,
-    justifyContent: "center",
-    padding: 6,
+    marginBottom: 4,
   },
   textContent: {
     flex: 1,
-    gap: 12,
+    gap: 10,
     padding: 16,
-  },
-  timeRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  timeText: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  title: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "600",
-    lineHeight: 22,
   },
   titleSection: {
     flex: 1,
-    gap: 4,
   },
-  viewDetails: {
-    color: colors.accent,
-    fontSize: 13,
+  title: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 18,
+  },
+  address: {
+    color: colors.textMuted,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  priceGroup: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  priceText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  metaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  metaText: {
+    color: colors.textMuted,
+    fontSize: 11,
     fontWeight: "600",
   },
-  viewDetailsRow: {
-    alignItems: "center",
+  timeBlock: {
     flexDirection: "row",
-    gap: 4,
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 10,
+  },
+  timeColumn: {
+    flex: 1,
+  },
+  timeLabel: {
+    fontSize: 10,
+    color: colors.textMuted,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  timeValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  timeDate: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  timeArrow: {
+    width: 32,
+    alignItems: "center",
+  },
+  viewMoreRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  viewMoreText: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: "600",
   },
 });
-

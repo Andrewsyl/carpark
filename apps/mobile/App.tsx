@@ -136,6 +136,19 @@ function GlobalLoadingOverlay() {
 
 function MainTabs() {
   const insets = useSafeAreaInsets();
+  const baseTabBarStyle = {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 6,
+    paddingTop: 6,
+    paddingBottom: Math.max(12, insets.bottom),
+    height: 60 + Math.max(12, insets.bottom),
+  };
   return (
     <Tab.Navigator
       detachInactiveScreens={false}
@@ -144,19 +157,7 @@ function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: colors.brand.teal,
         tabBarInactiveTintColor: colors.text.muted,
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 6,
-          paddingTop: 6,
-          paddingBottom: Math.max(12, insets.bottom),
-          height: 60 + Math.max(12, insets.bottom),
-        },
+        tabBarStyle: baseTabBarStyle,
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
@@ -171,7 +172,11 @@ function MainTabs() {
       <Tab.Screen
         name="Search"
         component={SearchScreen}
-        options={{
+        options={({ route }) => ({
+          tabBarStyle: {
+            ...baseTabBarStyle,
+            display: route.params?.hideTabBar ? "none" : "flex",
+          },
           tabBarLabel: "Search",
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons 
@@ -180,7 +185,7 @@ function MainTabs() {
               color={color} 
             />
           ),
-        }}
+        })}
       />
       <Tab.Screen
         name="History"

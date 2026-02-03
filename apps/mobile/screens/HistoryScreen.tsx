@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CommonActions, useFocusEffect } from "@react-navigation/native";
 import { Animated, BackHandler, Easing, FlatList, InteractionManager, Pressable, StyleSheet, Text, View } from "react-native";
@@ -228,6 +228,25 @@ export function HistoryScreen({ navigation, route }: Props) {
   const past = bookings.filter((booking) => new Date(booking.endTime) < now);
   const visible = displayTab === "upcoming" ? upcoming : displayTab === "active" ? active : past;
 
+  const items = useMemo(() => {
+    const result: Array<
+      | { type: "header"; id: string; label: string }
+      | { type: "booking"; id: string; booking: BookingSummary }
+    > = [];
+    let lastLabel = "";
+    const formatMonth = (value: string) =>
+      new Date(value).toLocaleString("en-US", { month: "long", year: "numeric" }).toUpperCase();
+    visible.forEach((booking) => {
+      const label = formatMonth(booking.startTime);
+      if (label !== lastLabel) {
+        result.push({ type: "header", id: `header-${label}`, label });
+        lastLabel = label;
+      }
+      result.push({ type: "booking", id: booking.id, booking });
+    });
+    return result;
+  }, [visible]);
+
   const renderBookingCard = useCallback(({ item: booking }: { item: BookingSummary }) => {
     const start = new Date(booking.startTime);
     const end = new Date(booking.endTime);
@@ -297,22 +316,8 @@ export function HistoryScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.gradientWrapper}>
-        <LinearGradient colors={["#ECFDF5", "#F9FAFB"]} style={styles.header}>
-          <View style={styles.headerTop}>
-            <View style={styles.heroIcon}>
-              <Ionicons name="calendar" size={20} color={colors.accent} />
-            </View>
-            <View style={styles.heroText}>
-              <Text style={styles.title}>Bookings</Text>
-              {user && (
-                <Text style={styles.subtitle}>
-                  {active.length} active · {upcoming.length} upcoming · {past.length} completed
-                </Text>
-              )}
-            </View>
-          </View>
-        </LinearGradient>
+      <View style={styles.header}>
+        <Text style={styles.title}>My bookings</Text>
       </View>
       {mapCtaVisible ? (
         <View style={styles.mapCtaBanner}>
@@ -399,8 +404,13 @@ export function HistoryScreen({ navigation, route }: Props) {
         />
       </View>
       <FlatList
-        data={!user ? [] : visible}
-        renderItem={renderBookingCard}
+        data={!user ? [] : items}
+        renderItem={({ item }) => {
+          if (item.type === "header") {
+            return <Text style={styles.monthLabel}>{item.label}</Text>;
+          }
+          return renderBookingCard({ item: item.booking });
+        }}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) }]}
         ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
@@ -504,43 +514,16 @@ const styles = StyleSheet.create({
     flex: 0,
   },
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 20,
-  },
-  headerTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  heroIcon: {
-    height: 48,
-    width: 48,
-    borderRadius: 16,
-    backgroundColor: "#ecfdf3",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroText: {
-    flex: 1,
-  },
-  greeting: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: colors.textMuted,
-    marginBottom: 4,
+    backgroundColor: "#111827",
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: 16,
     fontWeight: "600",
-    color: colors.text,
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: colors.textMuted,
-    fontWeight: "500",
-    marginTop: 2,
+    color: "#ffffff",
+    letterSpacing: 0.2,
   },
   mapCtaBanner: {
     alignItems: "center",
@@ -595,27 +578,28 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 16,
+    paddingVertical: 12,
     position: "relative",
   },
   tabText: {
     color: colors.textMuted,
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   tabTextActive: {
     color: colors.text,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   tabIndicator: {
     position: "absolute",
     bottom: 0,
     left: 0,
     width: "33.33%",
-    height: 3,
+    height: 2,
     backgroundColor: colors.accent,
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
   },
   tabContent: {
     flexGrow: 1,
@@ -627,6 +611,14 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 16,
+  },
+  monthLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+    marginTop: 4,
+    marginBottom: 6,
   },
   skeletonList: {
     gap: 16,

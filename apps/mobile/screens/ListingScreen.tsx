@@ -284,21 +284,21 @@ export function ListingScreen({ navigation, route }: Props) {
   const hostRating = hasReviews && listing?.rating ? listing.rating.toFixed(1) : null;
   const hostReviews = hasReviews ? listing?.rating_count ?? 0 : 0;
   const heroHeight = Math.round(width * 0.75);
-  const heroMinHeight = 140;
-  const scrollY = useSharedValue(0);
-  const heroAnimatedStyle = useAnimatedStyle(() => {
-    const maxDelta = Math.max(1, heroHeight - heroMinHeight);
-    const height = interpolate(scrollY.value, [0, maxDelta], [heroHeight, heroMinHeight], Extrapolate.CLAMP);
-    return { height };
-  }, [heroHeight, heroMinHeight]);
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
   const distanceLabel = listing?.distance_m
     ? `${(listing.distance_m / 1000).toFixed(1)} km`
     : "0.8 km";
+  const quickChips = useMemo(() => {
+    const base = featureRows.slice(0, 3);
+    if (!base.some((chip) => chip.toLowerCase().includes("24/7"))) {
+      base.unshift("24/7");
+    }
+    return base.slice(0, 4);
+  }, [featureRows]);
+  const extendPriceValue = listing?.price_per_day != null ? Number(listing.price_per_day) : null;
+  const extendPrice =
+    extendPriceValue != null && !Number.isNaN(extendPriceValue)
+      ? extendPriceValue.toFixed(2)
+      : null;
 
   const handleLogin = async () => {
     setAuthError(null);
@@ -349,77 +349,67 @@ export function ListingScreen({ navigation, route }: Props) {
           </View>
         ) : listing ? (
           <>
-            {/* Hero Image Section */}
-            <Animated.View style={[styles.header, heroAnimatedStyle]}>
-              {imageUrls.length ? (
-                <ScrollView
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  onMomentumScrollEnd={(event) => {
-                    const index = Math.round(event.nativeEvent.contentOffset.x / width);
-                    setActiveImageIndex(index);
-                  }}
-                >
-                  {imageUrls.map((url, index) => (
-                    <Pressable
-                      key={`${url}-${index}`}
-                      onPress={() => {
-                        setViewerIndex(index);
-                        setShowImageViewer(true);
-                      }}
-                    >
-                      <Image source={{ uri: url }} style={[styles.heroImage, { width, height: "100%" }]} />
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              ) : (
-                <View style={[styles.heroPlaceholder, { height: "100%" }]}>
-                  <Text style={styles.heroPlaceholderText}>No image</Text>
-                </View>
-              )}
-              
-              {/* Header Overlay */}
-              <View style={styles.headerOverlay}>
-                <Pressable style={styles.backButtonRound} onPress={() => navigation.goBack()}>
-                  <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-                </Pressable>
-                <Pressable style={styles.favoriteButtonRound} onPress={handleToggleFavorite}>
-                  <Text style={[styles.favoriteIcon, isFavorite(id) && styles.favoriteIconActive]}>
-                    {isFavorite(id) ? "♥︎" : "♡"}
-                  </Text>
-                  {showFavAnim ? (
-                    <LottieView
-                      source={require("../assets/Heart fav.json")}
-                      autoPlay
-                      loop={false}
-                      onAnimationFinish={() => setShowFavAnim(false)}
-                      style={styles.favAnimOverlay}
-                      pointerEvents="none"
-                    />
-                  ) : null}
-                </Pressable>
-              </View>
-              
-              {imageUrls.length > 1 ? (
-                <View style={styles.dotsRow}>
-                  {imageUrls.map((_, index) => (
-                    <View
-                      key={`dot-${index}`}
-                      style={[styles.dot, index === activeImageIndex && styles.dotActive]}
-                    />
-                  ))}
-                </View>
-              ) : null}
-            </Animated.View>
-
             {/* Content Card */}
-            <Animated.ScrollView
-              style={styles.contentCard}
+            <ScrollView
+              style={styles.container}
               showsVerticalScrollIndicator={false}
-              onScroll={scrollHandler}
-              scrollEventThrottle={16}
             >
+              {/* Hero Image Section */}
+              <View style={[styles.header, { height: heroHeight }]}>
+                {imageUrls.length ? (
+                  <Pressable
+                    onPress={() => {
+                      setViewerIndex(0);
+                      setShowImageViewer(true);
+                    }}
+                  >
+                    <Image
+                      source={{ uri: imageUrls[0] }}
+                      style={[styles.heroImage, { width, height: heroHeight }]}
+                    />
+                  </Pressable>
+                ) : (
+                  <View style={[styles.heroPlaceholder, { height: heroHeight }]}>
+                    <Text style={styles.heroPlaceholderText}>No image</Text>
+                  </View>
+                )}
+                
+                {/* Header Overlay */}
+                <View style={styles.headerOverlay}>
+                  <Pressable style={styles.backButtonRound} onPress={() => navigation.goBack()}>
+                    <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                  </Pressable>
+                  <Pressable style={styles.favoriteButtonRound} onPress={handleToggleFavorite}>
+                    <Text style={[styles.favoriteIcon, isFavorite(id) && styles.favoriteIconActive]}>
+                      {isFavorite(id) ? "♥︎" : "♡"}
+                    </Text>
+                    {showFavAnim ? (
+                      <LottieView
+                        source={require("../assets/Heart fav.json")}
+                        autoPlay
+                        loop={false}
+                        onAnimationFinish={() => setShowFavAnim(false)}
+                        style={styles.favAnimOverlay}
+                        pointerEvents="none"
+                      />
+                    ) : null}
+                  </Pressable>
+                </View>
+                
+                {imageUrls.length > 1 ? (
+                  <View style={styles.dotsRow}>
+                    {imageUrls.map((_, index) => (
+                      <View
+                        key={`dot-${index}`}
+                        style={[styles.dot, index === 0 && styles.dotActive]}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={styles.sheetHandle} />
+              <View style={styles.contentCard}>
               {/* Title Section */}
               <View style={styles.titleSection}>
                 <Text style={styles.category}>PARKING SPACE</Text>
@@ -431,9 +421,9 @@ export function ListingScreen({ navigation, route }: Props) {
                 <View style={styles.ratingRow}>
                   {hasReviews ? (
                     <>
-                      <Ionicons name="star" size={16} color="#FBBF24" />
+                      <Ionicons name="star" size={16} color="#F59E0B" />
                       <Text style={styles.rating}>{listing.rating?.toFixed(1)}</Text>
-                      <Text style={styles.reviewCount}>({listing.rating_count} reviews)</Text>
+                      <Text style={styles.reviewCount}>({listing.rating_count})</Text>
                     </>
                   ) : (
                     <Text style={styles.reviewCount}>New listing</Text>
@@ -443,16 +433,37 @@ export function ListingScreen({ navigation, route }: Props) {
 
               {/* Date/Time Picker Row */}
               <View style={styles.timePickerSection}>
-                <View style={styles.timePickerCard}>
-                  <Pressable style={styles.timePickerColumn} onPress={() => openPicker("start")}>
-                    <Text style={styles.dateTimeLabel}>From</Text>
-                    <Text style={styles.dateTimeValue}>{formatDateTimeLabel(startAt)}</Text>
-                  </Pressable>
-                  <View style={styles.timePickerDivider} />
-                  <Pressable style={styles.timePickerColumn} onPress={() => openPicker("end")}>
-                    <Text style={styles.dateTimeLabel}>Until</Text>
-                    <Text style={styles.dateTimeValue}>{formatDateTimeLabel(endAt)}</Text>
-                  </Pressable>
+                <View style={styles.timePickerWrapper}>
+                  <View style={styles.timePickerCard}>
+                    <Pressable style={styles.timePickerColumn} onPress={() => openPicker("start")}>
+                      <View style={styles.timePickerField}>
+                        <View>
+                          <Text style={styles.dateTimeLabel}>From</Text>
+                          <Text style={styles.dateTimeValue}>{formatDateTimeLabel(startAt)}</Text>
+                        </View>
+                        <Ionicons name="chevron-down" size={16} color="#0f766e" />
+                      </View>
+                    </Pressable>
+                    <View style={styles.timePickerArrow}>
+                      <Ionicons name="arrow-forward" size={18} color="#22a06b" />
+                    </View>
+                    <Pressable style={styles.timePickerColumn} onPress={() => openPicker("end")}>
+                      <View style={styles.timePickerField}>
+                        <View>
+                          <Text style={styles.dateTimeLabel}>Until</Text>
+                          <Text style={styles.dateTimeValue}>{formatDateTimeLabel(endAt)}</Text>
+                        </View>
+                        <Ionicons name="chevron-down" size={16} color="#0f766e" />
+                      </View>
+                    </Pressable>
+                  </View>
+                  {extendPrice ? (
+                    <View style={styles.offerBar}>
+                      <Text style={styles.offerText}>
+                        Extend to 23:59 for only €{extendPrice}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
 
@@ -601,7 +612,8 @@ export function ListingScreen({ navigation, route }: Props) {
                 {/* Extra padding for bottom button */}
                 <View style={{ height: 200 }} />
               </View>
-            </Animated.ScrollView>
+              </View>
+            </ScrollView>
 
             {/* Fixed Bottom Button */}
             {priceSummary && user ? (
@@ -1366,6 +1378,7 @@ const styles = StyleSheet.create({
   // New Tab-Based Design Styles
   header: {
     position: 'relative',
+    overflow: 'hidden',
   },
   headerOverlay: {
     position: 'absolute',
@@ -1411,9 +1424,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    marginTop: -24,
-    paddingTop: 16,
+    marginTop: -18,
+    paddingTop: 12,
     paddingBottom: 120, // Extra padding for fixed bottom bar
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 36,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: "#d1d5db",
+    marginBottom: 12,
   },
   titleSection: {
     paddingHorizontal: 16,
@@ -1422,13 +1443,13 @@ const styles = StyleSheet.create({
   category: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#F59E0B',
-    letterSpacing: 0.5,
+    color: '#D97706',
+    letterSpacing: 1,
     marginBottom: 8,
   },
   cardTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 28,
+    fontWeight: '800',
     color: '#111827',
     marginBottom: 6,
   },
@@ -1439,8 +1460,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   location: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#6B7280',
+    fontWeight: '400',
   },
   ratingRow: {
     flexDirection: 'row',
@@ -1448,39 +1470,73 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   rating: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#111827',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#16a34a',
   },
   reviewCount: {
     fontSize: 12,
     color: '#6B7280',
   },
+  chipRow: {
+    marginTop: 10,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  chip: {
+    backgroundColor: "#E7F7F0",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: "#ccece2",
+  },
+  chipText: {
+    color: "#157a6e",
+    fontSize: 11,
+    fontWeight: "600",
+  },
   timePickerSection: {
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
-  timePickerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    shadowColor: '#000',
+  timePickerWrapper: {
+    overflow: "hidden",
+    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    shadowColor: "#0f172a",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
   },
+  timePickerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
+  timePickerField: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#bfe2d8",
+    backgroundColor: "#f7fffb",
+  },
   timePickerColumn: {
     flex: 1,
   },
-  timePickerDivider: {
-    width: 1,
-    alignSelf: 'stretch',
-    backgroundColor: '#E5E7EB',
-    marginHorizontal: 16,
+  timePickerArrow: {
+    width: 32,
+    alignItems: "center",
+    justifyContent: "center",
   },
   dateTimeLabel: {
     fontSize: 9,
@@ -1491,6 +1547,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#111827',
+  },
+  offerBar: {
+    backgroundColor: "#1f2937",
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  offerText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "600",
   },
   tabContent: {
     flex: 1,
@@ -1509,15 +1575,16 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 6,
   },
   sectionBody: {
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 15,
+    lineHeight: 22,
     color: '#6B7280',
+    fontWeight: '400',
   },
   readMore: {
     fontSize: 13,
@@ -1743,15 +1810,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
-    paddingTop: 16,
+    paddingTop: 14,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
     elevation: 8,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
@@ -1760,28 +1827,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   priceFrom: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6B7280',
     marginBottom: 2,
   },
   priceAmount: {
-    fontSize: 20,
+    fontSize: 32,
     fontWeight: '700',
     color: '#111827',
   },
   priceDuration: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#6B7280',
+    fontWeight: '400',
   },
   bookButton: {
-    backgroundColor: '#0F766E',
+    backgroundColor: '#2a9d7f',
     paddingVertical: 12,
     paddingHorizontal: 36,
-    borderRadius: 24,
+    borderRadius: 18,
   },
   bookButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
   bookButtonDisabled: {
