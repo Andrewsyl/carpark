@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CommonActions, useFocusEffect } from "@react-navigation/native";
-import { Animated, BackHandler, Easing, FlatList, InteractionManager, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, BackHandler, Easing, FlatList, InteractionManager, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import LottieView from "lottie-react-native";
@@ -20,10 +20,14 @@ type Props = NativeStackScreenProps<RootStackParamList, "History">;
 export function HistoryScreen({ navigation, route }: Props) {
   const { token, user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const [tab, setTab] = useState<"upcoming" | "active" | "past">("upcoming");
   const [displayTab, setDisplayTab] = useState<"upcoming" | "active" | "past">("upcoming");
   const [bookings, setBookings] = useState<BookingSummary[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isSwitchingTab, setIsSwitchingTab] = useState(false);
+  const [tabSwitchingTo, setTabSwitchingTo] = useState<"upcoming" | "active" | "past">("upcoming");
+  const [pastVisibleCount, setPastVisibleCount] = useState(20);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [newBookingId, setNewBookingId] = useState<string | null>(null);
@@ -34,6 +38,8 @@ export function HistoryScreen({ navigation, route }: Props) {
   const segmentAnim = useRef(new Animated.Value(0)).current;
   const newBookingSlideAnim = useRef(new Animated.Value(50)).current;
   const newBookingOpacityAnim = useRef(new Animated.Value(0)).current;
+  const lastTabIndexRef = useRef(0);
+  const [tabDirection, setTabDirection] = useState(1);
 
   const loadBookings = useCallback(async () => {
     if (!token) return;
@@ -50,7 +56,9 @@ export function HistoryScreen({ navigation, route }: Props) {
       setError(err instanceof Error ? err.message : "Could not load bookings");
       return [];
     } finally {
-      if (active) setLoading(false);
+      if (active) {
+        setLoading(false);
+      }
     }
     return () => {
       active = false;
@@ -186,10 +194,15 @@ export function HistoryScreen({ navigation, route }: Props) {
   }, [navigation, route.params?.initialTab]);
 
   useEffect(() => {
+    const currentIndex = tab === "upcoming" ? 0 : tab === "active" ? 1 : 2;
+    const prevIndex = lastTabIndexRef.current;
+    const direction = currentIndex >= prevIndex ? 1 : -1;
+    lastTabIndexRef.current = currentIndex;
+    setTabDirection(direction);
     tabAnim.setValue(0);
     Animated.timing(tabAnim, {
       toValue: 1,
-      duration: 180,
+      duration: 260,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
@@ -197,6 +210,8 @@ export function HistoryScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     const target = tab === "upcoming" ? 0 : tab === "active" ? 1 : 2;
+    setIsSwitchingTab(true);
+    setTabSwitchingTo(tab);
     Animated.timing(segmentAnim, {
       toValue: target,
       duration: 250,
@@ -207,6 +222,7 @@ export function HistoryScreen({ navigation, route }: Props) {
     // Defer heavy list update until after animation
     const handle = InteractionManager.runAfterInteractions(() => {
       setDisplayTab(tab);
+      setIsSwitchingTab(false);
     });
     
     return () => handle.cancel();
@@ -226,25 +242,16 @@ export function HistoryScreen({ navigation, route }: Props) {
     (booking) => new Date(booking.startTime) <= now && new Date(booking.endTime) >= now && booking.status !== "canceled"
   );
   const past = bookings.filter((booking) => new Date(booking.endTime) < now);
-  const visible = displayTab === "upcoming" ? upcoming : displayTab === "active" ? active : past;
-  const items = useMemo(() => {
-    const result: Array<
-      | { type: "header"; id: string; label: string }
-      | { type: "booking"; id: string; booking: BookingSummary }
-    > = [];
-    let lastLabel = "";
-    const formatMonth = (value: string) =>
-      new Date(value).toLocaleString("en-US", { month: "long", year: "numeric" }).toUpperCase();
-    visible.forEach((booking) => {
-      const label = formatMonth(booking.startTime);
-      if (label !== lastLabel) {
-        result.push({ type: "header", id: `header-${label}`, label });
-        lastLabel = label;
-      }
-      result.push({ type: "booking", id: booking.id, booking });
-    });
-    return result;
-  }, [visible]);
+  const visiblePast = past.slice(0, pastVisibleCount);
+  const hasMorePast = past.length > pastVisibleCount;
+
+  useEffect(() => {
+    if (displayTab !== "past") return;
+    if (pastVisibleCount < 20) {
+      setPastVisibleCount(20);
+    }
+  }, [displayTab, pastVisibleCount]);
+  // items are built per-pane for the sliding layout
 
   const renderBookingCard = useCallback(({ item: booking }: { item: BookingSummary }) => {
     const start = new Date(booking.startTime);
@@ -336,6 +343,12 @@ export function HistoryScreen({ navigation, route }: Props) {
           </Pressable>
         </View>
       ) : null}
+      {loading ? (
+        <View style={styles.inlineLoading}>
+          <Spinner size={32} />
+          <Text style={styles.inlineLoadingText}>Loading bookings…</Text>
+        </View>
+      ) : null}
       {/* Tab bar with underline indicator for active tab */}
       <View 
         style={styles.tabBar}
@@ -402,90 +415,148 @@ export function HistoryScreen({ navigation, route }: Props) {
           ]}
         />
       </View>
-      <FlatList
-        data={!user ? [] : items}
-        renderItem={({ item }) => {
-          if (item.type === "header") {
-            return <Text style={styles.monthLabel}>{item.label}</Text>;
-          }
-          return renderBookingCard({ item: item.booking });
+      <Animated.View
+        style={{
+          flex: 1,
+          flexDirection: "row",
+          width: screenWidth * 3,
+          transform: [
+            {
+              translateX: segmentAnim.interpolate({
+                inputRange: [0, 1, 2],
+                outputRange: [0, -screenWidth, -screenWidth * 2],
+              }),
+            },
+          ],
         }}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) }]}
-        ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
-        ListHeaderComponent={
-          <>
-            {!user ? (
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Sign in to view bookings</Text>
-                <Text style={styles.cardBody}>
-                  Log in to see your upcoming reservations and past stays.
-                </Text>
-                <Pressable style={styles.primaryButton} onPress={() => navigation.navigate("Welcome")}>
-                  <Text style={styles.primaryButtonText}>Sign in</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <>
-                {error ? <Text style={styles.error}>{error}</Text> : null}
-                {loading ? (
-                  <View style={styles.skeletonList}>
-                    {[0, 1, 2].map((item) => (
-                      <View key={item} style={styles.skeletonCard}>
-                        <View style={styles.skeletonRow}>
-                          <View style={styles.skeletonTitle} />
-                          <View style={styles.skeletonBadge} />
-                        </View>
-                        <View style={styles.skeletonLine} />
-                        <View style={styles.skeletonMetaRow}>
-                          <View style={styles.skeletonMeta} />
-                          <View style={styles.skeletonMeta} />
-                        </View>
-                        <View style={styles.skeletonPrice} />
+      >
+        {["upcoming", "active", "past"].map((pane) => {
+          const paneTab = pane as "upcoming" | "active" | "past";
+          const paneData =
+            paneTab === "upcoming" ? upcoming : paneTab === "active" ? active : visiblePast;
+          const paneItems = (() => {
+            const result: Array<
+              | { type: "header"; id: string; label: string }
+              | { type: "booking"; id: string; booking: BookingSummary }
+            > = [];
+            let lastLabel = "";
+            const formatMonth = (value: string) =>
+              new Date(value).toLocaleString("en-US", { month: "long", year: "numeric" }).toUpperCase();
+            paneData.forEach((booking) => {
+              const label = formatMonth(booking.startTime);
+              if (label !== lastLabel) {
+                result.push({ type: "header", id: `header-${label}`, label });
+                lastLabel = label;
+              }
+              result.push({ type: "booking", id: booking.id, booking });
+            });
+            return result;
+          })();
+          const showPaneSkeleton =
+            loading || (isSwitchingTab && paneTab === tabSwitchingTo);
+          const showPaneEmpty =
+            !loading && !isSwitchingTab && paneTab === displayTab && paneData.length === 0;
+
+          return (
+            <View key={pane} style={{ width: screenWidth }}>
+              <FlatList
+                data={!user ? [] : paneItems}
+                renderItem={({ item }) => {
+                  if (item.type === "header") {
+                    return <Text style={styles.monthLabel}>{item.label}</Text>;
+                  }
+                  return renderBookingCard({ item: item.booking });
+                }}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) }]}
+                ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
+                ListFooterComponent={
+                  paneTab === "past" && hasMorePast ? (
+                    <Pressable
+                      style={styles.loadMoreButton}
+                      onPress={() => setPastVisibleCount((prev) => prev + 20)}
+                    >
+                      <Text style={styles.loadMoreText}>Load more</Text>
+                    </Pressable>
+                  ) : null
+                }
+                ListHeaderComponent={
+                  <>
+                    {!user ? (
+                      <View style={styles.card}>
+                        <Text style={styles.cardTitle}>Sign in to view bookings</Text>
+                        <Text style={styles.cardBody}>
+                          Log in to see your upcoming reservations and past stays.
+                        </Text>
+                        <Pressable style={styles.primaryButton} onPress={() => navigation.navigate("Welcome")}>
+                          <Text style={styles.primaryButtonText}>Sign in</Text>
+                        </Pressable>
                       </View>
-                    ))}
-                  </View>
-                ) : visible.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <View style={styles.emptyIcon}>
-                      <Ionicons 
-                        name={displayTab === "upcoming" ? "calendar-outline" : displayTab === "active" ? "time-outline" : "checkmark-done-outline"} 
-                        size={44} 
-                        color={colors.textSoft} 
-                      />
-                    </View>
-                    <Text style={styles.emptyTitle}>
-                      {displayTab === "upcoming" ? "No upcoming bookings" : displayTab === "active" ? "No active bookings" : "No past bookings"}
-                    </Text>
-                    <Text style={styles.emptyBody}>
-                      {displayTab === "upcoming"
-                        ? "Find a parking space and your next trip will show up here."
-                        : displayTab === "active"
-                        ? "Bookings in progress will appear here."
-                        : "Completed reservations will appear here after your stay."}
-                    </Text>
-                    {displayTab === "upcoming" ? (
-                      <Pressable
-                        style={styles.primaryButton}
-                        onPress={() => navigation.navigate("Tabs", { screen: "Search" })}
-                        android_ripple={null}
-                      >
-                        <Text style={styles.primaryButtonText}>Find parking</Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                ) : null}
-              </>
-            )}
-          </>
-        }
-        getItemLayout={getItemLayout}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        updateCellsBatchingPeriod={50}
-        initialNumToRender={15}
-        windowSize={10}
-      />
+                    ) : (
+                      <>
+                        {error ? <Text style={styles.error}>{error}</Text> : null}
+                        {showPaneSkeleton ? (
+                          <View style={styles.skeletonList}>
+                            {[0, 1, 2].map((item) => (
+                              <View key={item} style={styles.skeletonCard}>
+                                <View style={styles.skeletonRow}>
+                                  <View style={styles.skeletonTitle} />
+                                  <View style={styles.skeletonBadge} />
+                                </View>
+                                <View style={styles.skeletonLine} />
+                                <View style={styles.skeletonMetaRow}>
+                                  <View style={styles.skeletonMeta} />
+                                  <View style={styles.skeletonMeta} />
+                                </View>
+                                <View style={styles.skeletonPrice} />
+                              </View>
+                            ))}
+                          </View>
+                        ) : showPaneEmpty ? (
+                          <View style={styles.emptyState}>
+                            <View style={styles.emptyIcon}>
+                              <Ionicons 
+                                name={paneTab === "upcoming" ? "calendar-outline" : paneTab === "active" ? "time-outline" : "checkmark-done-outline"} 
+                                size={44} 
+                                color={colors.textSoft} 
+                              />
+                            </View>
+                            <Text style={styles.emptyTitle}>
+                              {paneTab === "upcoming" ? "No upcoming bookings" : paneTab === "active" ? "No active bookings" : "No past bookings"}
+                            </Text>
+                            <Text style={styles.emptyBody}>
+                              {paneTab === "upcoming"
+                                ? "Find a parking space and your next trip will show up here."
+                                : paneTab === "active"
+                                ? "Bookings in progress will appear here."
+                                : "Completed reservations will appear here after your stay."}
+                            </Text>
+                            {paneTab === "upcoming" ? (
+                              <Pressable
+                                style={styles.primaryButton}
+                                onPress={() => navigation.navigate("Tabs", { screen: "Search" })}
+                                android_ripple={null}
+                              >
+                                <Text style={styles.primaryButtonText}>Find parking</Text>
+                              </Pressable>
+                            ) : null}
+                          </View>
+                        ) : null}
+                      </>
+                    )}
+                  </>
+                }
+                getItemLayout={getItemLayout}
+                removeClippedSubviews={true}
+                maxToRenderPerBatch={10}
+                updateCellsBatchingPeriod={50}
+                initialNumToRender={15}
+                windowSize={10}
+              />
+            </View>
+          );
+        })}
+      </Animated.View>
       {showSuccess ? (
         <Pressable style={styles.successOverlay} onPress={() => setShowSuccess(false)}>
           <View style={styles.successCard}>
@@ -513,16 +584,18 @@ const styles = StyleSheet.create({
     flex: 0,
   },
   header: {
-    backgroundColor: "#111827",
+    backgroundColor: colors.cardBg,
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
   },
   title: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#ffffff",
-    letterSpacing: 0.2,
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+    letterSpacing: 0,
   },
   mapCtaBanner: {
     alignItems: "center",
@@ -567,12 +640,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
+  inlineLoading: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  inlineLoadingText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: "600",
+  },
   tabBar: {
     flexDirection: "row",
     backgroundColor: colors.cardBg,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
-    paddingHorizontal: 20,
   },
   tab: {
     flex: 1,
@@ -582,9 +669,9 @@ const styles = StyleSheet.create({
   },
   tabText: {
     color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.2,
   },
   tabTextActive: {
     color: colors.text,
@@ -631,6 +718,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 2,
+  },
+  loadMoreButton: {
+    alignItems: "center",
+    borderColor: "#E5E7EB",
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: "center",
+    marginTop: 8,
+    paddingVertical: 10,
+  },
+  loadMoreText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "600",
   },
   skeletonRow: {
     alignItems: "center",

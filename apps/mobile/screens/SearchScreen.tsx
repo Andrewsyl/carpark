@@ -28,6 +28,7 @@ import { useFavorites } from "../favorites";
 import MapSection from "../components/MapSection";
 import { MapBottomCard } from "../components/MapBottomCard";
 import { LIGHT_MAP_STYLE } from "../components/mapStyles";
+import { useGlobalLoading } from "../components/GlobalLoading";
 import { searchListings } from "../api";
 import { cardShadow, colors, radius, spacing } from "../styles/theme";
 import { logError, logInfo } from "../logger";
@@ -143,6 +144,7 @@ export function SearchScreen({ navigation }: Props) {
   const [from, setFrom] = useState(today.from);
   const [to, setTo] = useState(today.to);
   const [loading, setLoading] = useState(false);
+  const { show: showGlobalLoading, hide: hideGlobalLoading } = useGlobalLoading();
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<ListingSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -309,6 +311,7 @@ export function SearchScreen({ navigation }: Props) {
       const requestId = searchRequestIdRef.current + 1;
       searchRequestIdRef.current = requestId;
       searchStartedAtRef.current = Date.now();
+      showGlobalLoading("Searching...");
       setLoading(true);
       setError(null);
       const params = buildSearchParams(paramsOverride);
@@ -347,11 +350,12 @@ export function SearchScreen({ navigation }: Props) {
         setTimeout(() => {
           if (searchRequestIdRef.current === requestId) {
             setLoading(false);
+            hideGlobalLoading();
           }
         }, remaining);
       }
     },
-    [buildSearchParams]
+    [buildSearchParams, hideGlobalLoading, showGlobalLoading]
   );
 
   const scheduleMapReady = useCallback(() => {

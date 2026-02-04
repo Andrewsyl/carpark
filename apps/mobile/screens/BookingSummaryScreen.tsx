@@ -31,6 +31,7 @@ import { useAuth } from "../auth";
 import { logError, logInfo } from "../logger";
 import { getNotificationImageAttachment } from "../notifications";
 import { BookingProgressBar } from "../components/BookingProgressBar";
+import { useGlobalLoading } from "../components/GlobalLoading";
 import type { ListingDetail, RootStackParamList } from "../types";
 import { formatDateLabel, formatTimeLabel } from "../utils/dateFormat";
 
@@ -70,10 +71,12 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerField, setPickerField] = useState<"start" | "end">("start");
   const [draftDate, setDraftDate] = useState<Date | null>(null);
+  const { show: showGlobalLoading, hide: hideGlobalLoading } = useGlobalLoading();
 
   useEffect(() => {
     let active = true;
     const load = async () => {
+      showGlobalLoading("Loading booking...");
       setLoadingListing(true);
       setError(null);
       try {
@@ -86,6 +89,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
       } finally {
         if (!active) return;
         setLoadingListing(false);
+        hideGlobalLoading();
       }
     };
     void load();

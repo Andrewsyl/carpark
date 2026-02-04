@@ -17,6 +17,7 @@ import { useAuth } from "../auth";
 import type { ListingSummary, RootStackParamList } from "../types";
 import { cardShadow, colors, radius, spacing } from "../styles/theme";
 import { Ionicons } from "@expo/vector-icons";
+import { useGlobalLoading } from "../components/GlobalLoading";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Listings">;
 
@@ -30,9 +31,11 @@ export function ListingsScreen({ navigation }: Props) {
   const [earnings, setEarnings] = useState<{ totalCents: number; feeCents: number; netCents: number } | null>(null);
   const [payoutStatus, setPayoutStatus] = useState<HostPayoutStatus | null>(null);
   const [payoutBusy, setPayoutBusy] = useState(false);
+  const { show: showGlobalLoading, hide: hideGlobalLoading } = useGlobalLoading();
 
   const loadListings = useCallback(async () => {
     if (!token) return;
+    showGlobalLoading("Loading listings...");
     setLoading(true);
     setError(null);
     try {
@@ -51,8 +54,9 @@ export function ListingsScreen({ navigation }: Props) {
       setError(err instanceof Error ? err.message : "Could not load listings");
     } finally {
       setLoading(false);
+      hideGlobalLoading();
     }
-  }, [token]);
+  }, [hideGlobalLoading, showGlobalLoading, token]);
 
   const formatAmount = (cents?: number) => {
     const value = typeof cents === "number" ? cents : 0;

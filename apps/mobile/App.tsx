@@ -44,12 +44,13 @@ import { registerPushToken } from "./api";
 import { Ionicons } from "@expo/vector-icons";
 import { BottomTabButton } from "./components/BottomTabButton";
 import { LoadingOverlay } from "./components/LoadingOverlay";
+import { GlobalLoadingProvider, useGlobalLoading } from "./components/GlobalLoading";
 import { colors } from "./theme/colors";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
-enableScreens(true);
+enableScreens(false);
 
 export default function App() {
   const [launchComplete, setLaunchComplete] = useState(true);
@@ -88,40 +89,42 @@ export default function App() {
       <StripeProvider publishableKey={stripeKey} urlScheme="carparking">
         <AuthProvider>
           <FavoritesProvider>
-            <AppLaunchContext.Provider value={appLaunchValue}>
-              <NavigationContainer>
-                <Stack.Navigator
-                  screenOptions={{ headerShown: false }}
-                  initialRouteName="Tabs"
-                  detachInactiveScreens={false}
-                >
-                  <Stack.Screen name="Tabs" component={MainTabs} />
-                  <Stack.Screen name="Listing" component={ListingScreen} />
-                  <Stack.Screen name="Listings" component={ListingsScreen} />
-                  <Stack.Screen name="BookingSummary" component={BookingSummaryScreen} />
-                  <Stack.Screen name="VehicleType" component={VehicleTypeScreen} />
-                  <Stack.Screen name="Welcome" component={WelcomeScreen} />
-                  <Stack.Screen name="SignIn" component={SignInScreen} />
-                  <Stack.Screen name="Register" component={RegisterScreen} />
-                  <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-                  <Stack.Screen name="Legal" component={LegalScreen} />
-                  <Stack.Screen name="History" component={HistoryScreen} />
-                  <Stack.Screen name="Favorites" component={FavoritesScreen} />
-                  <Stack.Screen name="Payments" component={PaymentsScreen} />
-                  <Stack.Screen name="Settings" component={SettingsScreen} />
-                  <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
-                  <Stack.Screen name="Review" component={ReviewScreen} />
-                  <Stack.Screen name="Support" component={SupportScreen} />
-                  <Stack.Screen name="Admin" component={AdminScreen} />
-                  <Stack.Screen name="CreateListingFlow" component={ListingFlowScreen} />
-                  <Stack.Screen name="EditListing" component={EditListingScreen} />
-                </Stack.Navigator>
-              </NavigationContainer>
-              <GlobalLoadingOverlay />
-              <PushRegistration />
-              <LegalGate />
-              <StatusBar style="dark" translucent backgroundColor="transparent" />
-            </AppLaunchContext.Provider>
+            <GlobalLoadingProvider>
+              <AppLaunchContext.Provider value={appLaunchValue}>
+                <NavigationContainer>
+                  <Stack.Navigator
+                    screenOptions={{ headerShown: false }}
+                    initialRouteName="Tabs"
+                    detachInactiveScreens={false}
+                  >
+                    <Stack.Screen name="Tabs" component={MainTabs} />
+                    <Stack.Screen name="Listing" component={ListingScreen} />
+                    <Stack.Screen name="Listings" component={ListingsScreen} />
+                    <Stack.Screen name="BookingSummary" component={BookingSummaryScreen} />
+                    <Stack.Screen name="VehicleType" component={VehicleTypeScreen} />
+                    <Stack.Screen name="Welcome" component={WelcomeScreen} />
+                    <Stack.Screen name="SignIn" component={SignInScreen} />
+                    <Stack.Screen name="Register" component={RegisterScreen} />
+                    <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+                    <Stack.Screen name="Legal" component={LegalScreen} />
+                    <Stack.Screen name="History" component={HistoryScreen} />
+                    <Stack.Screen name="Favorites" component={FavoritesScreen} />
+                    <Stack.Screen name="Payments" component={PaymentsScreen} />
+                    <Stack.Screen name="Settings" component={SettingsScreen} />
+                    <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
+                    <Stack.Screen name="Review" component={ReviewScreen} />
+                    <Stack.Screen name="Support" component={SupportScreen} />
+                    <Stack.Screen name="Admin" component={AdminScreen} />
+                    <Stack.Screen name="CreateListingFlow" component={ListingFlowScreen} />
+                    <Stack.Screen name="EditListing" component={EditListingScreen} />
+                  </Stack.Navigator>
+                </NavigationContainer>
+                <GlobalLoadingOverlay />
+                <PushRegistration />
+                <LegalGate />
+                <StatusBar style="dark" translucent backgroundColor="transparent" />
+              </AppLaunchContext.Provider>
+            </GlobalLoadingProvider>
           </FavoritesProvider>
         </AuthProvider>
       </StripeProvider>
@@ -131,7 +134,10 @@ export default function App() {
 
 function GlobalLoadingOverlay() {
   const { loading } = useAuth();
-  return <LoadingOverlay visible={loading} message="Signing in..." />;
+  const { state } = useGlobalLoading();
+  const visible = loading || state.visible;
+  const message = loading ? "Signing in..." : state.message;
+  return <LoadingOverlay visible={visible} message={message} />;
 }
 
 function MainTabs() {

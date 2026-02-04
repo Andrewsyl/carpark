@@ -8,6 +8,11 @@ export const LIGHT_MAP_STYLE = [
     stylers: [{ color: "#2f3a45" }],
   },
   {
+    featureType: "road",
+    elementType: "labels",
+    stylers: [{ visibility: "off" }],
+  },
+  {
     featureType: "poi",
     elementType: "labels.icon",
     stylers: [{ lightness: 60 }, { saturation: -30 }],

@@ -1,13 +1,12 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useCallback, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import DatePicker from "react-native-date-picker";
 import { useStripe } from "@stripe/stripe-react-native";
-import MapView, { Marker } from "react-native-maps";
 import { cancelBooking, checkInBooking, confirmBookingExtension, createBookingExtensionIntent } from "../api";
 import { useAuth } from "../auth";
 import { getNotificationImageAttachment } from "../notifications";
@@ -101,6 +100,19 @@ export function BookingDetailScreen({ navigation, route }: Props) {
     Date.now() >= start.getTime() - 15 * 60 * 1000 &&
     Date.now() <= end.getTime();
   const canBookAgain = !isUpcoming && !isInProgress;
+  const mapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+  const mapCenter =
+    booking.latitude && booking.longitude
+      ? `${booking.latitude},${booking.longitude}`
+      : booking.address;
+  const staticMapUrl =
+    mapsKey && mapCenter
+      ? `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(
+          mapCenter
+        )}&zoom=16&size=640x280&scale=2&maptype=roadmap&markers=color:0x10B981|${encodeURIComponent(
+          mapCenter
+        )}&key=${mapsKey}`
+      : null;
 
   const performCancel = async () => {
     if (!token || canceling || localStatus === "canceled") return;
@@ -216,6 +228,23 @@ export function BookingDetailScreen({ navigation, route }: Props) {
     });
   };
 
+  const handleOpenMaps = () => {
+    Alert.alert("Open Navigation", "Navigate to this parking spot in Google Maps?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Open Maps",
+        onPress: () => {
+          const destination =
+            booking.latitude && booking.longitude
+              ? `${booking.latitude},${booking.longitude}`
+              : encodeURIComponent(booking.address);
+          const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+          Linking.openURL(url);
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
@@ -230,35 +259,49 @@ export function BookingDetailScreen({ navigation, route }: Props) {
         {/* Map Section - for upcoming/active bookings */}
         {(isUpcoming || isInProgress) && localStatus !== "canceled" ? (
           <View style={styles.mapSection}>
-            <TouchableOpacity
-              style={styles.mapButton}
-              onPress={() => {
-                Alert.alert(
-                  "Open Navigation",
-                  "Navigate to this parking spot in Google Maps?",
-                  [
-                    {
-                      text: "Cancel",
-                      style: "cancel"
-                    },
-                    {
-                      text: "Open Maps",
-                      onPress: () => {
-                        const destination = booking.latitude && booking.longitude
-                          ? `${booking.latitude},${booking.longitude}`
-                          : encodeURIComponent(booking.address);
-                        const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
-                        Linking.openURL(url);
-                      }
-                    }
-                  ]
-                );
-              }}
-            >
+            <Pressable style={styles.mapImageButton} onPress={handleOpenMaps}>
+              {staticMapUrl ? (
+                <Image source={{ uri: staticMapUrl }} style={styles.mapImage} />
+              ) : (
+                <View style={styles.mapPlaceholder}>
+                  <Text style={styles.mapPlaceholderText}>Map preview unavailable</Text>
+                </View>
+              )}
+            </Pressable>
+            <TouchableOpacity style={styles.mapButton} onPress={handleOpenMaps}>
               <Ionicons name="navigate" size={20} color="#247881" />
               <Text style={styles.mapButtonText}>Get directions</Text>
             </TouchableOpacity>
           </View>
+        ) : null}
+
+        {/* Review Card */}
+        {canReview ? (
+          reviewed ? (
+            <View style={[styles.reviewButton, styles.reviewButtonTopSpacing]}>
+              <View style={styles.reviewedStars}>
+                {Array.from({ length: 5 }).map((_, index) => {
+                  const filled = reviewedRating != null && index < Math.round(reviewedRating);
+                  return (
+                    <Ionicons
+                      key={`review-star-${index}`}
+                      name="star"
+                      size={16}
+                      color={filled ? "#FBBF24" : "#E5E7EB"}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.reviewButton, styles.reviewButtonTopSpacing]}
+              onPress={() => navigation.navigate("Review", { booking })}
+            >
+              <Ionicons name="star-outline" size={20} color="#247881" />
+              <Text style={styles.reviewButtonText}>Leave a review</Text>
+            </TouchableOpacity>
+          )
         ) : null}
 
         {/* Outer Green Card - creates the "frame" */}
@@ -361,35 +404,6 @@ export function BookingDetailScreen({ navigation, route }: Props) {
           </View>
           </View>
         </View>
-
-        {/* Review Card */}
-        {canReview ? (
-          reviewed ? (
-            <View style={styles.reviewButton}>
-              <View style={styles.reviewedStars}>
-                {Array.from({ length: 5 }).map((_, index) => {
-                  const filled = reviewedRating != null && index < Math.round(reviewedRating);
-                  return (
-                    <Ionicons
-                      key={`review-star-${index}`}
-                      name="star"
-                      size={16}
-                      color={filled ? "#FBBF24" : "#E5E7EB"}
-                    />
-                  );
-                })}
-              </View>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.reviewButton}
-              onPress={() => navigation.navigate("Review", { booking })}
-            >
-              <Ionicons name="star-outline" size={20} color="#247881" />
-              <Text style={styles.reviewButtonText}>Leave a review</Text>
-            </TouchableOpacity>
-          )
-        ) : null}
 
         {/* Action Buttons */}
         {isUpcoming && localStatus !== "canceled" ? (
@@ -527,6 +541,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
     marginTop: 16,
+    marginBottom: 12,
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 16,
@@ -536,6 +551,9 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 2,
     borderColor: '#E5E7EB',
+  },
+  reviewButtonTopSpacing: {
+    marginTop: 20,
   },
 
   reviewButtonText: {
@@ -743,6 +761,18 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 16,
     marginBottom: 12,
+  },
+
+  mapImageButton: {
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 12,
+  },
+
+  mapImage: {
+    height: 200,
+    width: "100%",
+    backgroundColor: "#F3F4F6",
   },
 
   mapPlaceholder: {
