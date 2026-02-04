@@ -59,7 +59,7 @@ const STATUS_STYLES: Record<
 
 export function BookingCard({
   booking,
-  statusLabel: _statusLabel,
+  statusLabel,
   statusTone,
   dateLabel,
   timeLabel,
@@ -76,11 +76,21 @@ export function BookingCard({
       ? `https://maps.googleapis.com/maps/api/streetview?size=240x240&location=${booking.latitude},${booking.longitude}&fov=70&key=${mapsKey}`
       : undefined);
   const [startTime, endTime] = timeLabel.split("–").map((item) => item.trim());
+  const secondaryLabel =
+    booking.accessCode
+      ? "Access code"
+      : booking.checkedInAt
+      ? "Checked in"
+      : booking.refundStatus === "succeeded"
+      ? "Refunded"
+      : booking.receiptUrl
+      ? "Receipt available"
+      : statusLabel;
 
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      style={styles.card}
       android_ripple={null}
     >
       <View style={styles.mainContent}>
@@ -114,33 +124,49 @@ export function BookingCard({
                 {booking.vehiclePlate ? booking.vehiclePlate : "Not selected"}
               </Text>
             </View>
-            <View style={styles.metaItem}>
-              <Ionicons name="calendar-outline" size={14} color={colors.textSoft} />
-              <Text style={styles.metaText}>{dateLabel}</Text>
+            <View
+              style={[
+                styles.metaChip,
+                statusTone === "canceled" && styles.metaChipDanger,
+              ]}
+            >
+              <Ionicons
+                name={statusTone === "canceled" ? "close-circle" : "checkmark-circle"}
+                size={14}
+                color={statusTone === "canceled" ? colors.danger : colors.accent}
+              />
+              <Text
+                style={[
+                  styles.metaChipText,
+                  statusTone === "canceled" && styles.metaChipTextDanger,
+                ]}
+              >
+                {secondaryLabel}
+              </Text>
             </View>
-          </View>
-
-          <View style={styles.timeBlock}>
-            <View style={styles.timeColumn}>
-              <Text style={styles.timeLabel}>Arrival</Text>
-              <Text style={styles.timeValue}>{startTime}</Text>
-              <Text style={styles.timeDate}>{dateLabel}</Text>
-            </View>
-            <View style={styles.timeArrow}>
-              <Ionicons name="arrow-forward" size={16} color={colors.accent} />
-            </View>
-            <View style={styles.timeColumn}>
-              <Text style={styles.timeLabel}>Departure</Text>
-              <Text style={styles.timeValue}>{endTime}</Text>
-              <Text style={styles.timeDate}>{dateLabel}</Text>
-            </View>
-          </View>
-
-          <View style={styles.viewMoreRow}>
-            <Text style={styles.viewMoreText}>VIEW MORE</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.accent} />
           </View>
         </View>
+      </View>
+
+      <View style={styles.timeBlock}>
+        <View style={styles.timeColumn}>
+          <Text style={styles.timeLabel}>Arrival</Text>
+          <Text style={styles.timeValue}>{startTime}</Text>
+          <Text style={styles.timeDate}>{dateLabel}</Text>
+        </View>
+        <View style={styles.timeArrow}>
+          <Ionicons name="arrow-forward" size={16} color={colors.accent} />
+        </View>
+        <View style={styles.timeColumn}>
+          <Text style={styles.timeLabel}>Departure</Text>
+          <Text style={styles.timeValue}>{endTime}</Text>
+          <Text style={styles.timeDate}>{dateLabel}</Text>
+        </View>
+      </View>
+
+      <View style={styles.viewMoreRow}>
+        <Text style={styles.viewMoreText}>VIEW MORE</Text>
+        <Ionicons name="chevron-forward" size={16} color={colors.accent} />
       </View>
     </Pressable>
   );
@@ -149,18 +175,16 @@ export function BookingCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.cardBg,
-    borderRadius: 16,
-    elevation: 1,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
     overflow: "hidden",
     padding: 0,
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-  },
-  cardPressed: {
-    shadowOpacity: 0.08,
-    transform: [{ scale: 0.98 }],
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
   },
   header: {
     flexDirection: "row",
@@ -173,18 +197,18 @@ const styles = StyleSheet.create({
   imageWrap: {
     width: 104,
     paddingLeft: 12,
-    paddingTop: 16,
-    paddingBottom: 0,
-    justifyContent: "flex-start",
+    paddingTop: 12,
+    paddingBottom: 12,
+    justifyContent: "center",
   },
   thumb: {
-    width: 80,
-    height: 80,
+    width: 88,
+    height: 88,
     borderRadius: 12,
   },
   thumbPlaceholder: {
-    width: 80,
-    height: 80,
+    width: 88,
+    height: 88,
     borderRadius: 12,
     backgroundColor: colors.border,
   },
@@ -219,13 +243,14 @@ const styles = StyleSheet.create({
   },
   priceText: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
   },
   metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 12,
+    alignItems: "center",
   },
   metaItem: {
     flexDirection: "row",
@@ -237,6 +262,26 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
   },
+  metaChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#ECFDF5",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  metaChipText: {
+    fontSize: 11,
+    color: colors.accent,
+    fontWeight: "700",
+  },
+  metaChipDanger: {
+    backgroundColor: "#FEE2E2",
+  },
+  metaChipTextDanger: {
+    color: colors.danger,
+  },
   timeBlock: {
     flexDirection: "row",
     alignItems: "center",
@@ -244,9 +289,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     paddingTop: 10,
+    paddingBottom: 10,
+    paddingHorizontal: 16,
   },
   timeColumn: {
     flex: 1,
+    alignItems: "center",
   },
   timeLabel: {
     fontSize: 10,
@@ -273,10 +321,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    marginTop: 8,
+    marginTop: 2,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    paddingBottom: 10,
   },
   viewMoreText: {
     color: colors.accent,

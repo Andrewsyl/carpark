@@ -227,7 +227,6 @@ export function HistoryScreen({ navigation, route }: Props) {
   );
   const past = bookings.filter((booking) => new Date(booking.endTime) < now);
   const visible = displayTab === "upcoming" ? upcoming : displayTab === "active" ? active : past;
-
   const items = useMemo(() => {
     const result: Array<
       | { type: "header"; id: string; label: string }

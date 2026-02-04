@@ -100,6 +100,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
     !checkedInAt &&
     Date.now() >= start.getTime() - 15 * 60 * 1000 &&
     Date.now() <= end.getTime();
+  const canBookAgain = !isUpcoming && !isInProgress;
 
   const performCancel = async () => {
     if (!token || canceling || localStatus === "canceled") return;
@@ -203,6 +204,16 @@ export function BookingDetailScreen({ navigation, route }: Props) {
     } catch (err) {
       Alert.alert("Check-in failed", err instanceof Error ? err.message : "Try again.");
     }
+  };
+
+  const handleBookAgain = () => {
+    const startTime = new Date();
+    const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
+    navigation.navigate("Listing", {
+      id: booking.listingId,
+      from: startTime.toISOString(),
+      to: endTime.toISOString(),
+    });
   };
 
   return (
@@ -414,6 +425,12 @@ export function BookingDetailScreen({ navigation, route }: Props) {
         ) : receiptUrl ? (
           <TouchableOpacity style={styles.actionBtn} onPress={() => Linking.openURL(receiptUrl)}>
             <Text style={styles.actionBtnText}>View Receipt</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {canBookAgain ? (
+          <TouchableOpacity style={styles.bookAgainButton} onPress={handleBookAgain}>
+            <Text style={styles.bookAgainText}>Book again</Text>
           </TouchableOpacity>
         ) : null}
 
@@ -780,6 +797,19 @@ const styles = StyleSheet.create({
   actionBtnText: {
     color: '#FFFFFF',
     fontSize: 18,
+    fontWeight: '600',
+  },
+  bookAgainButton: {
+    marginTop: 12,
+    marginHorizontal: 20,
+    backgroundColor: '#0F4C5C',
+    borderRadius: 999,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  bookAgainText: {
+    color: '#ffffff',
+    fontSize: 15,
     fontWeight: '600',
   },
 

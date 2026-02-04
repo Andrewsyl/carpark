@@ -940,7 +940,6 @@ export function SearchScreen({ navigation }: Props) {
             imageUrl={selectedListingImage ?? undefined}
             rating={selectedListing.rating ?? 0}
             reviewCount={selectedListing.rating_count ?? 0}
-            walkTime="14 min"
             price={`€${selectedListing.price_per_day}`}
             isAvailable={selectedListing.is_available !== false}
             isFavorite={isFavorite(selectedListing.id)}

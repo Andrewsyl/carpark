@@ -14,7 +14,6 @@ type MapBottomCardProps = {
   imageUrl?: string | null;
   rating: number;
   reviewCount: number;
-  walkTime: string;
   price: string;
   isAvailable?: boolean;
   isFavorite?: boolean;
@@ -31,7 +30,6 @@ export function MapBottomCard({
   imageUrl,
   rating,
   reviewCount,
-  walkTime,
   price,
   isAvailable = true,
   isFavorite,
@@ -145,11 +143,14 @@ export function MapBottomCard({
           
           {/* Distance and time */}
           <View style={styles.detailsRow}>
-            <Text style={styles.detailText}>🚶 {walkTime}</Text>
             {reviewCount > 0 ? (
-              <Text style={styles.detailText}>• {reviewCount} reviews</Text>
+              <Text style={styles.detailText}>
+                <Text style={styles.starText}>★</Text> {rating.toFixed(1)} • {reviewCount} reviews
+              </Text>
             ) : (
-              <Text style={styles.detailText}>• New listing</Text>
+              <Text style={styles.detailText}>
+                <Text style={styles.starText}>★</Text> {rating.toFixed(1)} • New listing
+              </Text>
             )}
           </View>
           
@@ -286,6 +287,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#6B7280",
     fontWeight: "500",
+  },
+
+  starText: {
+    fontSize: 14,
+    color: "#F2B01E",
+    fontWeight: "800",
   },
   
   // Dashed divider (receipt style)
