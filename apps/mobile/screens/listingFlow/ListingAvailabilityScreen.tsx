@@ -313,7 +313,7 @@ export function ListingAvailabilityScreen({ navigation }: Props) {
         modal
         mode={pickerMode}
         open={pickerVisible}
-        minuteInterval={5}
+        minuteInterval={30}
         date={
           pickerField === "timeStart"
             ? timeStart

@@ -23,3 +23,10 @@ export const formatDateTimeLabel = (date: Date) =>
 
 export const format = (date: Date) =>
   `${formatDateLabel(date)}, ${formatTimeLabel(date)}`;
+
+export const formatReviewDate = (date: Date) =>
+  date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });

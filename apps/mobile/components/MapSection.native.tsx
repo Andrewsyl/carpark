@@ -35,10 +35,7 @@ const distanceMeters = (a: { lat: number; lng: number }, b: { lat: number; lng: 
   return 2 * 6371000 * Math.asin(Math.sqrt(h));
 };
 const formatPinPrice = (value: number) => {
-  const rounded = Math.round(value * 100) / 100;
-  const formatted = rounded.toFixed(2);
-  if (formatted.endsWith(".00")) return formatted.slice(0, -3);
-  return formatted.replace(/0+$/, "").replace(/\.$/, "");
+  return Math.round(value).toString();
 };
 
 export default function MapSection({
@@ -58,6 +55,8 @@ export default function MapSection({
   googleMapId,
   customMapStyle,
   onOverlappingPins,
+  priceForListing,
+  priceKey,
 }: {
   region?: MapRegion;
   initialRegion: MapRegion;
@@ -75,6 +74,8 @@ export default function MapSection({
   googleMapId?: string;
   customMapStyle?: Array<Record<string, unknown>>;
   onOverlappingPins?: (pins: ListingResult[]) => void;
+  priceForListing?: (listing: ListingResult) => number;
+  priceKey?: string;
 }) {
   const nextResults = useMemo(
     () =>
@@ -100,23 +101,26 @@ export default function MapSection({
   const pinLabelById = useMemo(
     () =>
       nextResults.reduce<Record<string, string>>((acc, listing) => {
+        const priceValue = priceForListing
+          ? priceForListing(listing)
+          : Number(listing.price_per_day);
         acc[listing.id] =
           listing.is_available === false
             ? "Sold out"
-            : `€${formatPinPrice(listing.price_per_day)}`;
+            : `€${formatPinPrice(priceValue)}`;
         return acc;
       }, {}),
-    [nextResults]
+    [nextResults, priceForListing]
   );
   const labelKeys = useMemo(() => {
     const labels = Array.from(new Set(Object.values(pinLabelById)));
     const keys: string[] = [];
     labels.forEach((label) => {
-      keys.push(`${label}|default|${PIN_STYLE_VERSION}`);
-      keys.push(`${label}|selected|${PIN_STYLE_VERSION}`);
+      keys.push(`${label}|default|${PIN_STYLE_VERSION}|${priceKey ?? "base"}`);
+      keys.push(`${label}|selected|${PIN_STYLE_VERSION}|${priceKey ?? "base"}`);
     });
     return keys;
-  }, [pinLabelById]);
+  }, [pinLabelById, priceKey]);
   const pinsReady = useMemo(
     () => labelKeys.every((key) => Boolean(pinImages[key])),
     [labelKeys, pinImages]
@@ -199,7 +203,7 @@ export default function MapSection({
     );
   }, [selectedId, nextResults, initialRegion]);
   const getPinKey = (label: string, selected: boolean) =>
-    `${label}|${selected ? "selected" : "default"}|${PIN_STYLE_VERSION}`;
+    `${label}|${selected ? "selected" : "default"}|${PIN_STYLE_VERSION}|${priceKey ?? "base"}`;
   return (
     <View style={styles.container}>
       <MapView
@@ -289,7 +293,10 @@ export default function MapSection({
           ? (freezeMarkers ? renderedResultsRef.current : nextResults).map((listing) => {
           const isSelected = selectedId === listing.id;
           const label =
-            pinLabelById[listing.id] ?? `€${formatPinPrice(listing.price_per_day)}`;
+            pinLabelById[listing.id] ??
+            `€${formatPinPrice(
+              priceForListing ? priceForListing(listing) : listing.price_per_day
+            )}`;
           const pinKey = getPinKey(label, isSelected);
           const pinImage = pinImages[pinKey];
           if (!pinImage) return null;

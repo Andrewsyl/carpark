@@ -39,14 +39,6 @@ type Props = NativeStackScreenProps<RootStackParamList, "BookingSummary">;
 
 const formatDateTimeLabel = (date: Date) => `${formatDateLabel(date)} · ${formatTimeLabel(date)}`;
 
-const snapTo5Minutes = (date: Date) => {
-  const next = new Date(date);
-  const minutes = next.getMinutes();
-  const snapped = Math.round(minutes / 5) * 5;
-  next.setMinutes(snapped, 0, 0);
-  return next;
-};
-
 const VEHICLE_MAKE_KEY = "vehicle.make";
 const VEHICLE_COLOR_KEY = "vehicle.color";
 
@@ -154,9 +146,9 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 
   const priceSummary = useMemo(() => {
     if (!listing) return null;
-    const days = Math.max(1, Math.ceil(durationHours / 24));
-    const total = listing.price_per_day * days;
-    return { days, total, totalCents: Math.round(total * 100) };
+    const hourlyRate = listing.price_per_day / 24;
+    const total = Math.round(hourlyRate * durationHours);
+    return { total, totalCents: total * 100 };
   }, [durationHours, listing]);
 
   const pricing = useMemo(() => {
@@ -191,7 +183,10 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
       setStartAt(next);
       return;
     }
-    setEndAt(next);
+    const minEnd = new Date(startAt);
+    minEnd.setHours(minEnd.getHours() + 1);
+    const safeEnd = next < minEnd ? minEnd : next;
+    setEndAt(safeEnd);
   };
 
   const scheduleBookingReminders = useCallback(async () => {
@@ -425,28 +420,6 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 
           <View style={styles.card}>
             <View style={styles.cardBody}>
-              <Text style={styles.fieldLabel}>Vehicle registration</Text>
-              <Pressable
-                style={styles.regRow}
-                onPress={() => navigation.navigate("VehicleType")}
-              >
-                <View style={styles.plateCountry}>
-                  <Text style={styles.plateCountryText}>IRL</Text>
-                </View>
-                <View style={styles.regDetails}>
-                  <Text style={styles.regPlaceholder}>
-                    {vehicleMake
-                      ? `${vehicleMake}${vehicleColor ? ` · ${vehicleColor}` : ""}`
-                      : "REGISTER VEHICLE"}
-                  </Text>
-                  <Text style={styles.regHint}>Select vehicle type & color</Text>
-                </View>
-              </Pressable>
-            </View>
-          </View>
-
-          <View style={styles.card}>
-            <View style={styles.cardBody}>
               <View style={styles.rowBetween}>
                 <View style={styles.rowLeft}>
                   <Switch
@@ -460,7 +433,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
                     <MaterialCommunityIcons name="information-outline" size={16} color="#94a3b8" />
                   </View>
                 </View>
-                <Text style={styles.rowValue}>€{pricing.insuranceFee.toFixed(2)}</Text>
+                <Text style={styles.rowValue}>€{Math.round(pricing.insuranceFee)}</Text>
               </View>
               <Text style={styles.rowSubtext}>
                 Covers accidental damage and extends your booking protection.
@@ -473,18 +446,18 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
                   <Text style={styles.rowLabel}>Parking fee</Text>
                   <MaterialCommunityIcons name="information-outline" size={16} color="#94a3b8" />
                 </View>
-                <Text style={styles.rowValue}>€{pricing.parkingFee.toFixed(2)}</Text>
+                <Text style={styles.rowValue}>€{Math.round(pricing.parkingFee)}</Text>
               </View>
               <View style={styles.rowBetween}>
                 <View style={styles.rowLabelGroup}>
                   <Text style={styles.rowLabel}>Transaction fee</Text>
                   <MaterialCommunityIcons name="information-outline" size={16} color="#94a3b8" />
                 </View>
-                <Text style={styles.rowValue}>€{pricing.transactionFee.toFixed(2)}</Text>
+                <Text style={styles.rowValue}>€{Math.round(pricing.transactionFee)}</Text>
               </View>
               <View style={styles.finalRow}>
                 <Text style={styles.finalLabel}>Final price</Text>
-                <Text style={styles.finalValue}>€{pricing.finalPrice.toFixed(2)}</Text>
+                <Text style={styles.finalValue}>€{Math.round(pricing.finalPrice)}</Text>
               </View>
             </View>
           </View>
@@ -528,7 +501,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
                 ? confirmingBooking
                   ? "Finalizing..."
                   : "Processing..."
-                : `€${pricing.finalPrice.toFixed(2)} - Pay and reserve`}
+                : `€${Math.round(pricing.finalPrice)} - Pay and reserve`}
             </Text>
           </TouchableOpacity>
         </View>
@@ -561,12 +534,11 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
                 date={draftDate ?? (pickerField === "start" ? start : end)}
                 mode="datetime"
                 androidVariant="iosClone"
-                minuteInterval={5}
+                minuteInterval={30}
                 textColor={colors.accent}
                 onDateChange={(date) => {
-                  const snapped = snapTo5Minutes(date);
-                  setDraftDate(snapped);
-                  applyPickedDate(snapped);
+                  setDraftDate(date);
+                  applyPickedDate(date);
                 }}
               />
             </Pressable>
@@ -623,13 +595,12 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.cardBg,
-    borderRadius: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#374151",
     marginBottom: 16,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   cardBody: {
     paddingHorizontal: 18,
@@ -677,8 +648,8 @@ const styles = StyleSheet.create({
   dateTimePill: {
     alignItems: "center",
     backgroundColor: "#F7FFFB",
-    borderColor: "#bfe2d8",
-    borderRadius: 12,
+    borderColor: "#374151",
+    borderRadius: 6,
     borderWidth: 1,
     flexDirection: "row",
     gap: 8,

@@ -43,23 +43,21 @@ import { useFavorites } from "../favorites";
 import { logError, logInfo } from "../logger";
 import type { ListingDetail, RootStackParamList } from "../types";
 import { Ionicons } from "@expo/vector-icons";
-import { formatDateLabel, formatTimeLabel, formatDateTimeLabel } from "../utils/dateFormat";
+import {
+  formatDateLabel,
+  formatTimeLabel,
+  formatDateTimeLabel,
+  formatReviewDate,
+} from "../utils/dateFormat";
 import { Info, Star, User, Image as ImageIcon } from "lucide-react-native";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Listing">;
-
-const snapTo5Minutes = (date: Date) => {
-  const next = new Date(date);
-  const minutes = next.getMinutes();
-  const snapped = Math.round(minutes / 5) * 5;
-  next.setMinutes(snapped, 0, 0);
-  return next;
-};
 
 const getFeatureIconType = (label: string) => {
   const normalized = label.toLowerCase();
   if (normalized.includes("cctv") || normalized.includes("camera")) return "camera";
   if (normalized.includes("ev") || normalized.includes("charge")) return "bolt";
+  if (normalized.includes("light") || normalized.includes("lit") || normalized.includes("lighting")) return "bulb";
   if (normalized.includes("gate") || normalized.includes("gated")) return "lock";
   if (normalized.includes("permit")) return "ticket";
   if (normalized.includes("covered") || normalized.includes("roof")) return "roof";
@@ -86,6 +84,19 @@ const FeatureIcon = ({ type }: { type: string }) => {
             strokeWidth={1.5}
             strokeLinejoin="round"
           />
+        </Svg>
+      );
+    case "bulb":
+      return (
+        <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
+          <Path
+            d="M9 2.5a4.5 4.5 0 0 1 2.8 8.0c-.5.4-.8.9-.9 1.5H7.1c-.1-.6-.4-1.1-.9-1.5A4.5 4.5 0 0 1 9 2.5z"
+            stroke={stroke}
+            strokeWidth={1.5}
+            strokeLinejoin="round"
+          />
+          <Path d="M7.2 12.5h3.6" stroke={stroke} strokeWidth={1.5} />
+          <Path d="M7.8 14.5h2.4" stroke={stroke} strokeWidth={1.5} />
         </Svg>
       );
     case "lock":
@@ -157,8 +168,8 @@ export function ListingScreen({ navigation, route }: Props) {
       : "53.3498,-6.2603";
 
   // Check if current times match the booking times
-  const isBookingTimes = booking && 
-    startAt.toISOString() === booking.startTime && 
+  const isBookingTimes = booking &&
+    startAt.toISOString() === booking.startTime &&
     endAt.toISOString() === booking.endTime;
   const showBookingMode = booking && isBookingTimes;
 
@@ -213,19 +224,20 @@ export function ListingScreen({ navigation, route }: Props) {
     if (!listing) return null;
     const ms = Math.max(0, endAt.getTime() - startAt.getTime());
     const hours = ms / (1000 * 60 * 60);
-    const days = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
-    const total = listing.price_per_day * days;
-    
+    const roundedHours = Math.max(1, Math.ceil(hours));
+    const hourlyRate = listing.price_per_day / 24;
+    const total = Math.round(hourlyRate * roundedHours);
+
     // Format duration label
     let durationLabel: string;
     if (hours < 24) {
-      const roundedHours = Math.ceil(hours);
       durationLabel = `${roundedHours} ${roundedHours === 1 ? 'hour' : 'hours'}`;
     } else {
+      const days = Math.max(1, Math.ceil(hours / 24));
       durationLabel = `${days} ${days === 1 ? 'day' : 'days'}`;
     }
-    
-    return { days, total, totalCents: Math.round(total * 100), durationLabel };
+
+    return { total, totalCents: total * 100, durationLabel };
   }, [listing, startAt, endAt]);
 
   const openPicker = (field: "start" | "end") => {
@@ -247,7 +259,10 @@ export function ListingScreen({ navigation, route }: Props) {
       setStartAt(next);
       return;
     }
-    setEndAt(next);
+    const minEnd = new Date(startAt);
+    minEnd.setHours(minEnd.getHours() + 1);
+    const safeEnd = next < minEnd ? minEnd : next;
+    setEndAt(safeEnd);
   };
 
   const imageUrls = useMemo(() => {
@@ -264,15 +279,68 @@ export function ListingScreen({ navigation, route }: Props) {
   const featureRows = amenities.length
     ? amenities
     : ["CCTV", "EV charging", "Gated", "Permit required"];
-  const aboutText = listing?.availability_text ?? "No description yet.";
+  const featureLabels = useMemo(
+    () =>
+      featureRows.map((value) => {
+        if (!value) return value;
+        return value.charAt(0).toUpperCase() + value.slice(1);
+      }),
+    [featureRows]
+  );
+  const aboutText =
+    listing?.description ??
+    listing?.availability_text ??
+    "Secure off-street parking space in a quiet residential area. The space is well-lit and monitored, with easy access from the main road. Ideal for commuters or longer stays, with clear signage and hassle-free entry.";
+  const isOpen24 =
+    /24\s*\/\s*7|24\s*hours|open\s*24/i.test(aboutText) ||
+    /24\s*\/\s*7|24\s*hours|open\s*24/i.test(
+      listing?.availability_text ?? ""
+    );
+  const availabilityEntries = listing?.availabilitySchedule ?? [];
+  const hasWeeklyAvailability = availabilityEntries.some(
+    (entry) => Array.isArray(entry.repeatWeekdays) && entry.repeatWeekdays.length > 0
+  );
+  const formatHour = (value: string) =>
+    new Date(value).toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  const weekdayOrder = [
+    { label: "Monday", dow: 1 },
+    { label: "Tuesday", dow: 2 },
+    { label: "Wednesday", dow: 3 },
+    { label: "Thursday", dow: 4 },
+    { label: "Friday", dow: 5 },
+    { label: "Saturday", dow: 6 },
+    { label: "Sunday", dow: 0 },
+  ];
+  const openingHours = weekdayOrder.map(({ label, dow }) => {
+    if (hasWeeklyAvailability) {
+      const entry = availabilityEntries.find((item) =>
+        Array.isArray(item.repeatWeekdays) && item.repeatWeekdays.includes(dow)
+      );
+      if (entry) {
+        return {
+          day: label,
+          hours: `${formatHour(entry.startsAt)} - ${formatHour(entry.endsAt)}`,
+        };
+      }
+      return { day: label, hours: "Closed" };
+    }
+    return {
+      day: label,
+      hours: isOpen24 ? "Open 24 hours" : "Check availability",
+    };
+  });
   const aboutPreview =
     aboutText.length > 140 ? `${aboutText.slice(0, 140).trim()}...` : aboutText;
-  
+
   // Add dummy data for new fields (remove this once backend is ready)
   const description = listing?.description ?? "Secure off-street parking space in a quiet residential area. The space is well-lit and monitored 24/7 with CCTV cameras. Perfect for daily commuters or long-term parking needs. Easy access from main road with clear signage.";
   const vehicleSizeSuitability = (listing?.vehicle_size_suitability || listing?.vehicleSizeSuitability) ?? "Suitable for: Compact cars, Sedans, Small SUVs (up to 4.8m length)";
   const accessDirections = (listing?.access_directions || listing?.accessDirections) ?? "1. Enter through the main gate on Oak Street\n2. Turn left at the first intersection\n3. The parking space is number 24, located on the right side\n4. Access code will be provided after booking\n5. Gate opens automatically with the code";
-  
+
   const hostName = "Andrew";
   const hostInitials = hostName
     .split(" ")
@@ -283,7 +351,7 @@ export function ListingScreen({ navigation, route }: Props) {
   const hasReviews = (listing?.rating_count ?? 0) > 0 && typeof listing?.rating === "number";
   const hostRating = hasReviews && listing?.rating ? listing.rating.toFixed(1) : null;
   const hostReviews = hasReviews ? listing?.rating_count ?? 0 : 0;
-  const heroHeight = Math.round(width * 0.75);
+  const heroHeight = Math.round(width * 0.72);
   const distanceLabel = listing?.distance_m
     ? `${(listing.distance_m / 1000).toFixed(1)} km`
     : "0.8 km";
@@ -294,11 +362,27 @@ export function ListingScreen({ navigation, route }: Props) {
     }
     return base.slice(0, 4);
   }, [featureRows]);
-  const extendPriceValue = listing?.price_per_day != null ? Number(listing.price_per_day) : null;
-  const extendPrice =
-    extendPriceValue != null && !Number.isNaN(extendPriceValue)
-      ? extendPriceValue.toFixed(2)
-      : null;
+  const extendOffer = useMemo(() => {
+    const dayPrice = listing?.price_per_day != null ? Number(listing.price_per_day) : null;
+    if (dayPrice == null || Number.isNaN(dayPrice)) return null;
+    const endOfDay = new Date(endAt);
+    endOfDay.setHours(23, 59, 0, 0);
+    if (endAt >= endOfDay) return null;
+    const ms = Math.max(0, endOfDay.getTime() - endAt.getTime());
+    const hours = Math.max(1, Math.round(ms / (1000 * 60 * 60)));
+    const hourly = dayPrice / 24;
+    const extra = hourly * hours;
+    const discountRate = 0.25;
+    const discountedExtra = extra * (1 - discountRate);
+    const savings = extra - discountedExtra;
+    if (savings < 1) return null;
+    const roundedExtra = Math.round(discountedExtra);
+    return {
+      hours,
+      extra: roundedExtra.toString(),
+      endOfDay,
+    };
+  }, [listing?.price_per_day, endAt]);
 
   const handleLogin = async () => {
     setAuthError(null);
@@ -350,66 +434,71 @@ export function ListingScreen({ navigation, route }: Props) {
         ) : listing ? (
           <>
             {/* Content Card */}
-            <ScrollView
-              style={styles.container}
-              showsVerticalScrollIndicator={false}
-            >
-              {/* Hero Image Section */}
-              <View style={[styles.header, { height: heroHeight }]}>
-                {imageUrls.length ? (
-                  <Pressable
-                    onPress={() => {
-                      setViewerIndex(0);
-                      setShowImageViewer(true);
-                    }}
-                  >
-                    <Image
-                      source={{ uri: imageUrls[0] }}
-                      style={[styles.heroImage, { width, height: heroHeight }]}
-                    />
-                  </Pressable>
-                ) : (
-                  <View style={[styles.heroPlaceholder, { height: heroHeight }]}>
-                    <Text style={styles.heroPlaceholderText}>No image</Text>
-                  </View>
-                )}
-                
-                {/* Header Overlay */}
-                <View style={styles.headerOverlay}>
-                  <Pressable style={styles.backButtonRound} onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-                  </Pressable>
-                  <Pressable style={styles.favoriteButtonRound} onPress={handleToggleFavorite}>
-                    <Text style={[styles.favoriteIcon, isFavorite(id) && styles.favoriteIconActive]}>
-                      {isFavorite(id) ? "♥︎" : "♡"}
-                    </Text>
-                    {showFavAnim ? (
-                      <LottieView
-                        source={require("../assets/Heart fav.json")}
-                        autoPlay
-                        loop={false}
-                        onAnimationFinish={() => setShowFavAnim(false)}
-                        style={styles.favAnimOverlay}
-                        pointerEvents="none"
-                      />
-                    ) : null}
-                  </Pressable>
+            <View style={[styles.heroFixed, { height: heroHeight + insets.top, top: -insets.top + 22 }]}>
+              {imageUrls.length ? (
+                <Image
+                  source={{ uri: imageUrls[0] }}
+                  style={[styles.heroImage, { width, height: heroHeight }]}
+                />
+              ) : (
+                <View style={[styles.heroPlaceholder, { height: heroHeight }]}>
+                  <Text style={styles.heroPlaceholderText}>No image</Text>
                 </View>
-                
-                {imageUrls.length > 1 ? (
-                  <View style={styles.dotsRow}>
-                    {imageUrls.map((_, index) => (
-                      <View
-                        key={`dot-${index}`}
-                        style={[styles.dot, index === 0 && styles.dotActive]}
-                      />
-                    ))}
-                  </View>
-                ) : null}
+              )}
+
+              {/* Header Overlay */}
+              <View style={styles.headerOverlay}>
+                <Pressable style={styles.backButtonRound} onPress={() => navigation.goBack()}>
+                  <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                </Pressable>
+                <Pressable style={styles.favoriteButtonRound} onPress={handleToggleFavorite}>
+                  <Text style={[styles.favoriteIcon, isFavorite(id) && styles.favoriteIconActive]}>
+                    {isFavorite(id) ? "♥︎" : "♡"}
+                  </Text>
+                  {showFavAnim ? (
+                    <LottieView
+                      source={require("../assets/Heart fav.json")}
+                      autoPlay
+                      loop={false}
+                      onAnimationFinish={() => setShowFavAnim(false)}
+                      style={styles.favAnimOverlay}
+                      pointerEvents="none"
+                    />
+                  ) : null}
+                </Pressable>
               </View>
 
-              <View style={styles.sheetHandle} />
-              <View style={styles.contentCard}>
+              {imageUrls.length > 1 ? (
+                <View style={styles.dotsRow}>
+                  {imageUrls.map((_, index) => (
+                    <View
+                      key={`dot-${index}`}
+                      style={[styles.dot, index === 0 && styles.dotActive]}
+                    />
+                  ))}
+                </View>
+              ) : null}
+            </View>
+
+            <Pressable
+              style={[
+                styles.heroTapOverlay,
+                { height: Math.max(0, heroHeight - 54), top: -insets.top + 54 },
+              ]}
+              onPress={() => {
+                setViewerIndex(0);
+                setShowImageViewer(true);
+              }}
+              pointerEvents="box-none"
+            />
+
+            <ScrollView
+              style={styles.scrollContainer}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingTop: heroHeight - 40 }}
+            >
+              <View style={styles.contentWrap}>
+                <View style={styles.contentCard}>
               {/* Title Section */}
               <View style={styles.titleSection}>
                 <Text style={styles.category}>PARKING SPACE</Text>
@@ -429,6 +518,24 @@ export function ListingScreen({ navigation, route }: Props) {
                     <Text style={styles.reviewCount}>New listing</Text>
                   )}
                 </View>
+                {priceSummary ? (
+                  <View style={styles.summaryStrip}>
+                    <View style={styles.summaryCell}>
+                      <Text style={styles.summaryLabel}>Total duration</Text>
+                      <Text style={styles.summaryValue}>{priceSummary.durationLabel}</Text>
+                    </View>
+                    <View style={styles.summaryDivider} />
+                    <View style={styles.summaryCell}>
+                      <Text style={styles.summaryLabel}>Parking fee</Text>
+                      <Text style={styles.summaryValue}>€{priceSummary.total}</Text>
+                    </View>
+                    <View style={styles.summaryDivider} />
+                    <View style={styles.summaryCell}>
+                      <Text style={styles.summaryLabel}>To destination</Text>
+                      <Text style={styles.summaryValue}>{distanceLabel}</Text>
+                    </View>
+                  </View>
+                ) : null}
               </View>
 
               {/* Date/Time Picker Row */}
@@ -457,118 +564,108 @@ export function ListingScreen({ navigation, route }: Props) {
                       </View>
                     </Pressable>
                   </View>
-                  {extendPrice ? (
-                    <View style={styles.offerBar}>
+                  {extendOffer ? (
+                    <Pressable
+                      style={styles.offerBar}
+                      onPress={() => {
+                        setEndAt(new Date(extendOffer.endOfDay));
+                      }}
+                    >
                       <Text style={styles.offerText}>
-                        Extend to 23:59 for only €{extendPrice}
+                        Extend to 23:59 for only €{extendOffer.extra}
                       </Text>
-                    </View>
+                    </Pressable>
                   ) : null}
                 </View>
               </View>
 
-              {/* Content Sections */}
-              <View style={styles.contentSections}>
-                <View style={styles.dividerLine} />
-                
-                <Text style={styles.sectionTitle}>About this space</Text>
+              {/* Description */}
+              <View style={[styles.sectionBlock, { paddingHorizontal: 16 }]}>
+                <Text style={styles.sectionTitle}>Description</Text>
                 <Text style={styles.sectionBody}>
                   {showFullAbout ? aboutText : aboutPreview}
                 </Text>
                 {aboutText.length > 140 ? (
                   <Pressable onPress={() => setShowFullAbout((prev) => !prev)}>
                     <Text style={styles.readMore}>
-                      {showFullAbout ? "Read less" : "Read more"}
+                      {showFullAbout ? "Read less →" : "Read more →"}
                     </Text>
                   </Pressable>
                 ) : null}
-                
-                {(description || vehicleSizeSuitability || accessDirections) && (
-                  <>
-                    <View style={styles.dividerLine} />
-                    
-                    {description && (
-                      <>
-                        <Text style={styles.sectionTitle}>Description</Text>
-                        <Text style={styles.sectionBody}>{description}</Text>
-                      </>
-                    )}
+              </View>
+              <View style={styles.sectionDivider} />
 
-                    {vehicleSizeSuitability && (
-                      <>
-                        {description && <View style={{ height: 20 }} />}
-                        <Text style={styles.sectionTitle}>Vehicle Size Suitability</Text>
-                        <View style={styles.vehicleSizeCard}>
-                          <Ionicons name="car-sport" size={24} color="#10B981" />
-                          <Text style={styles.vehicleSizeText}>
-                            {vehicleSizeSuitability}
-                          </Text>
-                        </View>
-                      </>
-                    )}
+              {/* Opening Hours */}
+              <View style={[styles.sectionBlock, { paddingHorizontal: 16 }]}>
+                <Text style={styles.sectionTitle}>Space Availability</Text>
+                {openingHours.map((row) => {
+                  const todayLabel = new Date().toLocaleDateString(undefined, {
+                    weekday: "long",
+                  });
+                  const isToday = row.day === todayLabel;
+                  return (
+                    <View
+                      key={row.day}
+                      style={[styles.hoursRow, isToday && styles.hoursRowToday]}
+                    >
+                      <Text style={[styles.hoursDay, isToday && styles.hoursDayToday]}>
+                        {row.day}
+                      </Text>
+                      <Text style={[styles.hoursValue, isToday && styles.hoursValueToday]}>
+                        {row.hours}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+              <View style={styles.sectionDivider} />
 
-                    {accessDirections && (
-                      <>
-                        {(description || vehicleSizeSuitability) && <View style={{ height: 20 }} />}
-                        <Text style={styles.sectionTitle}>Access Directions</Text>
-                        <View style={styles.accessDirectionsCard}>
-                          <Ionicons name="navigate-circle" size={24} color="#10B981" />
-                          <Text style={styles.accessDirectionsText}>
-                            {accessDirections}
-                          </Text>
-                        </View>
-                      </>
-                    )}
-                  </>
-                )}
-                
-                <View style={styles.dividerLine} />
-                
-                <Text style={styles.sectionTitle}>Features</Text>
+              {/* Features */}
+              <View style={styles.featuresSection}>
                 <View style={styles.featuresGrid}>
-                  {featureRows.map((feature) => (
-                    <View key={feature} style={styles.featureCard}>
-                      <View style={styles.featureIconWrapper}>
-                        <FeatureIcon type={getFeatureIconType(feature)} />
-                      </View>
-                      <Text style={styles.featureLabel}>{feature}</Text>
+                  {featureLabels.map((feature) => (
+                    <View key={feature} style={styles.featureIconCard}>
+                      <FeatureIcon type={getFeatureIconType(feature)} />
+                      <Text style={styles.featureIconLabel}>{feature}</Text>
                     </View>
                   ))}
                 </View>
+              </View>
+              <View style={styles.sectionDivider} />
 
-                <View style={styles.dividerLine} />
-                
-                {reviews.length > 0 && (
-                  <>
-                    <View style={styles.dividerLine} />
-                    
-                    <Text style={styles.sectionTitle}>Reviews</Text>
-                    {reviewsLoading ? (
-                      <Text style={styles.sectionBody}>Loading reviews…</Text>
-                    ) : (
-                      <View style={styles.reviewList}>
-                        {reviews.map((review) => (
-                          <View key={review.id} style={styles.reviewCard}>
-                            <View style={styles.reviewHeader}>
-                              <Text style={styles.reviewRating}>★ {review.rating.toFixed(1)}</Text>
-                              <Text style={styles.reviewDate}>
-                                {new Date(review.createdAt).toLocaleDateString()}
-                              </Text>
-                            </View>
-                            {review.comment ? (
-                              <Text style={styles.reviewComment}>{review.comment}</Text>
-                            ) : null}
+              {/* Content Sections */}
+              <View style={styles.contentSections}>
+                <View style={styles.sectionBlock}>
+                  <Text style={styles.sectionTitle}>Reviews</Text>
+                  {reviewsLoading ? (
+                    <View style={styles.centered}>
+                      <ActivityIndicator />
+                    </View>
+                  ) : reviews.length ? (
+                    <View style={styles.reviewList}>
+                      {reviews.slice(0, 4).map((review) => (
+                        <View key={review.id} style={styles.reviewCard}>
+                          <View style={styles.reviewHeader}>
+                            <Text style={styles.reviewRating}>
+                              ★ {review.rating.toFixed(1)}
+                            </Text>
+                            <Text style={styles.reviewDate}>
+                              {formatReviewDate(new Date(review.created_at))}
+                            </Text>
                           </View>
-                        ))}
-                      </View>
-                    )}
-                  </>
-                )}
+                          <Text style={styles.reviewComment}>{review.comment}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={styles.reviewComment}>No reviews yet.</Text>
+                  )}
+                </View>
 
                 {!user && (
                   <>
                     <View style={styles.dividerLine} />
-                    
+
                     <View style={styles.authCard}>
                       <Text style={styles.authTitle}>Sign in to book</Text>
                       <TextInput
@@ -608,10 +705,11 @@ export function ListingScreen({ navigation, route }: Props) {
                     </View>
                   </>
                 )}
-                
+
                 {/* Extra padding for bottom button */}
                 <View style={{ height: 200 }} />
               </View>
+                </View>
               </View>
             </ScrollView>
 
@@ -620,7 +718,7 @@ export function ListingScreen({ navigation, route }: Props) {
               <View style={[styles.bottomBar, { paddingBottom: 24 + insets.bottom }]}>
                 <View style={styles.priceInfo}>
                   <Text style={styles.priceFrom}>From</Text>
-                  <Text style={styles.priceAmount}>€{priceSummary.total.toFixed(2)}</Text>
+                  <Text style={styles.priceAmount}>€{priceSummary.total}</Text>
                   <Text style={styles.priceDuration}>{priceSummary.durationLabel}</Text>
                 </View>
                 {listing?.is_available === false || showBookingMode ? (
@@ -671,6 +769,9 @@ export function ListingScreen({ navigation, route }: Props) {
                 <Pressable
                   style={styles.pickerDone}
                   onPress={() => {
+                    const picked =
+                      draftDate ?? (pickerField === "start" ? startAt : endAt);
+                    applyPickedDate(picked);
                     setPickerVisible(false);
                     setDraftDate(null);
                   }}
@@ -682,12 +783,10 @@ export function ListingScreen({ navigation, route }: Props) {
                 date={draftDate ?? (pickerField === "start" ? startAt : endAt)}
                 mode="datetime"
                 androidVariant="iosClone"
-                minuteInterval={5}
+                minuteInterval={30}
                 textColor={colors.accent}
                 onDateChange={(date) => {
-                  const snapped = snapTo5Minutes(date);
-                  setDraftDate(snapped);
-                  applyPickedDate(snapped);
+                  setDraftDate(date);
                 }}
               />
             </Pressable>
@@ -730,6 +829,10 @@ export function ListingScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#F9FAFB",
+    flex: 1,
+  },
+  scrollContainer: {
+    backgroundColor: "transparent",
     flex: 1,
   },
   topBar: {
@@ -871,8 +974,10 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: colors.cardBg,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderWidth: 1,
+    borderColor: "#bfe2d8",
     marginTop: -28,
     paddingHorizontal: spacing.screenX,
     paddingTop: 20,
@@ -948,15 +1053,14 @@ const styles = StyleSheet.create({
   },
   timeRow: {
     backgroundColor: colors.cardBg,
-    borderRadius: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#374151",
     marginTop: 16,
     paddingHorizontal: 20,
     paddingVertical: 16,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   timeLabel: {
     color: colors.text,
@@ -978,8 +1082,8 @@ const styles = StyleSheet.create({
   dateTimePill: {
     alignItems: "center",
     backgroundColor: "#ffffff",
-    borderColor: "#e2e8f0",
-    borderRadius: 10,
+    borderColor: "#374151",
+    borderRadius: 6,
     borderWidth: 1,
     flex: 1,
     flexDirection: "row",
@@ -1010,8 +1114,8 @@ const styles = StyleSheet.create({
   metaStrip: {
     alignItems: "center",
     backgroundColor: colors.cardBg,
-    borderColor: colors.border,
-    borderRadius: 12,
+    borderColor: "#374151",
+    borderRadius: 6,
     borderWidth: 1,
     flexDirection: "row",
     gap: 8,
@@ -1091,10 +1195,16 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: '#111827',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
-    letterSpacing: -0.3,
-    marginBottom: 10,
+    letterSpacing: -0.2,
+    marginBottom: 8,
+  },
+  readMore: {
+    marginTop: 6,
+    color: '#16a34a',
+    fontSize: 13,
+    fontWeight: '600',
   },
   hostRow: {
     alignItems: "center",
@@ -1374,11 +1484,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
-  
+
   // New Tab-Based Design Styles
   header: {
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
+  },
+  heroFixed: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    overflow: "hidden",
+    zIndex: 0,
+  },
+  heroTapOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 0,
   },
   headerOverlay: {
     position: 'absolute',
@@ -1387,7 +1512,7 @@ const styles = StyleSheet.create({
     right: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    zIndex: 10,
+    zIndex: 2,
   },
   backButtonRound: {
     width: 40,
@@ -1422,11 +1547,14 @@ const styles = StyleSheet.create({
   contentCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    marginTop: -18,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingTop: 12,
     paddingBottom: 120, // Extra padding for fixed bottom bar
+  },
+  contentWrap: {
+    marginTop: -25,
+    zIndex: 2,
   },
   sheetHandle: {
     alignSelf: "center",
@@ -1469,6 +1597,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
+  summaryStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginTop: 14,
+    paddingVertical: 10,
+  },
+  summaryCell: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 8,
+    gap: 2,
+  },
+  summaryLabel: {
+    color: colors.textSoft,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  summaryDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: colors.border,
+  },
+  summaryValue: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "600",
+  },
   rating: {
     fontSize: 14,
     fontWeight: '700',
@@ -1503,8 +1662,10 @@ const styles = StyleSheet.create({
   },
   timePickerWrapper: {
     overflow: "hidden",
-    borderRadius: 12,
+    borderRadius: 8,
     backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#374151",
     shadowColor: "#0f172a",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
@@ -1525,7 +1686,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "#bfe2d8",
     backgroundColor: "#f7fffb",
@@ -1569,20 +1730,56 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 6,
   },
+  sectionBlock: {
+    paddingTop: 12,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+    marginTop: 8,
+  },
+  hoursRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  hoursRowToday: {
+    backgroundColor: "#F0FDF4",
+    borderRadius: 0,
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+  },
+  hoursDay: {
+    fontSize: 14,
+    color: "#111827",
+    fontWeight: "600",
+  },
+  hoursDayToday: {
+    color: "#166534",
+  },
+  hoursValue: {
+    fontSize: 14,
+    color: "#6B7280",
+    fontWeight: "600",
+  },
+  hoursValueToday: {
+    color: "#166534",
+  },
   dividerLine: {
     height: 1,
     backgroundColor: '#E5E7EB',
     marginVertical: 16,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#111827',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   sectionBody: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 21,
     color: '#6B7280',
     fontWeight: '400',
   },
@@ -1596,30 +1793,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginTop: 10,
+    justifyContent: "space-between",
   },
-  featureCard: {
-    width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 12,
-    borderRadius: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  featuresSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    paddingTop: 6,
   },
-  featureIconWrapper: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+  featureIconCard: {
+    width: "23%",
+    minHeight: 64,
+    borderRadius: 12,
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 4,
   },
-  featureLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#111827',
-    flex: 1,
+  featureIconLabel: {
+    fontSize: 11,
+    color: "#6B7280",
+    fontWeight: "600",
+    textAlign: "center",
   },
   hostCard: {
     flexDirection: 'row',

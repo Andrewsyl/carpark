@@ -175,14 +175,13 @@ export function MapBottomCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#ffffff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderWidth: 1,
+    borderColor: "#374151",
     position: "absolute",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowOpacity: 0,
+    elevation: 0,
     overflow: "hidden",
   },
   

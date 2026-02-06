@@ -118,18 +118,10 @@ const formatTimeLabel = (date: Date) => `${pad2(date.getHours())}:${pad2(date.ge
 
 const formatDateTimeLabel = (date: Date) => `${formatDateLabel(date)} · ${formatTimeLabel(date)}`;
 
-const snapTo5Minutes = (date: Date) => {
-  const next = new Date(date);
-  const minutes = next.getMinutes();
-  const snapped = Math.ceil(minutes / 5) * 5;
-  next.setMinutes(snapped, 0, 0);
-  return next;
-};
-
 export function SearchScreen({ navigation }: Props) {
   const today = useMemo(() => {
     const now = new Date();
-    const start = snapTo5Minutes(new Date(now));
+    const start = new Date(now);
     const end = new Date(start);
     end.setHours(end.getHours() + 2);
     return {
@@ -160,6 +152,7 @@ export function SearchScreen({ navigation }: Props) {
   const [pickerField, setPickerField] = useState<"start" | "end">("start");
   const [pickerVisible, setPickerVisible] = useState(false);
   const [draftDate, setDraftDate] = useState<Date | null>(null);
+  const timeSearchPendingRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [priceMin, setPriceMin] = useState("");
@@ -383,6 +376,12 @@ export function SearchScreen({ navigation }: Props) {
     setTo(endAt.toISOString());
   }, [startAt, endAt]);
 
+  useEffect(() => {
+    if (!timeSearchPendingRef.current) return;
+    timeSearchPendingRef.current = false;
+    void runSearch({ lat, lng, radiusKm });
+  }, [endAt, lat, lng, radiusKm, runSearch]);
+
   const applyPickedDate = (next: Date) => {
     if (pickerField === "start") {
       let nextEnd = endAt;
@@ -394,7 +393,10 @@ export function SearchScreen({ navigation }: Props) {
       }
       setStartAt(next);
     } else {
-      setEndAt(next);
+      const minEnd = new Date(startAt);
+      minEnd.setHours(minEnd.getHours() + 1);
+      const safeEnd = next < minEnd ? minEnd : next;
+      setEndAt(safeEnd);
     }
   };
 
@@ -788,6 +790,26 @@ export function SearchScreen({ navigation }: Props) {
     setShowSearchArea(true);
   };
 
+  const durationHours = useMemo(() => {
+    const ms = Math.max(0, endAt.getTime() - startAt.getTime());
+    const hours = ms / (1000 * 60 * 60);
+    return Math.max(1, Math.ceil(hours));
+  }, [startAt, endAt]);
+
+  const priceForListing = useCallback(
+    (listing: ListingResult) => {
+      const day = Number(listing.price_per_day);
+      const hourly = Number.isFinite(day) ? day / 24 : 0;
+      const total = hourly * durationHours;
+      return Math.max(0, Math.round(total));
+    },
+    [durationHours]
+  );
+  const priceKey = useMemo(
+    () => `${startAt.getTime()}-${endAt.getTime()}`,
+    [startAt, endAt]
+  );
+
   const clearFilters = () => {
     setPriceMin("");
     setPriceMax("");
@@ -820,6 +842,8 @@ export function SearchScreen({ navigation }: Props) {
             onMapLoaded={() => handleMapReady("loaded")}
             onMapReady={() => handleMapReady("ready")}
             onOverlappingPins={setOverlappingPins}
+            priceForListing={priceForListing}
+            priceKey={priceKey}
           />
         ) : (
           <View style={styles.mapPlaceholder} />
@@ -944,7 +968,7 @@ export function SearchScreen({ navigation }: Props) {
             imageUrl={selectedListingImage ?? undefined}
             rating={selectedListing.rating ?? 0}
             reviewCount={selectedListing.rating_count ?? 0}
-            price={`€${selectedListing.price_per_day}`}
+            price={`€${priceForListing(selectedListing)}`}
             isAvailable={selectedListing.is_available !== false}
             isFavorite={isFavorite(selectedListing.id)}
             onToggleFavorite={() => toggle(selectedListing)}
@@ -1291,9 +1315,9 @@ export function SearchScreen({ navigation }: Props) {
                     date={draftDate ?? (pickerField === "start" ? startAt : endAt)}
                     mode="datetime"
                     androidVariant="iosClone"
-                    minuteInterval={5}
+                    minuteInterval={30}
                     textColor="#101828"
-                    onDateChange={(date) => setDraftDate(snapTo5Minutes(date))}
+                    onDateChange={(date) => setDraftDate(date)}
                   />
                   <View style={styles.pickerFooter}>
                     <Pressable
@@ -1317,6 +1341,7 @@ export function SearchScreen({ navigation }: Props) {
                           setDraftDate(suggestedEnd);
                           return;
                         }
+                        timeSearchPendingRef.current = true;
                         applyPickedDate(next);
                         setPickerVisible(false);
                         setDraftDate(null);
@@ -1337,21 +1362,21 @@ export function SearchScreen({ navigation }: Props) {
               date={draftDate ?? (pickerField === "start" ? startAt : endAt)}
               mode="datetime"
               androidVariant="iosClone"
-              minuteInterval={5}
+              minuteInterval={30}
               textColor="#101828"
               onConfirm={(date) => {
-                const snapped = snapTo5Minutes(date);
-                setDraftDate(snapped);
+                setDraftDate(date);
                 if (pickerField === "start") {
-                  applyPickedDate(snapped);
-                  const suggestedEnd = new Date(snapped);
+                  applyPickedDate(date);
+                  const suggestedEnd = new Date(date);
                   suggestedEnd.setHours(suggestedEnd.getHours() + 2);
                   setPickerField("end");
                   setDraftDate(suggestedEnd);
                   setTimeout(() => setPickerVisible(true), 0);
                   return;
                 }
-                applyPickedDate(snapped);
+                timeSearchPendingRef.current = true;
+                applyPickedDate(date);
                 setPickerVisible(false);
                 setDraftDate(null);
               }}
@@ -1390,7 +1415,9 @@ export function SearchScreen({ navigation }: Props) {
                         {listing.address}
                       </Text>
                     </View>
-                    <Text style={styles.overlappingItemPrice}>€{listing.price_per_day}</Text>
+                    <Text style={styles.overlappingItemPrice}>
+                      €{priceForListing(listing)}
+                    </Text>
                   </Pressable>
                 ))}
               </View>

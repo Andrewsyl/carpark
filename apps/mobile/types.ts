@@ -72,6 +72,15 @@ export type ListingDetail = ListingSummary & {
   vehicleSizeSuitability?: string | null;
   access_directions?: string | null;
   accessDirections?: string | null;
+  availabilitySchedule?: {
+    id: string;
+    kind: "open" | "blocked";
+    startsAt: string;
+    endsAt: string;
+    repeatWeekdays?: number[] | null;
+    repeatUntil?: string | null;
+    createdAt: string;
+  }[];
 };
 
 export type SecurityLevel = "basic" | "gated" | "cctv";

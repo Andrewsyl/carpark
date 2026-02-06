@@ -8,6 +8,7 @@ import {
   listListingsByHost,
   getListingById,
   getListingByIdWithAvailability,
+  listAvailability,
   findUserById,
   updateListingForHost,
   getListingHostId,
@@ -142,12 +143,29 @@ router.get("/:id", async (req, res, next) => {
         to: z.string().datetime().optional(),
       })
       .parse(req.query);
+    if (query.from && query.to) {
+      const fromDate = new Date(query.from);
+      const toDate = new Date(query.to);
+      if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+        return res.status(400).json({ message: "Invalid date range" });
+      }
+      if (fromDate > toDate) {
+        return res.status(400).json({ message: "Invalid date range" });
+      }
+    }
     const listing =
       query.from && query.to
         ? await getListingByIdWithAvailability(listingId, query.from, query.to)
         : await getListingById(listingId);
     if (!listing) return res.status(404).json({ message: "Listing not found" });
-    res.json({ listing });
+    const availability = await listAvailability(listingId);
+    const availabilitySchedule = availability.filter((entry) => entry.kind === "open");
+    res.json({
+      listing: {
+        ...listing,
+        availabilitySchedule,
+      },
+    });
   } catch (error) {
     next(error);
   }

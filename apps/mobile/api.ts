@@ -101,6 +101,10 @@ export async function getListing(
     is_available: listing.is_available ?? listing.isAvailable ?? null,
     rating_count: listing.rating_count ?? listing.ratingCount,
     availability_text: listing.availability_text ?? listing.availability,
+    availabilitySchedule:
+      listing.availabilitySchedule ??
+      listing.availability_schedule ??
+      listing.availabilitySchedule,
     amenities: listing.amenities ?? null,
     access_code: listing.access_code ?? listing.accessCode ?? null,
     permission_declared:

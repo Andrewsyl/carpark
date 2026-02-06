@@ -68,7 +68,7 @@ export function BookingCard({
 }: Props) {
   const badgeStyle = STATUS_STYLES[statusTone];
   const ratingValue = typeof rating === "number" ? Math.round(rating) : null;
-  const price = (booking.amountCents / 100).toFixed(2);
+  const price = Math.round(booking.amountCents / 100);
   const mapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const imageUrl =
     booking.imageUrls?.[0] ??
@@ -175,16 +175,13 @@ export function BookingCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.cardBg,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#374151",
     overflow: "hidden",
     padding: 0,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   header: {
     flexDirection: "row",
@@ -204,12 +201,12 @@ const styles = StyleSheet.create({
   thumb: {
     width: 88,
     height: 88,
-    borderRadius: 12,
+    borderRadius: 6,
   },
   thumbPlaceholder: {
     width: 88,
     height: 88,
-    borderRadius: 12,
+    borderRadius: 6,
     backgroundColor: colors.border,
   },
   reference: {

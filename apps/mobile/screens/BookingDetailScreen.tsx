@@ -400,7 +400,9 @@ export function BookingDetailScreen({ navigation, route }: Props) {
 
           <View style={styles.detailRowHorizontal}>
             <Text style={styles.detailLabel}>TOTAL</Text>
-            <Text style={[styles.detailValue, styles.totalValue]}>€{(localAmountCents / 100).toFixed(2)}</Text>
+            <Text style={[styles.detailValue, styles.totalValue]}>
+              €{Math.round(localAmountCents / 100)}
+            </Text>
           </View>
           </View>
         </View>
@@ -461,7 +463,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
         date={minExtendTime}
         minimumDate={minExtendTime}
         mode="datetime"
-        minuteInterval={5}
+        minuteInterval={30}
         onConfirm={(date) => {
           setExtendOpen(false);
           handleExtend(date);
