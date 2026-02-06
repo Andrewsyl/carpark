@@ -446,28 +446,6 @@ export function ListingScreen({ navigation, route }: Props) {
                 </View>
               )}
 
-              {/* Header Overlay */}
-              <View style={styles.headerOverlay}>
-                <Pressable style={styles.backButtonRound} onPress={() => navigation.goBack()}>
-                  <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-                </Pressable>
-                <Pressable style={styles.favoriteButtonRound} onPress={handleToggleFavorite}>
-                  <Text style={[styles.favoriteIcon, isFavorite(id) && styles.favoriteIconActive]}>
-                    {isFavorite(id) ? "♥︎" : "♡"}
-                  </Text>
-                  {showFavAnim ? (
-                    <LottieView
-                      source={require("../assets/Heart fav.json")}
-                      autoPlay
-                      loop={false}
-                      onAnimationFinish={() => setShowFavAnim(false)}
-                      style={styles.favAnimOverlay}
-                      pointerEvents="none"
-                    />
-                  ) : null}
-                </Pressable>
-              </View>
-
               {imageUrls.length > 1 ? (
                 <View style={styles.dotsRow}>
                   {imageUrls.map((_, index) => (
@@ -480,6 +458,28 @@ export function ListingScreen({ navigation, route }: Props) {
               ) : null}
             </View>
 
+            {/* Header Overlay */}
+            <View style={styles.headerOverlay}>
+              <Pressable style={styles.backButtonRound} onPress={() => navigation.goBack()}>
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </Pressable>
+              <Pressable style={styles.favoriteButtonRound} onPress={handleToggleFavorite}>
+                <Text style={[styles.favoriteIcon, isFavorite(id) && styles.favoriteIconActive]}>
+                  {isFavorite(id) ? "♥︎" : "♡"}
+                </Text>
+                {showFavAnim ? (
+                  <LottieView
+                    source={require("../assets/Heart fav.json")}
+                    autoPlay
+                    loop={false}
+                    onAnimationFinish={() => setShowFavAnim(false)}
+                    style={styles.favAnimOverlay}
+                    pointerEvents="none"
+                  />
+                ) : null}
+              </Pressable>
+            </View>
+
             <Pressable
               style={[
                 styles.heroTapOverlay,
@@ -489,7 +489,6 @@ export function ListingScreen({ navigation, route }: Props) {
                 setViewerIndex(0);
                 setShowImageViewer(true);
               }}
-              pointerEvents="box-none"
             />
 
             <ScrollView
@@ -1503,7 +1502,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 0,
+    zIndex: 1,
   },
   headerOverlay: {
     position: 'absolute',

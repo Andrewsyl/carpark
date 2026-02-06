@@ -317,11 +317,14 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
           index: 0,
           routes: [
             {
-              name: "History",
+              name: "Tabs",
               params: {
-                showSuccess: true,
-                refreshToken: Date.now(),
-                initialTab: "upcoming",
+                screen: "History",
+                params: {
+                  showSuccess: true,
+                  refreshToken: Date.now(),
+                  initialTab: "upcoming",
+                },
               },
             },
           ],
