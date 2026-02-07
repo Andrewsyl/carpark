@@ -124,15 +124,15 @@ export function HistoryScreen({ navigation, route }: Props) {
     if (!route.params?.showSuccess) return;
     console.log('[HistoryScreen] Setting showSuccess to true');
     setShowSuccess(true);
-    
+
     // Reset animation values
     newBookingSlideAnim.setValue(50);
     newBookingOpacityAnim.setValue(0);
-    
+
     // Start loading bookings immediately during animation
     console.log('[HistoryScreen] Starting to load bookings during animation');
     const previousBookingIds = new Set(bookings.map(b => b.id));
-    
+
     void loadBookings().then((newBookings) => {
       // Find the new booking after load completes
       if (newBookings && newBookings.length > 0) {
@@ -143,11 +143,11 @@ export function HistoryScreen({ navigation, route }: Props) {
         }
       }
     });
-    
+
     const hideTimer = setTimeout(() => {
       console.log('[HistoryScreen] Hiding success animation');
       setShowSuccess(false);
-      
+
       // Trigger slide-in animation after overlay disappears
       setTimeout(() => {
         console.log('[HistoryScreen] Starting slide-in animation');
@@ -170,10 +170,10 @@ export function HistoryScreen({ navigation, route }: Props) {
         });
       }, 100);
     }, 1800);
-    
+
     // Clear the param immediately but don't add to deps
     navigation.setParams({ showSuccess: undefined });
-    
+
     return () => {
       console.log('[HistoryScreen] Cleaning up timers');
       clearTimeout(hideTimer);
@@ -218,13 +218,13 @@ export function HistoryScreen({ navigation, route }: Props) {
       easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Ease-in-out cubic
       useNativeDriver: true,
     }).start();
-    
+
     // Defer heavy list update until after animation
     const handle = InteractionManager.runAfterInteractions(() => {
       setDisplayTab(tab);
       setIsSwitchingTab(false);
     });
-    
+
     return () => handle.cancel();
   }, [segmentAnim, tab]);
 
@@ -283,9 +283,9 @@ export function HistoryScreen({ navigation, route }: Props) {
       : "canceled";
     const dateLabel = formatDateLabel(start);
     const timeLabel = `${formatTimeLabel(start)} – ${formatTimeLabel(end)}`;
-    
+
     const isNewBooking = booking.id === newBookingId;
-    
+
     const cardContent = (
       <BookingCard
         booking={booking}
@@ -297,7 +297,7 @@ export function HistoryScreen({ navigation, route }: Props) {
         onPress={() => navigation.navigate("BookingDetail", { booking })}
       />
     );
-    
+
     if (isNewBooking) {
       return (
         <Animated.View
@@ -343,21 +343,15 @@ export function HistoryScreen({ navigation, route }: Props) {
           </Pressable>
         </View>
       ) : null}
-      {loading ? (
-        <View style={styles.inlineLoading}>
-          <Spinner size={32} />
-          <Text style={styles.inlineLoadingText}>Loading bookings…</Text>
-        </View>
-      ) : null}
       {/* Tab bar with underline indicator for active tab */}
-      <View 
+      <View
         style={styles.tabBar}
         onLayout={(event) => {
           segmentWidth.current = event.nativeEvent.layout.width;
         }}
       >
-        <Pressable 
-          style={styles.tab} 
+        <Pressable
+          style={styles.tab}
           onPress={() => setTab("upcoming")}
           android_ripple={null}
         >
@@ -370,8 +364,8 @@ export function HistoryScreen({ navigation, route }: Props) {
             Upcoming
           </Text>
         </Pressable>
-        <Pressable 
-          style={styles.tab} 
+        <Pressable
+          style={styles.tab}
           onPress={() => setTab("active")}
           android_ripple={null}
         >
@@ -384,8 +378,8 @@ export function HistoryScreen({ navigation, route }: Props) {
             Active
           </Text>
         </Pressable>
-        <Pressable 
-          style={styles.tab} 
+        <Pressable
+          style={styles.tab}
           onPress={() => setTab("past")}
           android_ripple={null}
         >
@@ -415,6 +409,12 @@ export function HistoryScreen({ navigation, route }: Props) {
           ]}
         />
       </View>
+      {loading ? (
+        <View style={styles.inlineLoading}>
+          <Spinner size={32} />
+          <Text style={styles.inlineLoadingText}>Loading bookings…</Text>
+        </View>
+      ) : null}
       <Animated.View
         style={{
           flex: 1,
@@ -515,10 +515,10 @@ export function HistoryScreen({ navigation, route }: Props) {
                         ) : showPaneEmpty ? (
                           <View style={styles.emptyState}>
                             <View style={styles.emptyIcon}>
-                              <Ionicons 
-                                name={paneTab === "upcoming" ? "calendar-outline" : paneTab === "active" ? "time-outline" : "checkmark-done-outline"} 
-                                size={44} 
-                                color={colors.textSoft} 
+                              <Ionicons
+                                name={paneTab === "upcoming" ? "calendar-outline" : paneTab === "active" ? "time-outline" : "checkmark-done-outline"}
+                                size={44}
+                                color={colors.textSoft}
                               />
                             </View>
                             <Text style={styles.emptyTitle}>

@@ -28,10 +28,14 @@ export type SpaceSearchInput = {
   radiusKm: number;
   from: string;
   to: string;
+  spaceType?: string;
 };
 
 export async function findAvailableSpaces(input: SpaceSearchInput) {
-  const { lat, lng, radiusKm, from, to } = input;
+  const { lat, lng, radiusKm, from, to, spaceType } = input;
+  const spaceTypeFilter = spaceType?.trim()
+    ? `%${spaceType.trim().toLowerCase()}%`
+    : null;
   const baseQuery = `
     SELECT
       id,
@@ -54,6 +58,7 @@ export async function findAvailableSpaces(input: SpaceSearchInput) {
       $3
     )
     AND status <> 'archived'
+    AND ($6::text IS NULL OR lower(title) LIKE $6)
     AND NOT EXISTS (
       SELECT 1 FROM bookings b
       WHERE b.listing_id = listings.id
@@ -125,6 +130,7 @@ export async function findAvailableSpaces(input: SpaceSearchInput) {
       $3
     )
     AND status <> 'archived'
+    AND ($6::text IS NULL OR lower(title) LIKE $6)
     AND NOT EXISTS (
       SELECT 1 FROM bookings b
       WHERE b.listing_id = listings.id
@@ -134,7 +140,7 @@ export async function findAvailableSpaces(input: SpaceSearchInput) {
     LIMIT 50;
   `;
 
-  const params = [lng, lat, radiusKm * 1000, from, to];
+  const params = [lng, lat, radiusKm * 1000, from, to, spaceTypeFilter];
   try {
     const query = baseQuery.replace("rating,", "rating,") + "";
     const result = await pool.query(
@@ -179,7 +185,10 @@ export async function findAvailableSpaces(input: SpaceSearchInput) {
 }
 
 export async function findSpacesWithAvailability(input: SpaceSearchInput) {
-  const { lat, lng, radiusKm, from, to } = input;
+  const { lat, lng, radiusKm, from, to, spaceType } = input;
+  const spaceTypeFilter = spaceType?.trim()
+    ? `%${spaceType.trim().toLowerCase()}%`
+    : null;
   const availabilityCheck = `
     NOT EXISTS (
       SELECT 1 FROM bookings b
@@ -250,6 +259,7 @@ export async function findSpacesWithAvailability(input: SpaceSearchInput) {
       $3
     )
     AND status <> 'archived'
+    AND ($6::text IS NULL OR lower(title) LIKE $6)
     ORDER BY distance_m ASC
     LIMIT 50;
   `;
@@ -277,11 +287,12 @@ export async function findSpacesWithAvailability(input: SpaceSearchInput) {
       $3
     )
     AND status <> 'archived'
+    AND ($6::text IS NULL OR lower(title) LIKE $6)
     ORDER BY distance_m ASC
     LIMIT 50;
   `;
 
-  const params = [lng, lat, radiusKm * 1000, from, to];
+  const params = [lng, lat, radiusKm * 1000, from, to, spaceTypeFilter];
   try {
     const result = await pool.query(
       baseQuery.replace(

@@ -15,6 +15,11 @@ export const LIGHT_MAP_STYLE = [
   {
     featureType: "poi",
     elementType: "labels.icon",
-    stylers: [{ lightness: 60 }, { saturation: -30 }],
+    stylers: [{ visibility: "off" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels",
+    stylers: [{ visibility: "off" }],
   },
 ];

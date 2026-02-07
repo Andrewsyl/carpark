@@ -29,6 +29,7 @@ import { ProfileScreen } from "./screens/ProfileScreen";
 import { LegalScreen } from "./screens/LegalScreen";
 import { BookingDetailScreen } from "./screens/BookingDetailScreen";
 import { ReviewScreen } from "./screens/ReviewScreen";
+import { ListingReviewsScreen } from "./screens/ListingReviewsScreen";
 import { SearchScreen } from "./screens/SearchScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { SignInScreen } from "./screens/SignInScreen";
@@ -113,6 +114,7 @@ export default function App() {
                     <Stack.Screen name="Settings" component={SettingsScreen} />
                     <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
                     <Stack.Screen name="Review" component={ReviewScreen} />
+                    <Stack.Screen name="ListingReviews" component={ListingReviewsScreen} />
                     <Stack.Screen name="Support" component={SupportScreen} />
                     <Stack.Screen name="Admin" component={AdminScreen} />
                     <Stack.Screen name="CreateListingFlow" component={ListingFlowScreen} />

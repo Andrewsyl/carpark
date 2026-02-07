@@ -157,6 +157,7 @@ export function ListingScreen({ navigation, route }: Props) {
   const [reviews, setReviews] = useState<ListingReview[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [navigatingToBooking, setNavigatingToBooking] = useState(false);
+  const [showAllHours, setShowAllHours] = useState(false);
   const [startAt, setStartAt] = useState(() => new Date(from));
   const [endAt, setEndAt] = useState(() => new Date(to));
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -349,6 +350,24 @@ export function ListingScreen({ navigation, route }: Props) {
     .map((part) => part[0]?.toUpperCase())
     .join("");
   const hasReviews = (listing?.rating_count ?? 0) > 0 && typeof listing?.rating === "number";
+  const spaceTypeLabel = useMemo(() => {
+    const rawType =
+      (listing as { space_type?: string; spaceType?: string })?.space_type ??
+      (listing as { space_type?: string; spaceType?: string })?.spaceType ??
+      null;
+    if (rawType) return rawType;
+    const title = (listing?.title ?? "").trim();
+    if (/ parking$/i.test(title)) {
+      return title.replace(/ parking$/i, "");
+    }
+    const lower = title.toLowerCase();
+    if (lower.includes("driveway")) return "Private Driveway";
+    if (lower.includes("garage")) return "Garage";
+    if (lower.includes("car park") || lower.includes("carpark")) return "Car park";
+    if (lower.includes("private road")) return "Private road";
+    if (lower.includes("street")) return "Street";
+    return "Parking space";
+  }, [listing]);
   const hostRating = hasReviews && listing?.rating ? listing.rating.toFixed(1) : null;
   const hostReviews = hasReviews ? listing?.rating_count ?? 0 : 0;
   const heroHeight = Math.round(width * 0.72);
@@ -500,22 +519,20 @@ export function ListingScreen({ navigation, route }: Props) {
                 <View style={styles.contentCard}>
               {/* Title Section */}
               <View style={styles.titleSection}>
-                <Text style={styles.category}>PARKING SPACE</Text>
+                <Text style={styles.category}>{spaceTypeLabel.toUpperCase()}</Text>
                 <Text style={styles.cardTitle}>{listing.title}</Text>
                 <View style={styles.locationRow}>
                   <Ionicons name="location-outline" size={16} color="#6B7280" />
                   <Text style={styles.location}>{listing.address}</Text>
                 </View>
                 <View style={styles.ratingRow}>
-                  {hasReviews ? (
-                    <>
-                      <Ionicons name="star" size={16} color="#F59E0B" />
-                      <Text style={styles.rating}>{listing.rating?.toFixed(1)}</Text>
-                      <Text style={styles.reviewCount}>({listing.rating_count})</Text>
-                    </>
-                  ) : (
-                    <Text style={styles.reviewCount}>New listing</Text>
-                  )}
+                  <Ionicons name="star" size={16} color="#F59E0B" />
+                  <Text style={styles.rating}>
+                    {hasReviews ? listing.rating?.toFixed(1) : "0.0"}
+                  </Text>
+                  <Text style={styles.reviewCount}>
+                    ({listing.rating_count ?? 0})
+                  </Text>
                 </View>
                 {priceSummary ? (
                   <View style={styles.summaryStrip}>
@@ -595,28 +612,45 @@ export function ListingScreen({ navigation, route }: Props) {
               <View style={styles.sectionDivider} />
 
               {/* Opening Hours */}
-              <View style={[styles.sectionBlock, { paddingHorizontal: 16 }]}>
-                <Text style={styles.sectionTitle}>Space Availability</Text>
-                {openingHours.map((row) => {
+              <Pressable
+                onPress={() => setShowAllHours((prev) => !prev)}
+                style={[styles.sectionBlock, { paddingHorizontal: 16 }]}
+              >
+                <View style={styles.hoursHeaderRow}>
+                  <Text style={[styles.sectionTitle, styles.hoursSectionTitle]}>
+                    Space Availability
+                  </Text>
+                  <Text style={styles.hoursToggleText}>
+                    {showAllHours ? "Hide" : "See all"}
+                  </Text>
+                </View>
+                {(() => {
                   const todayLabel = new Date().toLocaleDateString(undefined, {
                     weekday: "long",
                   });
-                  const isToday = row.day === todayLabel;
-                  return (
-                    <View
-                      key={row.day}
-                      style={[styles.hoursRow, isToday && styles.hoursRowToday]}
-                    >
-                      <Text style={[styles.hoursDay, isToday && styles.hoursDayToday]}>
-                        {row.day}
-                      </Text>
-                      <Text style={[styles.hoursValue, isToday && styles.hoursValueToday]}>
-                        {row.hours}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
+                  const rows = showAllHours
+                    ? openingHours
+                    : openingHours.filter((row) => row.day === todayLabel);
+                  return rows.map((row) => {
+                    const isToday = row.day === todayLabel;
+                    const label = !showAllHours && isToday ? "Today" : row.day;
+                    const highlightToday = showAllHours && isToday;
+                    return (
+                      <View
+                        key={row.day}
+                        style={[styles.hoursRow, highlightToday && styles.hoursRowToday]}
+                      >
+                        <Text style={[styles.hoursDay, highlightToday && styles.hoursDayToday]}>
+                          {label}
+                        </Text>
+                        <Text style={[styles.hoursValue, highlightToday && styles.hoursValueToday]}>
+                          {row.hours}
+                        </Text>
+                      </View>
+                    );
+                  });
+                })()}
+              </Pressable>
               <View style={styles.sectionDivider} />
 
               {/* Features */}
@@ -635,26 +669,69 @@ export function ListingScreen({ navigation, route }: Props) {
               {/* Content Sections */}
               <View style={styles.contentSections}>
                 <View style={styles.sectionBlock}>
-                  <Text style={styles.sectionTitle}>Reviews</Text>
+                  <View style={styles.reviewHeaderRow}>
+                    <Text style={styles.sectionTitle}>Reviews</Text>
+                    <View style={styles.reviewSummary}>
+                      <Ionicons name="star" size={14} color="#F59E0B" />
+                      <Text style={styles.reviewSummaryText}>
+                        {hasReviews ? listing.rating?.toFixed(2) : "0.00"}
+                      </Text>
+                      <Text style={styles.reviewSummaryCount}>
+                        • {listing.rating_count ?? 0} Reviews
+                      </Text>
+                    </View>
+                  </View>
                   {reviewsLoading ? (
                     <View style={styles.centered}>
                       <ActivityIndicator />
                     </View>
                   ) : reviews.length ? (
-                    <View style={styles.reviewList}>
-                      {reviews.slice(0, 4).map((review) => (
-                        <View key={review.id} style={styles.reviewCard}>
-                          <View style={styles.reviewHeader}>
-                            <Text style={styles.reviewRating}>
-                              ★ {review.rating.toFixed(1)}
-                            </Text>
-                            <Text style={styles.reviewDate}>
-                              {formatReviewDate(new Date(review.created_at))}
-                            </Text>
+                    <View style={styles.reviewCarouselWrap}>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.reviewCarousel}
+                      >
+                        {reviews.slice(0, 6).map((review) => (
+                          <View key={review.id} style={styles.reviewCardWide}>
+                            <View style={styles.reviewCardTop}>
+                              <View style={styles.reviewStarsRow}>
+                                {[0, 1, 2, 3, 4].map((idx) => (
+                                  <Ionicons
+                                    key={`${review.id}-star-${idx}`}
+                                    name="star"
+                                    size={14}
+                                    color={idx < Math.round(review.rating) ? "#F59E0B" : "#E5E7EB"}
+                                  />
+                                ))}
+                                <Text style={styles.reviewAge}>
+                                  {formatReviewDate(
+                                    new Date((review as { created_at?: string }).created_at ?? review.createdAt)
+                                  )}
+                                </Text>
+                              </View>
+                              <Text style={styles.reviewAuthor}>
+                                {(review as { author_name?: string }).author_name ?? review.authorName ?? "Guest"}
+                              </Text>
+                            </View>
+                            <Text style={styles.reviewComment}>{review.comment}</Text>
                           </View>
-                          <Text style={styles.reviewComment}>{review.comment}</Text>
-                        </View>
-                      ))}
+                        ))}
+                      </ScrollView>
+                      <Pressable
+                        style={styles.reviewCta}
+                        onPress={() =>
+                          navigation.navigate("ListingReviews", {
+                            id,
+                            rating: listing.rating ?? 0,
+                            ratingCount: listing.rating_count ?? reviews.length,
+                          })
+                        }
+                      >
+                        <Text style={styles.reviewCtaText}>
+                          Show all {listing.rating_count ?? reviews.length} reviews
+                        </Text>
+                      </Pressable>
                     </View>
                   ) : (
                     <Text style={styles.reviewComment}>No reviews yet.</Text>
@@ -716,7 +793,6 @@ export function ListingScreen({ navigation, route }: Props) {
             {priceSummary && user ? (
               <View style={[styles.bottomBar, { paddingBottom: 24 + insets.bottom }]}>
                 <View style={styles.priceInfo}>
-                  <Text style={styles.priceFrom}>From</Text>
                   <Text style={styles.priceAmount}>€{priceSummary.total}</Text>
                   <Text style={styles.priceDuration}>{priceSummary.durationLabel}</Text>
                 </View>
@@ -1743,6 +1819,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 6,
   },
+  hoursHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  hoursToggleText: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  hoursSectionTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
   hoursRowToday: {
     backgroundColor: "#F0FDF4",
     borderRadius: 0,
@@ -1750,7 +1842,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   hoursDay: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#111827",
     fontWeight: "600",
   },
@@ -1758,7 +1850,7 @@ const styles = StyleSheet.create({
     color: "#166534",
   },
   hoursValue: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#6B7280",
     fontWeight: "600",
   },
@@ -1783,7 +1875,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   readMore: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '600',
     color: '#10B981',
     marginTop: 6,
@@ -1858,6 +1950,73 @@ const styles = StyleSheet.create({
   reviewList: {
     gap: 16,
     marginTop: 10,
+  },
+  reviewHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  reviewSummary: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  reviewSummaryText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  reviewSummaryCount: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  reviewCarouselWrap: {
+    marginTop: 12,
+  },
+  reviewCarousel: {
+    paddingRight: 12,
+    gap: 12,
+  },
+  reviewCardWide: {
+    width: 250,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 14,
+    borderRadius: 12,
+  },
+  reviewCardTop: {
+    marginBottom: 8,
+  },
+  reviewStarsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  reviewAge: {
+    marginLeft: 6,
+    fontSize: 11,
+    color: "#6B7280",
+  },
+  reviewAuthor: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  reviewCta: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: "center",
+    backgroundColor: "#F0FDF4",
+  },
+  reviewCtaText: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: "600",
   },
   reviewCard: {
     backgroundColor: '#FFFFFF',
@@ -2005,16 +2164,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
-    paddingTop: 14,
+    paddingTop: 10,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
@@ -2022,28 +2181,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   priceFrom: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
     marginBottom: 2,
   },
   priceAmount: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '700',
     color: '#111827',
   },
   priceDuration: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6B7280',
     fontWeight: '400',
   },
   bookButton: {
     backgroundColor: '#2a9d7f',
-    paddingVertical: 12,
-    paddingHorizontal: 36,
-    borderRadius: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    borderRadius: 14,
   },
   bookButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
   },

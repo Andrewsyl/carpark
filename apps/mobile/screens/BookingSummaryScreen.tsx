@@ -312,6 +312,16 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
       didConfirm = true;
       setBookingConfirmed(true);
       setConfirmingBooking(false);
+      const nowMs = Date.now();
+      const startMs = Date.parse(from);
+      const endMs = Date.parse(to);
+      const initialTab =
+        Number.isFinite(startMs) &&
+        Number.isFinite(endMs) &&
+        startMs <= nowMs &&
+        nowMs < endMs
+          ? "active"
+          : "upcoming";
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -323,7 +333,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
                 params: {
                   showSuccess: true,
                   refreshToken: Date.now(),
-                  initialTab: "upcoming",
+                  initialTab,
                 },
               },
             },

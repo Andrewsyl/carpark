@@ -14,14 +14,14 @@ type FlowStackParamList = {
 
 type Props = NativeStackScreenProps<FlowStackParamList, "ListingDetails">;
 
-const spaceTypes = ["Driveway", "Garage", "Car park", "Private road"];
+const spaceTypes = ["Private Driveway", "Garage", "Car park", "Private road"];
 const accessOptions = ["Gated", "Permit required", "EV charging", "CCTV", "Covered"];
 
 const SpaceTypeIcon = ({ type, active }: { type: string; active: boolean }) => {
   const stroke = active ? colors.accent : colors.textSoft;
   const fill = active ? "#e6f9f5" : "#f1f5f9";
   switch (type) {
-    case "Driveway":
+    case "Private Driveway":
       return (
         <Svg width={26} height={26} viewBox="0 0 26 26">
           <Rect x={1} y={7} width={10} height={14} rx={2} stroke={stroke} strokeWidth={2} />

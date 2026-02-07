@@ -319,6 +319,7 @@ export default function MapSection({
               // Unselected pins have lower but varied z-index to prevent stacking issues
               zIndex={isSelected ? 10000 : 100 + listing.id.charCodeAt(0)}
               image={{ uri: pinImage }}
+              pinColor="transparent"
               // Airbnb-style: Markers are always tappable
               tappable={true}
               stopPropagation={true}

@@ -42,6 +42,7 @@ export async function searchListings(params: SearchParams) {
   query.set("from", params.from);
   query.set("to", params.to);
   if (params.includeUnavailable) query.set("includeUnavailable", "true");
+  if (params.spaceType) query.set("spaceType", params.spaceType);
   if (params.priceMin) query.set("priceMin", params.priceMin);
   if (params.priceMax) query.set("priceMax", params.priceMax);
   if (params.coveredParking) query.set("coveredParking", "true");

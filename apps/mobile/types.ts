@@ -7,6 +7,11 @@ export type RootStackParamList = {
     to: string;
     booking?: import("./api").BookingSummary;
   };
+  ListingReviews: {
+    id: string;
+    rating?: number | null;
+    ratingCount?: number | null;
+  };
   BookingSummary: {
     id: string;
     from: string;
@@ -93,6 +98,7 @@ export type SearchParams = {
   from: string;
   to: string;
   includeUnavailable?: boolean;
+  spaceType?: string;
   priceMin?: string;
   priceMax?: string;
   coveredParking?: boolean;

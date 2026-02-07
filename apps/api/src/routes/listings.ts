@@ -108,6 +108,7 @@ const searchSchema = z
     from: z.string().datetime(),
     to: z.string().datetime(),
     includeUnavailable: z.coerce.boolean().optional().default(false),
+    spaceType: z.string().trim().min(2).max(40).optional(),
   })
   .superRefine((value, ctx) => {
     const start = Date.parse(value.from);

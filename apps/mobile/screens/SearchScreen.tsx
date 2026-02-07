@@ -7,6 +7,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   Switch,
   StyleSheet,
   Text,
@@ -159,6 +160,7 @@ export function SearchScreen({ navigation }: Props) {
   const [priceMax, setPriceMax] = useState("");
   const [securityLevel, setSecurityLevel] = useState<SecurityLevel | "">("");
   const [vehicleSize, setVehicleSize] = useState<VehicleSize | "">("");
+  const [spaceType, setSpaceType] = useState<string>("");
   const [overlappingPins, setOverlappingPins] = useState<ListingSummary[]>([]);
   const [coveredParking, setCoveredParking] = useState(false);
   const [evCharging, setEvCharging] = useState(false);
@@ -202,8 +204,8 @@ export function SearchScreen({ navigation }: Props) {
   const mapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
   useEffect(() => {
-    navigation.setParams({ hideTabBar: searchSheetOpen });
-  }, [navigation, searchSheetOpen]);
+    navigation.setParams({ hideTabBar: searchSheetOpen || filtersVisible });
+  }, [navigation, searchSheetOpen, filtersVisible]);
 
   const parsedLat = Number.parseFloat(lat);
   const parsedLng = Number.parseFloat(lng);
@@ -262,6 +264,7 @@ export function SearchScreen({ navigation }: Props) {
       if (priceMax.trim()) next.priceMax = priceMax.trim();
       if (securityLevel) next.securityLevel = securityLevel;
       if (vehicleSize) next.vehicleSize = vehicleSize;
+      if (spaceType) next.spaceType = spaceType;
       if (coveredParking) next.coveredParking = true;
       if (evCharging) next.evCharging = true;
       if (instantBook) next.instantBook = true;
@@ -277,6 +280,7 @@ export function SearchScreen({ navigation }: Props) {
       priceMax,
       securityLevel,
       vehicleSize,
+      spaceType,
       coveredParking,
       evCharging,
       instantBook,
@@ -300,11 +304,17 @@ export function SearchScreen({ navigation }: Props) {
   }, [addressQuery, mapsKey]);
 
   const runSearch = useCallback(
-    async (paramsOverride?: Partial<SearchParams>) => {
+    async (
+      paramsOverride?: Partial<SearchParams>,
+      options?: { showGlobal?: boolean }
+    ) => {
       const requestId = searchRequestIdRef.current + 1;
       searchRequestIdRef.current = requestId;
       searchStartedAtRef.current = Date.now();
-      showGlobalLoading("Searching...");
+      const shouldShowGlobal = options?.showGlobal ?? true;
+      if (shouldShowGlobal) {
+        showGlobalLoading("Searching...");
+      }
       setLoading(true);
       setError(null);
       const params = buildSearchParams(paramsOverride);
@@ -343,7 +353,9 @@ export function SearchScreen({ navigation }: Props) {
         setTimeout(() => {
           if (searchRequestIdRef.current === requestId) {
             setLoading(false);
-            hideGlobalLoading();
+            if (shouldShowGlobal) {
+              hideGlobalLoading();
+            }
           }
         }, remaining);
       }
@@ -815,6 +827,7 @@ export function SearchScreen({ navigation }: Props) {
     setPriceMax("");
     setSecurityLevel("");
     setVehicleSize("");
+    setSpaceType("");
     setCoveredParking(false);
     setEvCharging(false);
     setInstantBook(false);
@@ -932,11 +945,14 @@ export function SearchScreen({ navigation }: Props) {
                 setRadiusKm(pendingSearch.radiusKm);
                 setShowSearchArea(false);
                 setPendingSearch(null);
-                void runSearch({
-                  lat: pendingSearch.lat,
-                  lng: pendingSearch.lng,
-                  radiusKm: pendingSearch.radiusKm,
-                });
+                void runSearch(
+                  {
+                    lat: pendingSearch.lat,
+                    lng: pendingSearch.lng,
+                    radiusKm: pendingSearch.radiusKm,
+                  },
+                  { showGlobal: false }
+                );
               }}
             >
                 <Ionicons name="refresh" size={14} color="#ffffff" />
@@ -955,7 +971,7 @@ export function SearchScreen({ navigation }: Props) {
               <Text style={styles.searchLoadingText}>Searching for spaces…</Text>
             </View>
           ) : null}
-          {(priceMin || priceMax || securityLevel || vehicleSize || coveredParking || evCharging || instantBook) ? (
+          {(priceMin || priceMax || securityLevel || vehicleSize || spaceType || coveredParking || evCharging || instantBook) ? (
             <Pressable style={styles.clearFilters} onPress={clearFilters}>
               <Text style={styles.clearFiltersText}>Clear filters</Text>
             </Pressable>
@@ -985,6 +1001,10 @@ export function SearchScreen({ navigation }: Props) {
             <Animated.View
               style={[styles.filtersPanel, { transform: [{ translateY: slideAnim }] }]}
             >
+              <ScrollView
+                contentContainerStyle={styles.filtersContent}
+                showsVerticalScrollIndicator={false}
+              >
               <View style={styles.filtersHeaderRow}>
                 <Text style={styles.filtersTitle}>Filters</Text>
                 <Pressable style={styles.filtersClose} onPress={closeFilters}>
@@ -1037,6 +1057,23 @@ export function SearchScreen({ navigation }: Props) {
                 </View>
               </View>
               <View style={styles.filtersSection}>
+                <Text style={styles.sectionLabel}>Space type</Text>
+                <View style={styles.chipRow}>
+                  {["Private Driveway", "Garage", "Car park", "Private road"].map((type) => (
+                    <Pressable
+                      key={type}
+                      style={[styles.chip, spaceType === type && styles.chipActive]}
+                      onPress={() => setSpaceType(spaceType === type ? "" : type)}
+                      android_ripple={null}
+                    >
+                      <Text style={[styles.chipText, spaceType === type && styles.chipTextActive]}>
+                        {type}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+              <View style={styles.filtersSection}>
                 <Text style={styles.sectionLabel}>Security level</Text>
                 <View style={styles.chipRow}>
                   {(["basic", "gated", "cctv"] as const).map((level) => (
@@ -1079,6 +1116,7 @@ export function SearchScreen({ navigation }: Props) {
               >
                 <Text style={styles.applyButtonText}>Apply filters</Text>
               </Pressable>
+              </ScrollView>
             </Animated.View>
           </View>
         ) : null}
@@ -1566,12 +1604,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "center",
     backgroundColor: "rgba(255, 255, 255, 0.82)",
-    borderRadius: 14,
-    height: 34,
+    borderRadius: radius.pill,
+    height: 38,
     justifyContent: "center",
+    marginTop: 10,
     overflow: "visible",
-    position: "absolute",
-    top: 176,
     paddingLeft: 52,
     paddingRight: 12,
   },
@@ -1629,6 +1666,9 @@ const styles = StyleSheet.create({
     padding: spacing.screenX,
     paddingTop: 24,
     height: "100%",
+  },
+  filtersContent: {
+    paddingBottom: 24,
   },
   filtersOverlay: {
     bottom: 0,
