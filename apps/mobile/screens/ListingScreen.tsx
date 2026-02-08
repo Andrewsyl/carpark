@@ -49,89 +49,47 @@ import {
   formatDateTimeLabel,
   formatReviewDate,
 } from "../utils/dateFormat";
-import { Info, Star, User, Image as ImageIcon } from "lucide-react-native";
+import {
+  ArrowDownUp,
+  Cctv,
+  Hash,
+  Home,
+  Info,
+  Fence,
+  Star,
+  User,
+  Image as ImageIcon,
+} from "lucide-react-native";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Listing">;
 
 const getFeatureIconType = (label: string) => {
   const normalized = label.toLowerCase();
-  if (normalized.includes("cctv") || normalized.includes("camera")) return "camera";
-  if (normalized.includes("ev") || normalized.includes("charge")) return "bolt";
-  if (normalized.includes("light") || normalized.includes("lit") || normalized.includes("lighting")) return "bulb";
-  if (normalized.includes("gate") || normalized.includes("gated")) return "lock";
-  if (normalized.includes("permit")) return "ticket";
-  if (normalized.includes("covered") || normalized.includes("roof")) return "roof";
-  return "pin";
+  if (normalized.includes("low") || normalized.includes("clearance")) return "low";
+  if (normalized.includes("cctv") || normalized.includes("camera")) return "cctv";
+  if (normalized.includes("shelter") || normalized.includes("covered") || normalized.includes("roof")) return "sheltered";
+  if (normalized.includes("gate") || normalized.includes("gated") || normalized.includes("barrier")) return "gated";
+  if (normalized.includes("code") || normalized.includes("keypad") || normalized.includes("entry")) return "code";
+  return "cctv";
 };
 
 const FeatureIcon = ({ type }: { type: string }) => {
   const stroke = "#0f172a";
+  const size = 26;
+  const sw = 1.8;
   switch (type) {
-    case "camera":
-      return (
-        <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
-          <Rect x={2.5} y={5} width={13} height={9} rx={2} stroke={stroke} strokeWidth={1.5} />
-          <Circle cx={9} cy={9.5} r={2.2} stroke={stroke} strokeWidth={1.5} />
-          <Path d="M6 5l1.2-2h3.6L12 5" stroke={stroke} strokeWidth={1.5} />
-        </Svg>
-      );
-    case "bolt":
-      return (
-        <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
-          <Path
-            d="M10.5 1.5L5 9h3l-1 7.5L13 8.5h-3l.5-7z"
-            stroke={stroke}
-            strokeWidth={1.5}
-            strokeLinejoin="round"
-          />
-        </Svg>
-      );
-    case "bulb":
-      return (
-        <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
-          <Path
-            d="M9 2.5a4.5 4.5 0 0 1 2.8 8.0c-.5.4-.8.9-.9 1.5H7.1c-.1-.6-.4-1.1-.9-1.5A4.5 4.5 0 0 1 9 2.5z"
-            stroke={stroke}
-            strokeWidth={1.5}
-            strokeLinejoin="round"
-          />
-          <Path d="M7.2 12.5h3.6" stroke={stroke} strokeWidth={1.5} />
-          <Path d="M7.8 14.5h2.4" stroke={stroke} strokeWidth={1.5} />
-        </Svg>
-      );
-    case "lock":
-      return (
-        <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
-          <Rect x={4} y={8} width={10} height={7} rx={2} stroke={stroke} strokeWidth={1.5} />
-          <Path d="M6.5 8V6.2A2.5 2.5 0 0 1 9 3.7a2.5 2.5 0 0 1 2.5 2.5V8" stroke={stroke} strokeWidth={1.5} />
-        </Svg>
-      );
-    case "ticket":
-      return (
-        <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
-          <Rect x={2.5} y={4} width={13} height={10} rx={2} stroke={stroke} strokeWidth={1.5} />
-          <Path d="M6 4v10" stroke={stroke} strokeWidth={1.5} strokeDasharray="2 2" />
-        </Svg>
-      );
-    case "roof":
-      return (
-        <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
-          <Path d="M2.5 9l6.5-5 6.5 5" stroke={stroke} strokeWidth={1.5} strokeLinejoin="round" />
-          <Rect x={4.5} y={9} width={9} height={5.5} rx={1.5} stroke={stroke} strokeWidth={1.5} />
-        </Svg>
-      );
-    case "pin":
+    case "low":
+      return <ArrowDownUp size={size} color={stroke} strokeWidth={sw} />;
+    case "cctv":
+      return <Cctv size={size} color={stroke} strokeWidth={sw} />;
+    case "sheltered":
+      return <Home size={size} color={stroke} strokeWidth={sw} />;
+    case "gated":
+      return <Fence size={size} color={stroke} strokeWidth={sw} />;
+    case "code":
+      return <Hash size={size} color={stroke} strokeWidth={sw} />;
     default:
-      return (
-        <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
-          <Path
-            d="M9 2.5a4 4 0 0 1 4 4c0 3-4 7-4 7s-4-4-4-7a4 4 0 0 1 4-4z"
-            stroke={stroke}
-            strokeWidth={1.5}
-          />
-          <Circle cx={9} cy={6.5} r={1.3} stroke={stroke} strokeWidth={1.5} />
-        </Svg>
-      );
+      return <Cctv size={size} color={stroke} strokeWidth={sw} />;
   }
 };
 
@@ -525,6 +483,12 @@ export function ListingScreen({ navigation, route }: Props) {
                   <Ionicons name="location-outline" size={16} color="#6B7280" />
                   <Text style={styles.location}>{listing.address}</Text>
                 </View>
+                <View style={styles.finalAddressRow}>
+                  <Ionicons name="location-sharp" size={14} color="#6B7280" />
+                  <Text style={[styles.location, styles.finalAddressText]}>
+                    Final address will be shared after payment
+                  </Text>
+                </View>
                 <View style={styles.ratingRow}>
                   <Ionicons name="star" size={16} color="#F59E0B" />
                   <Text style={styles.rating}>
@@ -652,11 +616,10 @@ export function ListingScreen({ navigation, route }: Props) {
                 })()}
               </Pressable>
               <View style={styles.sectionDivider} />
-
               {/* Features */}
               <View style={styles.featuresSection}>
                 <View style={styles.featuresGrid}>
-                  {featureLabels.map((feature) => (
+                  {featureLabels.slice(0, 5).map((feature) => (
                     <View key={feature} style={styles.featureIconCard}>
                       <FeatureIcon type={getFeatureIconType(feature)} />
                       <Text style={styles.featureIconLabel}>{feature}</Text>
@@ -1091,7 +1054,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginTop: 10,
+    marginTop: 6,
   },
   metricPill: {
     alignItems: "center",
@@ -1644,6 +1607,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   category: {
+    fontFamily: "Poppins-Medium",
     fontSize: 13,
     fontWeight: '600',
     color: '#D97706',
@@ -1651,6 +1615,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   cardTitle: {
+    fontFamily: "Poppins-SemiBold",
     fontSize: 28,
     fontWeight: '800',
     color: '#111827',
@@ -1663,6 +1628,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   location: {
+    fontFamily: "Poppins-Regular",
     fontSize: 15,
     color: '#6B7280',
     fontWeight: '400',
@@ -1671,6 +1637,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    marginTop: 2,
   },
   summaryStrip: {
     flexDirection: "row",
@@ -1689,6 +1656,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   summaryLabel: {
+    fontFamily: "Poppins-Regular",
     color: colors.textSoft,
     fontSize: 11,
     fontWeight: "600",
@@ -1699,16 +1667,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   summaryValue: {
+    fontFamily: "Poppins-SemiBold",
     color: colors.text,
     fontSize: 14,
     fontWeight: "600",
   },
   rating: {
+    fontFamily: "Poppins-Medium",
     fontSize: 14,
     fontWeight: '700',
     color: '#16a34a',
   },
   reviewCount: {
+    fontFamily: "Poppins-Regular",
     fontSize: 12,
     color: '#6B7280',
   },
@@ -1775,11 +1746,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   dateTimeLabel: {
+    fontFamily: "Poppins-Regular",
     fontSize: 9,
     color: '#6B7280',
     marginBottom: 4,
   },
   dateTimeValue: {
+    fontFamily: "Poppins-SemiBold",
     fontSize: 12,
     fontWeight: '600',
     color: '#111827',
@@ -1813,6 +1786,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5E7EB",
     marginTop: 8,
   },
+  finalAddressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 1,
+    alignSelf: "flex-start",
+    marginLeft: -10,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  finalAddressText: {
+    fontFamily: "Poppins-Regular",
+    color: "#6B7280",
+    fontSize: 12,
+    fontWeight: "400",
+  },
   hoursRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1826,11 +1817,13 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   hoursToggleText: {
+    fontFamily: "Poppins-Medium",
     color: colors.accent,
     fontSize: 12,
     fontWeight: "600",
   },
   hoursSectionTitle: {
+    fontFamily: "Poppins-Medium",
     fontSize: 12,
     fontWeight: "600",
     color: "#6B7280",
@@ -1842,6 +1835,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   hoursDay: {
+    fontFamily: "Poppins-Medium",
     fontSize: 12,
     color: "#111827",
     fontWeight: "600",
@@ -1850,6 +1844,7 @@ const styles = StyleSheet.create({
     color: "#166534",
   },
   hoursValue: {
+    fontFamily: "Poppins-Medium",
     fontSize: 12,
     color: "#6B7280",
     fontWeight: "600",
@@ -1863,28 +1858,32 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   sectionTitle: {
+    fontFamily: "Poppins-SemiBold",
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
     marginBottom: 8,
   },
   sectionBody: {
+    fontFamily: "Poppins-Regular",
     fontSize: 14,
     lineHeight: 21,
     color: '#6B7280',
     fontWeight: '400',
   },
   readMore: {
+    fontFamily: "Poppins-SemiBold",
     fontSize: 15,
     fontWeight: '600',
     color: '#10B981',
     marginTop: 6,
   },
   featuresGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    justifyContent: "space-between",
+    flexDirection: "row",
+    flexWrap: "nowrap",
+    justifyContent: "space-evenly",
+    alignItems: "flex-start",
+    columnGap: 6,
   },
   featuresSection: {
     paddingHorizontal: 16,
@@ -1892,20 +1891,21 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   featureIconCard: {
-    width: "23%",
-    minHeight: 64,
+    width: "18%",
+    minHeight: 68,
     borderRadius: 12,
     borderWidth: 0,
     backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   featureIconLabel: {
     fontSize: 11,
     color: "#6B7280",
     fontWeight: "600",
+    fontFamily: "Poppins-Medium",
     textAlign: "center",
   },
   hostCard: {
@@ -1936,10 +1936,12 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   detailLabel: {
+    fontFamily: "Poppins-Regular",
     fontSize: 13,
     color: '#6B7280',
   },
   detailValue: {
+    fontFamily: "Poppins-SemiBold",
     fontSize: 13,
     fontWeight: '600',
     color: '#111827',
@@ -1962,11 +1964,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   reviewSummaryText: {
+    fontFamily: "Poppins-SemiBold",
     fontSize: 12,
     fontWeight: "700",
     color: "#111827",
   },
   reviewSummaryCount: {
+    fontFamily: "Poppins-Regular",
     fontSize: 12,
     color: "#6B7280",
   },
@@ -1994,11 +1998,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   reviewAge: {
+    fontFamily: "Poppins-Regular",
     marginLeft: 6,
     fontSize: 11,
     color: "#6B7280",
   },
   reviewAuthor: {
+    fontFamily: "Poppins-SemiBold",
     marginTop: 6,
     fontSize: 12,
     fontWeight: "600",
@@ -2032,15 +2038,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   reviewRating: {
+    fontFamily: "Poppins-SemiBold",
     fontSize: 13,
     fontWeight: '600',
     color: '#0F172A',
   },
   reviewDate: {
+    fontFamily: "Poppins-Regular",
     fontSize: 12,
     color: '#6B7280',
   },
   reviewComment: {
+    fontFamily: "Poppins-Regular",
     fontSize: 13,
     lineHeight: 19,
     color: '#6B7280',
@@ -2062,11 +2071,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   locationAddress: {
+    fontFamily: "Poppins-Regular",
     fontSize: 13,
     color: '#374151',
     flex: 1,
   },
   locationDistance: {
+    fontFamily: "Poppins-Regular",
     fontSize: 12,
     color: '#6B7280',
     marginTop: 2,
@@ -2081,12 +2092,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   authTitle: {
+    fontFamily: "Poppins-SemiBold",
     fontSize: 16,
     fontWeight: '700',
     color: '#111827',
     marginBottom: 6,
   },
   authInput: {
+    fontFamily: "Poppins-Regular",
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -2110,6 +2123,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   authButtonSecondaryText: {
+    fontFamily: "Poppins-SemiBold",
     fontSize: 13,
     fontWeight: '600',
     color: '#10B981',
@@ -2122,6 +2136,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   authButtonPrimaryText: {
+    fontFamily: "Poppins-SemiBold",
     fontSize: 13,
     fontWeight: '600',
     color: '#FFFFFF',
@@ -2186,11 +2201,13 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   priceAmount: {
+    fontFamily: "Poppins-Bold",
     fontSize: 26,
     fontWeight: '700',
     color: '#111827',
   },
   priceDuration: {
+    fontFamily: "Poppins-Regular",
     fontSize: 12,
     color: '#6B7280',
     fontWeight: '400',
@@ -2202,6 +2219,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   bookButtonText: {
+    fontFamily: "Poppins-Medium",
     fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
@@ -2211,6 +2229,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
   },
   bookButtonDisabledText: {
+    fontFamily: "Poppins-Medium",
     fontSize: 16,
     fontWeight: '700',
     color: '#9CA3AF',

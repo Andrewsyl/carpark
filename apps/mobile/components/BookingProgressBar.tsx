@@ -37,10 +37,10 @@ export function BookingProgressBar({ currentStep }: BookingProgressBarProps) {
                   ]}
                 >
                   {status === "completed" ? (
-                    <Svg width={16} height={12} viewBox="0 0 16 12">
+                    <Svg width={18} height={14} viewBox="0 0 16 12">
                       <Path
                         d="M1 6l4 4 10-9"
-                        stroke="#10B981"
+                        stroke="#FFFFFF"
                         strokeWidth={2.5}
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -51,6 +51,7 @@ export function BookingProgressBar({ currentStep }: BookingProgressBarProps) {
                     <Text
                       style={[
                         styles.stepNumber,
+                        status === "active" && styles.stepNumberActive,
                         status === "upcoming" && styles.stepNumberUpcoming,
                       ]}
                     >
@@ -61,6 +62,8 @@ export function BookingProgressBar({ currentStep }: BookingProgressBarProps) {
                 <Text
                   style={[
                     styles.label,
+                    status === "completed" && styles.labelCompleted,
+                    status === "active" && styles.labelActive,
                     status === "upcoming" && styles.labelUpcoming,
                   ]}
                 >
@@ -89,14 +92,14 @@ export function BookingProgressBar({ currentStep }: BookingProgressBarProps) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingHorizontal: 40,
+    paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
   },
   progressRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     justifyContent: "space-between",
   },
   stepWrapper: {
@@ -104,26 +107,26 @@ const styles = StyleSheet.create({
     minWidth: 48,
   },
   circle: {
-    width: 27,
-    height: 27,
-    borderRadius: 13.5,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 6,
+    marginBottom: 4,
   },
   circleCompleted: {
-    backgroundColor: "#E6F9F2",
+    backgroundColor: "#10B981",
     borderColor: "#10B981",
     borderWidth: 2,
   },
   circleActive: {
-    backgroundColor: "#FFF2E7",
+    backgroundColor: "#FFFFFF",
     borderColor: "#F97316",
     borderWidth: 2,
   },
   circleUpcoming: {
-    backgroundColor: "#F3F4F6",
-    borderColor: "#9CA3AF",
+    backgroundColor: "#FFFFFF",
+    borderColor: "#D1D5DB",
     borderWidth: 2,
   },
   checkmark: {
@@ -132,18 +135,28 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   stepNumber: {
+    color: "#111827",
+    fontSize: 12,
+    fontWeight: "700",
+    fontFamily: "Poppins-SemiBold",
+  },
+  stepNumberActive: {
     color: "#F97316",
-    fontSize: 11,
-    fontWeight: "600",
   },
   stepNumberUpcoming: {
     color: "#9CA3AF",
   },
   label: {
-    fontSize: 11,
-    fontWeight: "500",
-    color: "#111827",
+    fontSize: 12,
+    fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
     textAlign: "center",
+  },
+  labelCompleted: {
+    color: "#10B981",
+  },
+  labelActive: {
+    color: "#111827",
   },
   labelUpcoming: {
     color: "#9CA3AF",
@@ -151,8 +164,9 @@ const styles = StyleSheet.create({
   line: {
     height: 2,
     flex: 1,
-    marginTop: 13.5,
-    marginHorizontal: 3,
+    marginTop: -12,
+    marginHorizontal: 4,
+    borderRadius: 999,
   },
   lineActive: {
     backgroundColor: "#10B981",

@@ -12,6 +12,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { StatusBar } from "expo-status-bar";
 import Constants from "expo-constants";
+import { useFonts } from "expo-font";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { enableScreens } from "react-native-screens";
@@ -55,6 +56,16 @@ enableScreens(false);
 
 export default function App() {
   const [launchComplete, setLaunchComplete] = useState(true);
+  const [fontsLoaded] = useFonts({
+    "Inter-Regular": require("./assets/fonts/Inter-Regular.ttf"),
+    "Inter-Medium": require("./assets/fonts/Inter-Medium.ttf"),
+    "Inter-SemiBold": require("./assets/fonts/Inter-SemiBold.ttf"),
+    "Inter-Bold": require("./assets/fonts/Inter-Bold.ttf"),
+    "Poppins-Regular": require("./assets/fonts/Poppins-Regular.ttf"),
+    "Poppins-Medium": require("./assets/fonts/Poppins-Medium.ttf"),
+    "Poppins-SemiBold": require("./assets/fonts/Poppins-SemiBold.ttf"),
+    "Poppins-Bold": require("./assets/fonts/Poppins-Bold.ttf"),
+  });
 
   useEffect(() => {
     Notifications.setNotificationHandler({
@@ -84,6 +95,10 @@ export default function App() {
 
 
   const stripeKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
+
+  if (!fontsLoaded) {
+    return <View style={styles.app} />;
+  }
 
   return (
     <View style={styles.app}>

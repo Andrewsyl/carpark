@@ -4,6 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
+  Alert,
+  LayoutAnimation,
+  Platform,
+  UIManager,
   Image,
   Modal,
   Pressable,
@@ -55,7 +59,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
   const [confirmingBooking, setConfirmingBooking] = useState(false);
   const [paymentFailed, setPaymentFailed] = useState(false);
   const [paymentFailureMessage, setPaymentFailureMessage] = useState<string | null>(null);
-  const [insuranceEnabled, setInsuranceEnabled] = useState(true);
+  const [insuranceEnabled] = useState(false);
   const [vehicleMake, setVehicleMake] = useState("");
   const [vehicleColor, setVehicleColor] = useState("");
   const [startAt, setStartAt] = useState(() => new Date(from));
@@ -64,6 +68,13 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
   const [pickerField, setPickerField] = useState<"start" | "end">("start");
   const [draftDate, setDraftDate] = useState<Date | null>(null);
   const { show: showGlobalLoading, hide: hideGlobalLoading } = useGlobalLoading();
+  const [showBreakdown, setShowBreakdown] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      UIManager.setLayoutAnimationEnabledExperimental?.(true);
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -139,6 +150,19 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 
   const start = useMemo(() => startAt, [startAt]);
   const end = useMemo(() => endAt, [endAt]);
+  const mapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+  const mapCenter =
+    listing?.latitude && listing?.longitude
+      ? `${listing.latitude},${listing.longitude}`
+      : listing?.address;
+  const staticMapUrl =
+    mapsKey && mapCenter
+      ? `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(
+          mapCenter
+        )}&zoom=16&size=640x280&scale=2&maptype=roadmap&markers=color:0x10B981|${encodeURIComponent(
+          mapCenter
+        )}&key=${mapsKey}`
+      : null;
   const durationHours = useMemo(() => {
     const ms = Math.max(0, end.getTime() - start.getTime());
     return Math.max(1, Math.ceil(ms / (1000 * 60 * 60)));
@@ -153,14 +177,16 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 
   const pricing = useMemo(() => {
     const parkingFee = priceSummary?.total ?? 0;
-    const insuranceFee = 2.99;
+    const insuranceFee = 0;
     const transactionFee = 1.5;
-    const finalPrice = parkingFee + transactionFee + (insuranceEnabled ? insuranceFee : 0);
+    const finalPrice = parkingFee + transactionFee;
+    const finalCents = Math.round(finalPrice * 100);
     return {
       parkingFee,
       insuranceFee,
       transactionFee,
       finalPrice,
+      finalCents,
     };
   }, [insuranceEnabled, priceSummary]);
 
@@ -187,6 +213,11 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
     minEnd.setHours(minEnd.getHours() + 1);
     const safeEnd = next < minEnd ? minEnd : next;
     setEndAt(safeEnd);
+  };
+
+  const toggleBreakdown = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowBreakdown((prev) => !prev);
   };
 
   const scheduleBookingReminders = useCallback(async () => {
@@ -240,7 +271,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
         listingId: listing.id,
         from: startAt.toISOString(),
         to: endAt.toISOString(),
-        amountCents: priceSummary.totalCents,
+        amountCents: pricing.finalCents,
         vehiclePlate: undefined,
         token,
       });
@@ -365,21 +396,19 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <View style={styles.topBar}>
+      <View style={styles.progressHeader}>
+        <BookingProgressBar currentStep={bookingBusy || confirmingBooking ? 3 : 2} />
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={styles.backButton}
+          style={styles.progressBackButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           disabled={bookingBusy || bookingConfirmed}
         >
-          <View style={styles.backCircle}>
-            <Ionicons name="arrow-back" size={16} color={colors.text} />
-          </View>
+            <View style={styles.backCircle}>
+              <Ionicons name="arrow-back" size={12} color={colors.text} />
+            </View>
         </TouchableOpacity>
-        <Text style={styles.topTitle}>Booking summary</Text>
-        <View style={styles.backButton} />
       </View>
-      <BookingProgressBar currentStep={bookingBusy || confirmingBooking ? 3 : 2} />
       {loadingListing ? (
         <View style={styles.centered}>
           <ActivityIndicator size="small" color="#247881" />
@@ -397,92 +426,65 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <View style={styles.card}>
-            <View style={styles.cardBody}>
-              <Text style={styles.listingTitle}>{listing.title || "Adam House Car Park"}</Text>
-              <View style={styles.addressRow}>
-                <View style={styles.addressDot} />
-                <Text style={styles.addressText}>
-                  {listing.address || "24 Adam Street, Dublin"}
-                </Text>
-              </View>
+          {staticMapUrl ? (
+            <View style={styles.summaryMapWrap}>
+              <Image
+                source={{ uri: staticMapUrl }}
+                style={styles.summaryMap}
+                resizeMode="cover"
+              />
             </View>
-            <View style={styles.divider} />
-            <View style={styles.cardBody}>
-              <View style={styles.dateRow}>
-                <View style={styles.dateColumn}>
-                  <Text style={styles.dateLabel}>Parking from</Text>
-                  <TouchableOpacity onPress={() => openPicker("start")} style={styles.dateTimePill}>
-                    <Ionicons name="time-outline" size={14} color={colors.text} />
-                    <Text style={styles.dateTimeText}>{formatDateTimeLabel(start)}</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.durationPill}>
-                  <Text style={styles.durationValue}>{durationHours}h</Text>
-                </View>
-                <View style={styles.dateColumn}>
-                  <Text style={styles.dateLabel}>Parking until</Text>
-                  <TouchableOpacity onPress={() => openPicker("end")} style={styles.dateTimePill}>
-                    <Ionicons name="time-outline" size={14} color={colors.text} />
-                    <Text style={styles.dateTimeText}>{formatDateTimeLabel(end)}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.card}>
-            <View style={styles.cardBody}>
-              <View style={styles.rowBetween}>
-                <View style={styles.rowLeft}>
-                  <Switch
-                    value={insuranceEnabled}
-                    onValueChange={setInsuranceEnabled}
-                    trackColor={{ false: "#d1d5db", true: "#247881" }}
-                    thumbColor={insuranceEnabled ? "#247881" : "#f3f4f6"}
-                  />
-                  <View style={styles.rowLabelGroup}>
-                    <Text style={styles.rowLabel}>Insurance</Text>
-                    <MaterialCommunityIcons name="information-outline" size={16} color="#94a3b8" />
-                  </View>
-                </View>
-                <Text style={styles.rowValue}>€{Math.round(pricing.insuranceFee)}</Text>
-              </View>
-              <Text style={styles.rowSubtext}>
-                Covers accidental damage and extends your booking protection.
+          ) : null}
+          <View style={styles.summaryHeader}>
+            <Text style={styles.listingTitle}>{listing.title || "Adam House Car Park"}</Text>
+            <View style={styles.addressRow}>
+              <Ionicons name="location-sharp" size={14} color={colors.textMuted} />
+              <Text style={styles.addressText}>
+                {listing.address || "24 Adam Street, Dublin"}
               </Text>
             </View>
-            <View style={styles.divider} />
-            <View style={styles.cardBody}>
-              <View style={styles.rowBetween}>
-                <View style={styles.rowLabelGroup}>
-                  <Text style={styles.rowLabel}>Parking fee</Text>
-                  <MaterialCommunityIcons name="information-outline" size={16} color="#94a3b8" />
-                </View>
-                <Text style={styles.rowValue}>€{Math.round(pricing.parkingFee)}</Text>
-              </View>
-              <View style={styles.rowBetween}>
-                <View style={styles.rowLabelGroup}>
-                  <Text style={styles.rowLabel}>Transaction fee</Text>
-                  <MaterialCommunityIcons name="information-outline" size={16} color="#94a3b8" />
-                </View>
-                <Text style={styles.rowValue}>€{Math.round(pricing.transactionFee)}</Text>
-              </View>
-              <View style={styles.finalRow}>
-                <Text style={styles.finalLabel}>Final price</Text>
-                <Text style={styles.finalValue}>€{Math.round(pricing.finalPrice)}</Text>
-              </View>
+          </View>
+
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionLabel}>Your parking session</Text>
+            <View style={styles.sessionRow}>
+              <Text style={styles.sessionLabel}>Duration</Text>
+              <Text style={styles.sessionValue}>{durationHours} hours</Text>
+            </View>
+            <View style={styles.sessionRow}>
+              <Text style={styles.sessionLabel}>Start time</Text>
+              <Text style={styles.sessionValue}>{formatDateTimeLabel(start)}</Text>
+            </View>
+            <View style={styles.sessionRow}>
+              <Text style={styles.sessionLabel}>End time</Text>
+              <Text style={styles.sessionValue}>{formatDateTimeLabel(end)}</Text>
             </View>
           </View>
 
-          <View style={styles.card}>
-            <View style={styles.trustRow}>
-              <View style={styles.rowLabelGroup}>
-                <MaterialCommunityIcons name="shield-check" size={20} color="#247881" />
-                <Text style={styles.rowLabel}>Best Price Guarantee</Text>
-              </View>
-              <MaterialCommunityIcons name="information-outline" size={18} color="#94a3b8" />
+          <View style={styles.sectionCard}>
+            <View style={styles.totalRow}>
+              <Pressable style={styles.totalInfo} onPress={toggleBreakdown}>
+                <Text style={styles.totalDueLabel}>Total due today</Text>
+                <MaterialCommunityIcons name="information-outline" size={16} color="#94a3b8" />
+              </Pressable>
+              <Text style={styles.totalDueValue}>€{Math.round(pricing.finalPrice)}</Text>
             </View>
+            {showBreakdown ? (
+              <View style={styles.breakdownList}>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>Parking fee</Text>
+                  <Text style={styles.breakdownValue}>
+                    €{Math.round(pricing.parkingFee)}
+                  </Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>Transaction fee</Text>
+                  <Text style={styles.breakdownValue}>
+                    €{Math.round(pricing.transactionFee)}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
           </View>
 
           {paymentFailed ? (
@@ -514,7 +516,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
                 ? confirmingBooking
                   ? "Finalizing..."
                   : "Processing..."
-                : `€${Math.round(pricing.finalPrice)} - Pay and reserve`}
+                : "Pay and reserve"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -574,7 +576,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: spacing.screenX,
-    paddingVertical: 10,
+    paddingVertical: 6,
   },
   backButton: {
     alignItems: "center",
@@ -593,14 +595,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBg,
   },
   topTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 0,
+    width: 120,
+  },
+  progressHeader: {
+    backgroundColor: "#FFFFFF",
+    paddingBottom: 0,
+    paddingTop: 18,
+  },
+  progressBackButton: {
+    position: "absolute",
+    left: spacing.screenX,
+    top: 2,
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 16,
     paddingBottom: 120,
+    paddingTop: 0,
   },
   divider: {
     height: 1,
@@ -608,21 +618,34 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.cardBg,
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#374151",
+    borderColor: "#E5E7EB",
     marginBottom: 16,
-    shadowOpacity: 0,
-    elevation: 0,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 4,
   },
   cardBody: {
     paddingHorizontal: 18,
     paddingVertical: 16,
   },
+  cardSectionLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 6,
+  },
   listingTitle: {
     color: colors.text,
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "800",
+    fontFamily: "Poppins-Bold",
     letterSpacing: -0.4,
     marginBottom: 4,
   },
@@ -640,8 +663,77 @@ const styles = StyleSheet.create({
   },
   addressText: {
     color: colors.textMuted,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "400",
+    fontFamily: "Poppins-Regular",
+  },
+  summaryHeader: {
+    marginBottom: 16,
+  },
+  summaryMapWrap: {
+    marginHorizontal: -16,
+    marginBottom: 16,
+  },
+  summaryMap: {
+    width: "100%",
+    height: 140,
+    borderRadius: 0,
+    backgroundColor: "#E5E7EB",
+  },
+  summaryCode: {
+    alignSelf: "flex-start",
+    borderWidth: 2,
+    borderColor: "#22a06b",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 10,
+  },
+  summaryCodeText: {
+    color: "#111827",
+    fontWeight: "700",
+    fontFamily: "Poppins-Bold",
+    fontSize: 16,
+    letterSpacing: 0.6,
+  },
+  sectionCard: {
+    backgroundColor: "transparent",
+    borderRadius: 0,
+    borderWidth: 0,
+    borderColor: "transparent",
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    marginBottom: 18,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: "Poppins-SemiBold",
+    color: "#374151",
+    marginBottom: 10,
+  },
+  sessionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderBottomWidth: 1.5,
+    borderBottomColor: "#E5E7EB",
+  },
+  sessionLabel: {
+    color: "#6B7280",
+    fontSize: 13,
+    fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
+  },
+  sessionValue: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: "700",
+    fontFamily: "Poppins-SemiBold",
   },
   dateRow: {
     flexDirection: "row",
@@ -656,13 +748,14 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
     marginBottom: 6,
   },
   dateTimePill: {
     alignItems: "center",
     backgroundColor: "#F7FFFB",
-    borderColor: "#374151",
-    borderRadius: 6,
+    borderColor: "#D1D5DB",
+    borderRadius: 12,
     borderWidth: 1,
     flexDirection: "row",
     gap: 8,
@@ -673,6 +766,7 @@ const styles = StyleSheet.create({
     color: "#101828",
     fontSize: 12,
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
     flex: 1,
   },
   durationPill: {
@@ -688,6 +782,7 @@ const styles = StyleSheet.create({
   durationValue: {
     fontSize: 13,
     fontWeight: "700",
+    fontFamily: "Poppins-SemiBold",
     color: colors.text,
   },
   rowBetween: {
@@ -709,33 +804,80 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 15,
     fontWeight: "400",
+    fontFamily: "Poppins-Regular",
   },
   rowValue: {
     color: colors.text,
     fontSize: 15,
     fontWeight: "700",
+    fontFamily: "Poppins-SemiBold",
   },
   rowSubtext: {
     marginTop: 8,
-    color: "#94a3b8",
+    color: "#6B7280",
     fontSize: 12,
-    lineHeight: 16,
+    fontFamily: "Poppins-Regular",
+    lineHeight: 18,
   },
-  finalRow: {
-    marginTop: 14,
+  totalDue: {
+    marginTop: 10,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
   },
-  finalLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
+  totalDueLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: "Poppins-SemiBold",
+    color: "#111827",
   },
-  finalValue: {
-    fontSize: 28,
+  totalDueValue: {
+    fontSize: 24,
     fontWeight: "800",
-    color: colors.text,
+    fontFamily: "Poppins-Bold",
+    color: "#0f172a",
+    letterSpacing: -0.3,
+  },
+  totalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+  },
+  totalInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  breakdownList: {
+    marginTop: 8,
+    borderTopWidth: 1.5,
+    borderTopColor: "#E5E7EB",
+    paddingTop: 8,
+  },
+  breakdownRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+  },
+  breakdownLabel: {
+    color: "#6B7280",
+    fontSize: 12,
+    fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
+  },
+  breakdownValue: {
+    color: "#111827",
+    fontSize: 12,
+    fontWeight: "700",
+    fontFamily: "Poppins-SemiBold",
   },
   trustRow: {
     paddingHorizontal: 16,
@@ -748,6 +890,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     fontWeight: "700",
+    fontFamily: "Poppins-SemiBold",
     marginBottom: 10,
   },
   fieldInput: {
@@ -757,6 +900,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     color: "#111827",
     fontSize: 15,
+    fontFamily: "Poppins-Regular",
     paddingHorizontal: 12,
     paddingVertical: 12,
   },
@@ -791,11 +935,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     fontWeight: "700",
+    fontFamily: "Poppins-SemiBold",
     letterSpacing: 0.2,
   },
   regHint: {
     color: "#94a3b8",
     fontSize: 11,
+    fontFamily: "Poppins-Regular",
     marginTop: 4,
   },
   centered: {
@@ -808,11 +954,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 24,
     fontWeight: "800",
+    fontFamily: "Poppins-Bold",
     letterSpacing: -0.4,
   },
   subtitle: {
     color: colors.textMuted,
     fontSize: 15,
+    fontFamily: "Poppins-Regular",
     marginTop: 8,
     textAlign: "center",
     lineHeight: 22,
@@ -820,6 +968,7 @@ const styles = StyleSheet.create({
   muted: {
     color: colors.textMuted,
     fontSize: 12,
+    fontFamily: "Poppins-Regular",
     marginTop: 8,
   },
   noticeCard: {
@@ -834,10 +983,12 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
   },
   noticeText: {
     color: colors.textMuted,
     fontSize: 12,
+    fontFamily: "Poppins-Regular",
     marginTop: 6,
     lineHeight: 18,
   },
@@ -866,6 +1017,7 @@ const styles = StyleSheet.create({
   pickerTitle: {
     fontSize: 15,
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
     color: colors.text,
   },
   pickerDone: {
@@ -875,6 +1027,7 @@ const styles = StyleSheet.create({
   pickerDoneText: {
     color: colors.accent,
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
   },
   footerBar: {
     position: 'absolute',
@@ -883,19 +1036,19 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
   },
   footerButton: {
-    backgroundColor: "#0F766E",
-    borderRadius: 24,
-    paddingVertical: 12,
+    backgroundColor: "#2a9d7f",
+    borderRadius: 14,
+    paddingVertical: 10,
     paddingHorizontal: 24,
     minHeight: 48,
     alignItems: "center",
@@ -906,8 +1059,9 @@ const styles = StyleSheet.create({
   },
   footerButtonText: {
     color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
   },
   successOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -927,11 +1081,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 18,
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
     textAlign: "center",
   },
   successBody: {
     color: colors.textMuted,
     fontSize: 13,
+    fontFamily: "Poppins-Regular",
     marginTop: 6,
     textAlign: "center",
   },
@@ -947,6 +1103,7 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 14,
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
   },
   error: {
     backgroundColor: "#fef2f2",
@@ -955,6 +1112,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     color: "#b42318",
     fontSize: 12,
+    fontFamily: "Poppins-Regular",
     marginBottom: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,

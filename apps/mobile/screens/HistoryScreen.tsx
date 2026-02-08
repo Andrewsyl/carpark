@@ -31,6 +31,7 @@ export function HistoryScreen({ navigation, route }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [newBookingId, setNewBookingId] = useState<string | null>(null);
+  const pendingNewBookingId = useRef<string | null>(null);
   const [mapCtaVisible, setMapCtaVisible] = useState(false);
   const [ratingByBookingId, setRatingByBookingId] = useState<Record<string, number>>({});
   const tabAnim = useRef(new Animated.Value(1)).current;
@@ -40,12 +41,17 @@ export function HistoryScreen({ navigation, route }: Props) {
   const newBookingOpacityAnim = useRef(new Animated.Value(0)).current;
   const lastTabIndexRef = useRef(0);
   const [tabDirection, setTabDirection] = useState(1);
+  const skipNextFocusReload = useRef(false);
+  const [revealBookings, setRevealBookings] = useState(true);
+  const [bookingTransitioning, setBookingTransitioning] = useState(false);
 
-  const loadBookings = useCallback(async () => {
+  const loadBookings = useCallback(async (options?: { silent?: boolean }) => {
     if (!token) return;
     let active = true;
-    setLoading(true);
-    setError(null);
+    if (!options?.silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const data = await listMyBookings(token);
       if (!active) return;
@@ -56,7 +62,7 @@ export function HistoryScreen({ navigation, route }: Props) {
       setError(err instanceof Error ? err.message : "Could not load bookings");
       return [];
     } finally {
-      if (active) {
+      if (active && !options?.silent) {
         setLoading(false);
       }
     }
@@ -100,6 +106,10 @@ export function HistoryScreen({ navigation, route }: Props) {
 
   useFocusEffect(
     useCallback(() => {
+      if (skipNextFocusReload.current) {
+        skipNextFocusReload.current = false;
+        return;
+      }
       void loadBookings();
     }, [loadBookings])
   );
@@ -122,62 +132,64 @@ export function HistoryScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (!route.params?.showSuccess) return;
-    console.log('[HistoryScreen] Setting showSuccess to true');
     setShowSuccess(true);
+    setTab("upcoming");
+    setDisplayTab("upcoming");
+    setIsSwitchingTab(false);
+    setRevealBookings(false);
+    setBookingTransitioning(true);
 
-    // Reset animation values
+    const startTime = Date.now();
+
     newBookingSlideAnim.setValue(50);
     newBookingOpacityAnim.setValue(0);
-
-    // Start loading bookings immediately during animation
-    console.log('[HistoryScreen] Starting to load bookings during animation');
-    const previousBookingIds = new Set(bookings.map(b => b.id));
-
-    void loadBookings().then((newBookings) => {
-      // Find the new booking after load completes
-      if (newBookings && newBookings.length > 0) {
-        const newBooking = newBookings.find(b => !previousBookingIds.has(b.id));
-        console.log('[HistoryScreen] Found new booking:', newBooking?.id);
-        if (newBooking) {
-          setNewBookingId(newBooking.id);
-        }
+    const previousBookingIds = new Set(bookings.map((b) => b.id));
+    skipNextFocusReload.current = true;
+    void loadBookings({ silent: true }).then((newBookings) => {
+      const list = newBookings ?? [];
+      let nextBooking = list.find((b) => !previousBookingIds.has(b.id));
+      if (!nextBooking && list.length > 0) {
+        nextBooking = [...list].sort(
+          (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+        )[0];
       }
+      pendingNewBookingId.current = nextBooking?.id ?? null;
+
+      const elapsed = Date.now() - startTime;
+      const minOverlayMs = 600;
+      const delay = Math.max(0, minOverlayMs - elapsed);
+
+      setTimeout(() => {
+        setShowSuccess(false);
+        setRevealBookings(true);
+        const idToAnimate = pendingNewBookingId.current;
+        if (idToAnimate) {
+          setNewBookingId(idToAnimate);
+          setTimeout(() => {
+            requestAnimationFrame(() => {
+              Animated.parallel([
+                Animated.spring(newBookingSlideAnim, {
+                  toValue: 0,
+                  useNativeDriver: true,
+                  tension: 50,
+                  friction: 8,
+                }),
+                Animated.timing(newBookingOpacityAnim, {
+                  toValue: 1,
+                  duration: 400,
+                  useNativeDriver: true,
+                }),
+              ]).start(() => {
+                setTimeout(() => setNewBookingId(null), 100);
+              });
+            });
+          }, 120);
+        }
+        setTimeout(() => setBookingTransitioning(false), 200);
+      }, delay);
     });
 
-    const hideTimer = setTimeout(() => {
-      console.log('[HistoryScreen] Hiding success animation');
-      setShowSuccess(false);
-
-      // Trigger slide-in animation after overlay disappears
-      setTimeout(() => {
-        console.log('[HistoryScreen] Starting slide-in animation');
-        Animated.parallel([
-          Animated.spring(newBookingSlideAnim, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 50,
-            friction: 8,
-          }),
-          Animated.timing(newBookingOpacityAnim, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
-          console.log('[HistoryScreen] Animation complete');
-          // Clear the newBookingId after animation completes
-          setTimeout(() => setNewBookingId(null), 100);
-        });
-      }, 100);
-    }, 1800);
-
-    // Clear the param immediately but don't add to deps
     navigation.setParams({ showSuccess: undefined });
-
-    return () => {
-      console.log('[HistoryScreen] Cleaning up timers');
-      clearTimeout(hideTimer);
-    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -453,14 +465,15 @@ export function HistoryScreen({ navigation, route }: Props) {
             return result;
           })();
           const showPaneSkeleton =
-            loading || (isSwitchingTab && paneTab === tabSwitchingTo);
+            (loading || (isSwitchingTab && paneTab === tabSwitchingTo)) &&
+            !bookingTransitioning;
           const showPaneEmpty =
             !loading && !isSwitchingTab && paneTab === displayTab && paneData.length === 0;
 
           return (
             <View key={pane} style={{ width: screenWidth }}>
               <FlatList
-                data={!user ? [] : paneItems}
+                data={!user || !revealBookings ? [] : paneItems}
                 renderItem={({ item }) => {
                   if (item.type === "header") {
                     return <Text style={styles.monthLabel}>{item.label}</Text>;
