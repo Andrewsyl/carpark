@@ -1,1 +1,4 @@
-// This file exists to satisfy Xcode build input references.
+//
+// @generated
+// A blank Swift file must be created for native modules with Swift files to work correctly.
+//

@@ -796,8 +796,13 @@ export function SearchScreen({ navigation }: Props) {
     const nextLat = nextRegion.latitude.toFixed(6);
     const nextLng = nextRegion.longitude.toFixed(6);
     const maxDelta = Math.max(nextRegion.latitudeDelta, nextRegion.longitudeDelta);
-    const radiusKmValue = Math.max(0.5, (maxDelta * 111) / 2) * 1.2;
-    const nextRadius = radiusKmValue.toFixed(2);
+    // Use a larger multiplier so the radius fully covers the visible map area
+    // (prevents pins near edges from being dropped after "Search this area").
+    const radiusKmValue = Math.max(0.5, (maxDelta * 111) / 2) * 1.6;
+    const currentRadiusKm = Number(radiusKm) || 0;
+    // Don't shrink radius when zooming in; keeps pins within the current search radius.
+    const nextRadiusValue = Math.max(radiusKmValue, currentRadiusKm);
+    const nextRadius = nextRadiusValue.toFixed(2);
     setPendingSearch({ lat: nextLat, lng: nextLng, radiusKm: nextRadius });
     setShowSearchArea(true);
   };

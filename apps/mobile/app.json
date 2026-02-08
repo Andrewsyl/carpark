@@ -6,7 +6,8 @@
     "userInterfaceStyle": "light",
     "scheme": [
       "carparking",
-      "com.googleusercontent.apps.742052774291-32p3r3jcea4oge0uec8aqqe9chi2f79l"
+      "com.googleusercontent.apps.742052774291-32p3r3jcea4oge0uec8aqqe9chi2f79l",
+      "com.googleusercontent.apps.742052774291-7ebm33putsqqjjb8h5kebok0214hp38h"
     ],
     "orientation": "portrait",
     "platforms": [
@@ -22,9 +23,15 @@
         }
       ],
       [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": "AIzaSyC1h1NFLFz7SPauw85Udh0O1CBlN5bqOek"
+        }
+      ],
+      [
         "@react-native-google-signin/google-signin",
         {
-          "iosUrlScheme": "com.googleusercontent.apps.742052774291-m8e3ilp5au87432ps0huhk52it6e7eug"
+          "iosUrlScheme": "com.googleusercontent.apps.742052774291-7ebm33putsqqjjb8h5kebok0214hp38h"
         }
       ]
     ],
@@ -59,6 +66,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.andrewsyl.carparking",
+      "jsEngine": "jsc",
       "config": {
         "googleMapsApiKey": "AIzaSyC1h1NFLFz7SPauw85Udh0O1CBlN5bqOek"
       }

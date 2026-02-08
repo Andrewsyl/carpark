@@ -41,11 +41,13 @@ export function JustParkAuthScreen() {
   const { loginWithOAuth } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID ?? "";
+  const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "";
   useEffect(() => {
     GoogleSignin.configure({
       webClientId: googleWebClientId || undefined,
+      iosClientId: googleIosClientId || undefined,
     });
-  }, [googleWebClientId]);
+  }, [googleWebClientId, googleIosClientId]);
 
   return (
     <SafeAreaView style={styles.container}>

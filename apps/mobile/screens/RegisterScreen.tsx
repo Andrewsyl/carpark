@@ -27,13 +27,15 @@ export function RegisterScreen({ navigation }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID ?? "";
+  const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "";
   const legalVersion = "2026-01-10";
 
   useEffect(() => {
     GoogleSignin.configure({
       webClientId: googleWebClientId || undefined,
+      iosClientId: googleIosClientId || undefined,
     });
-  }, [googleWebClientId]);
+  }, [googleWebClientId, googleIosClientId]);
 
   const handleSignUp = async () => {
     const trimmed = email.trim();

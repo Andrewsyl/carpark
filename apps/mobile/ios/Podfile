@@ -22,9 +22,6 @@ prepare_react_native_project!
 
 target 'CarParking' do
   use_expo_modules!
-  pod 'GoogleMaps'
-  pod 'Google-Maps-iOS-Utils'
-  pod 'react-native-google-maps', :path => '../node_modules/react-native-maps'
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
     config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];
@@ -39,6 +36,13 @@ target 'CarParking' do
     ]
   end
 
+# @generated begin react-native-maps - expo prebuild (DO NOT MODIFY) sync-e998e3efeb335e37f5f7a069abfc6d5ecd4fd33e
+  rn_maps_path = File.dirname(`node --print "require.resolve('react-native-maps/package.json')"`) 
+
+# Use Google Maps on iOS
+  pod 'react-native-maps', :path => rn_maps_path, :subspecs => ['Google']
+
+# @generated end react-native-maps
   config = use_native_modules!(config_command)
 
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
@@ -46,8 +50,7 @@ target 'CarParking' do
 
   use_react_native!(
     :path => config[:reactNativePath],
-    :hermes_enabled => podfile_properties['expo.jsEngine'] == nil || podfile_properties['expo.jsEngine'] == 'hermes',
-    :fabric_enabled => true,
+    :hermes_enabled => false,
     # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/..",
     :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
@@ -60,122 +63,5 @@ target 'CarParking' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
-
-    # Patch generated Fabric component provider to skip missing classes (prevents nil insert crash).
-    provider_dir = File.join(__dir__, 'build/generated/ios')
-    provider_path = File.join(provider_dir, 'RCTThirdPartyComponentsProvider.mm')
-    FileUtils.mkdir_p(provider_dir)
-    File.write(provider_path, <<~'OBJC')
-        /*
-         * Copyright (c) Meta Platforms, Inc. and affiliates.
-         *
-         * This source code is licensed under the MIT license found in the
-         * LICENSE file in the root directory of this source tree.
-         */
-
-        #import <Foundation/Foundation.h>
-
-        #import "RCTThirdPartyComponentsProvider.h"
-        #import <React/RCTComponentViewProtocol.h>
-        #import <React/RCTLog.h>
-
-        @implementation RCTThirdPartyComponentsProvider
-
-        + (NSDictionary<NSString *, Class<RCTComponentViewProtocol>> *)thirdPartyFabricComponents
-        {
-          static NSDictionary<NSString *, Class<RCTComponentViewProtocol>> *thirdPartyComponents = nil;
-          static dispatch_once_t nativeComponentsToken;
-
-          dispatch_once(&nativeComponentsToken, ^{
-            NSArray<NSArray<NSString *> *> *componentPairs = @[
-              @[@"RNDateTimePicker", @"RNDateTimePickerComponentView"], // @react-native-community/datetimepicker
-              @[@"RNCSlider", @"RNCSliderComponentView"], // @react-native-community/slider
-              @[@"RNGoogleSignInButton", @"RNGoogleSignInButtonComponentView"], // @react-native-google-signin/google-signin
-              @[@"RNCPicker", @"RNCPickerComponentView"], // @react-native-picker/picker
-              @[@"ApplePayButton", @"ApplePayButtonComponentView"], // @stripe/stripe-react-native
-              @[@"AddToWalletButton", @"AddToWalletButtonComponentView"], // @stripe/stripe-react-native
-              @[@"AddressSheetView", @"AddressSheetViewComponentView"], // @stripe/stripe-react-native
-              @[@"AuBECSDebitForm", @"AuBECSDebitFormComponentView"], // @stripe/stripe-react-native
-              @[@"CardField", @"CardFieldComponentView"], // @stripe/stripe-react-native
-              @[@"CardForm", @"CardFormComponentView"], // @stripe/stripe-react-native
-              @[@"EmbeddedPaymentElementView", @"EmbeddedPaymentElementViewComponentView"], // @stripe/stripe-react-native
-              @[@"NavigationBar", @"NavigationBarComponentView"], // @stripe/stripe-react-native
-              @[@"StripeContainer", @"StripeContainerComponentView"], // @stripe/stripe-react-native
-              @[@"LottieAnimationView", @"LottieAnimationViewComponentView"], // lottie-react-native
-              @[@"RNDatePicker", @"RNDatePicker"], // react-native-date-picker
-              @[@"RNMapsGoogleMapView", @"RNMapsGoogleMapView"], // react-native-maps
-              @[@"RNMapsGooglePolygon", @"RNMapsGooglePolygonView"], // react-native-maps
-              @[@"RNMapsMapView", @"RNMapsMapView"], // react-native-maps
-              @[@"RNMapsMarker", @"RNMapsMarkerView"], // react-native-maps
-              @[@"RNCSafeAreaProvider", @"RNCSafeAreaProviderComponentView"], // react-native-safe-area-context
-              @[@"RNCSafeAreaView", @"RNCSafeAreaViewComponentView"], // react-native-safe-area-context
-              @[@"RNSVGCircle", @"RNSVGCircle"], // react-native-svg
-              @[@"RNSVGClipPath", @"RNSVGClipPath"], // react-native-svg
-              @[@"RNSVGDefs", @"RNSVGDefs"], // react-native-svg
-              @[@"RNSVGEllipse", @"RNSVGEllipse"], // react-native-svg
-              @[@"RNSVGFeBlend", @"RNSVGFeBlend"], // react-native-svg
-              @[@"RNSVGFeColorMatrix", @"RNSVGFeColorMatrix"], // react-native-svg
-              @[@"RNSVGFeComposite", @"RNSVGFeComposite"], // react-native-svg
-              @[@"RNSVGFeFlood", @"RNSVGFeFlood"], // react-native-svg
-              @[@"RNSVGFeGaussianBlur", @"RNSVGFeGaussianBlur"], // react-native-svg
-              @[@"RNSVGFeMerge", @"RNSVGFeMerge"], // react-native-svg
-              @[@"RNSVGFeOffset", @"RNSVGFeOffset"], // react-native-svg
-              @[@"RNSVGFilter", @"RNSVGFilter"], // react-native-svg
-              @[@"RNSVGForeignObject", @"RNSVGForeignObject"], // react-native-svg
-              @[@"RNSVGGroup", @"RNSVGGroup"], // react-native-svg
-              @[@"RNSVGImage", @"RNSVGImage"], // react-native-svg
-              @[@"RNSVGLine", @"RNSVGLine"], // react-native-svg
-              @[@"RNSVGLinearGradient", @"RNSVGLinearGradient"], // react-native-svg
-              @[@"RNSVGMarker", @"RNSVGMarker"], // react-native-svg
-              @[@"RNSVGMask", @"RNSVGMask"], // react-native-svg
-              @[@"RNSVGPath", @"RNSVGPath"], // react-native-svg
-              @[@"RNSVGPattern", @"RNSVGPattern"], // react-native-svg
-              @[@"RNSVGRadialGradient", @"RNSVGRadialGradient"], // react-native-svg
-              @[@"RNSVGRect", @"RNSVGRect"], // react-native-svg
-              @[@"RNSVGSvgView", @"RNSVGSvgView"], // react-native-svg
-              @[@"RNSVGSymbol", @"RNSVGSymbol"], // react-native-svg
-              @[@"RNSVGTSpan", @"RNSVGTSpan"], // react-native-svg
-              @[@"RNSVGText", @"RNSVGText"], // react-native-svg
-              @[@"RNSVGTextPath", @"RNSVGTextPath"], // react-native-svg
-              @[@"RNSVGUse", @"RNSVGUse"], // react-native-svg
-              @[@"RNCWebView", @"RNCWebView"], // react-native-webview
-              @[@"RNSFullWindowOverlay", @"RNSFullWindowOverlay"], // react-native-screens
-              @[@"RNSModalScreen", @"RNSModalScreen"], // react-native-screens
-              @[@"RNSScreenContainer", @"RNSScreenContainerView"], // react-native-screens
-              @[@"RNSScreenContentWrapper", @"RNSScreenContentWrapper"], // react-native-screens
-              @[@"RNSScreenFooter", @"RNSScreenFooter"], // react-native-screens
-              @[@"RNSScreen", @"RNSScreenView"], // react-native-screens
-              @[@"RNSScreenNavigationContainer", @"RNSScreenNavigationContainerView"], // react-native-screens
-              @[@"RNSScreenStackHeaderConfig", @"RNSScreenStackHeaderConfig"], // react-native-screens
-              @[@"RNSScreenStackHeaderSubview", @"RNSScreenStackHeaderSubview"], // react-native-screens
-              @[@"RNSScreenStack", @"RNSScreenStackView"], // react-native-screens
-              @[@"RNSSearchBar", @"RNSSearchBar"], // react-native-screens
-              @[@"RNSStackScreen", @"RNSStackScreenComponentView"], // react-native-screens
-              @[@"RNSScreenStackHost", @"RNSScreenStackHostComponentView"], // react-native-screens
-              @[@"RNSBottomTabsScreen", @"RNSBottomTabsScreenComponentView"], // react-native-screens
-              @[@"RNSBottomTabs", @"RNSBottomTabsHostComponentView"], // react-native-screens
-              @[@"RNSSplitViewHost", @"RNSSplitViewHostComponentView"], // react-native-screens
-              @[@"RNSSplitViewScreen", @"RNSSplitViewScreenComponentView"], // react-native-screens
-            ];
-
-            NSMutableDictionary *dict = [[NSMutableDictionary alloc] initWithCapacity:componentPairs.count];
-            for (NSArray<NSString *> *pair in componentPairs) {
-              NSString *componentName = pair[0];
-              NSString *className = pair[1];
-              Class klass = NSClassFromString(className);
-              if (klass) {
-                dict[componentName] = klass;
-              } else {
-                RCTLogError(@"Fabric component %@ (%@) could not be found at runtime", componentName, className);
-              }
-            }
-            thirdPartyComponents = dict;
-          });
-
-          return thirdPartyComponents;
-        }
-
-        @end
-      OBJC
   end
 end

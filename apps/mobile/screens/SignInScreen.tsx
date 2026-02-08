@@ -34,6 +34,7 @@ export function SignInScreen({ navigation }: Props) {
   const [acceptLegalChecked, setAcceptLegalChecked] = useState(false);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID ?? "";
+  const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "";
   const legalVersion = "2026-01-10";
 
 
@@ -54,8 +55,9 @@ export function SignInScreen({ navigation }: Props) {
   useEffect(() => {
     GoogleSignin.configure({
       webClientId: googleWebClientId || undefined,
+      iosClientId: googleIosClientId || undefined,
     });
-  }, [googleWebClientId]);
+  }, [googleWebClientId, googleIosClientId]);
 
   const handleLogin = async () => {
     const trimmed = email.trim();
