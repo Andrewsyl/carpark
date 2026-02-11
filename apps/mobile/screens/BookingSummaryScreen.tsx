@@ -1,6 +1,6 @@
 import { CommonActions, useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
@@ -25,6 +25,7 @@ import DatePicker from "react-native-date-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { cardShadow, colors, radius, spacing } from "../styles/theme";
 import {
   confirmBookingPayment,
@@ -59,15 +60,15 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
   const [confirmingBooking, setConfirmingBooking] = useState(false);
   const [paymentFailed, setPaymentFailed] = useState(false);
   const [paymentFailureMessage, setPaymentFailureMessage] = useState<string | null>(null);
-  const [insuranceEnabled] = useState(false);
   const [vehicleMake, setVehicleMake] = useState("");
   const [vehicleColor, setVehicleColor] = useState("");
+  const [staticMapFailed, setStaticMapFailed] = useState(false);
   const [startAt, setStartAt] = useState(() => new Date(from));
   const [endAt, setEndAt] = useState(() => new Date(to));
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerField, setPickerField] = useState<"start" | "end">("start");
   const [draftDate, setDraftDate] = useState<Date | null>(null);
-  const { show: showGlobalLoading, hide: hideGlobalLoading } = useGlobalLoading();
+  const { reset: resetGlobalLoading } = useGlobalLoading();
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   useEffect(() => {
@@ -79,7 +80,6 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      showGlobalLoading("Loading booking...");
       setLoadingListing(true);
       setError(null);
       try {
@@ -92,7 +92,6 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
       } finally {
         if (!active) return;
         setLoadingListing(false);
-        hideGlobalLoading();
       }
     };
     void load();
@@ -154,15 +153,46 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
   const mapCenter =
     listing?.latitude && listing?.longitude
       ? `${listing.latitude},${listing.longitude}`
-      : listing?.address;
-  const staticMapUrl =
-    mapsKey && mapCenter
-      ? `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(
-          mapCenter
-        )}&zoom=16&size=640x280&scale=2&maptype=roadmap&markers=color:0x10B981|${encodeURIComponent(
-          mapCenter
-        )}&key=${mapsKey}`
       : null;
+  const mapCoords = useMemo(() => {
+    if (typeof listing?.latitude !== "number" || typeof listing?.longitude !== "number") {
+      return null;
+    }
+    return { latitude: listing.latitude, longitude: listing.longitude };
+  }, [listing?.latitude, listing?.longitude]);
+  const mapCoordsKey = mapCoords
+    ? `${mapCoords.latitude.toFixed(6)},${mapCoords.longitude.toFixed(6)}`
+    : null;
+  const lastMapKeyRef = useRef<string | null>(null);
+  const [staticMapVersion, setStaticMapVersion] = useState(0);
+  const staticMapUrl = useMemo(() => {
+    if (!mapsKey || !mapCenter) return null;
+    const cacheBuster = `${staticMapVersion}`;
+    return `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(
+      mapCenter
+    )}&zoom=16&size=640x280&scale=2&format=png&maptype=roadmap&markers=color:0x10B981|${encodeURIComponent(
+      mapCenter
+    )}&key=${mapsKey}&v=${encodeURIComponent(cacheBuster)}`;
+  }, [mapsKey, mapCenter, staticMapVersion]);
+
+  useEffect(() => {
+    setStaticMapFailed(false);
+    if (mapCoords) {
+      console.log("[BookingSummary] Map coords", mapCoords);
+    } else {
+      console.warn("[BookingSummary] Missing map coords");
+    }
+    if (staticMapUrl) {
+      console.log("[BookingSummary] Static map URL", staticMapUrl);
+    }
+  }, [staticMapUrl, mapCoords]);
+
+  useEffect(() => {
+    if (!mapCoordsKey) return;
+    if (lastMapKeyRef.current === mapCoordsKey) return;
+    lastMapKeyRef.current = mapCoordsKey;
+    setStaticMapVersion((prev) => prev + 1);
+  }, [mapCoordsKey]);
   const durationHours = useMemo(() => {
     const ms = Math.max(0, end.getTime() - start.getTime());
     return Math.max(1, Math.ceil(ms / (1000 * 60 * 60)));
@@ -177,18 +207,16 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
 
   const pricing = useMemo(() => {
     const parkingFee = priceSummary?.total ?? 0;
-    const insuranceFee = 0;
-    const transactionFee = 1.5;
-    const finalPrice = parkingFee + transactionFee;
-    const finalCents = Math.round(finalPrice * 100);
+    const transactionFee = 0;
+    const finalPrice = parkingFee;
+    const finalCents = Math.round(parkingFee * 100);
     return {
       parkingFee,
-      insuranceFee,
       transactionFee,
       finalPrice,
       finalCents,
     };
-  }, [insuranceEnabled, priceSummary]);
+  }, [priceSummary]);
 
   const openPicker = (field: "start" | "end") => {
     setPickerField(field);
@@ -343,6 +371,7 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
       didConfirm = true;
       setBookingConfirmed(true);
       setConfirmingBooking(false);
+      resetGlobalLoading();
       const nowMs = Date.now();
       const startMs = Date.parse(from);
       const endMs = Date.parse(to);
@@ -426,15 +455,40 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          {staticMapUrl ? (
-            <View style={styles.summaryMapWrap}>
+          <View style={styles.summaryMapWrap}>
+            {Platform.OS !== "ios" && staticMapUrl && !staticMapFailed ? (
               <Image
                 source={{ uri: staticMapUrl }}
                 style={styles.summaryMap}
                 resizeMode="cover"
+                onError={(event) => {
+                  setStaticMapFailed(true);
+                  console.warn("[BookingSummary] Static map failed", event.nativeEvent);
+                }}
+                onLoad={() => {
+                  console.log("[BookingSummary] Static map loaded");
+                }}
               />
-            </View>
-          ) : null}
+            ) : mapCoords ? (
+              <MapView
+                provider={PROVIDER_GOOGLE}
+                style={styles.summaryMap}
+                region={{
+                  latitude: mapCoords.latitude,
+                  longitude: mapCoords.longitude,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }}
+                pointerEvents="none"
+              >
+                <Marker coordinate={mapCoords} />
+              </MapView>
+            ) : (
+              <View style={styles.summaryMapPlaceholder}>
+                <Text style={styles.summaryMapPlaceholderText}>Map preview unavailable</Text>
+              </View>
+            )}
+          </View>
           <View style={styles.summaryHeader}>
             <Text style={styles.listingTitle}>{listing.title || "Adam House Car Park"}</Text>
             <View style={styles.addressRow}>
@@ -477,12 +531,14 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
                     €{Math.round(pricing.parkingFee)}
                   </Text>
                 </View>
-                <View style={styles.breakdownRow}>
-                  <Text style={styles.breakdownLabel}>Transaction fee</Text>
-                  <Text style={styles.breakdownValue}>
-                    €{Math.round(pricing.transactionFee)}
-                  </Text>
-                </View>
+                {pricing.transactionFee > 0 ? (
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Platform fee (host)</Text>
+                    <Text style={styles.breakdownValue}>
+                      €{Math.round(pricing.transactionFee)}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             ) : null}
           </View>
@@ -673,12 +729,26 @@ const styles = StyleSheet.create({
   summaryMapWrap: {
     marginHorizontal: -16,
     marginBottom: 16,
+    backgroundColor: "transparent",
   },
   summaryMap: {
     width: "100%",
     height: 140,
     borderRadius: 0,
+    backgroundColor: "transparent",
+  },
+  summaryMapPlaceholder: {
+    width: "100%",
+    height: 140,
     backgroundColor: "#E5E7EB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  summaryMapPlaceholderText: {
+    color: "#94A3B8",
+    fontSize: 12,
+    fontWeight: "500",
+    fontFamily: "Poppins-Medium",
   },
   summaryCode: {
     alignSelf: "flex-start",

@@ -10,18 +10,18 @@ type Props = {
 export function BottomTabButton({ children, onPress, accessibilityState }: Props) {
   const focused = accessibilityState?.selected;
   const scale = useRef(new Animated.Value(1)).current;
-  const opacity = useRef(new Animated.Value(focused ? 1 : 0.7)).current;
+  const opacity = useRef(new Animated.Value(focused ? 1 : 0.8)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.spring(scale, {
-        toValue: focused ? 1.08 : 1,
+        toValue: focused ? 1.02 : 1,
         useNativeDriver: true,
         friction: 7,
         tension: 40,
       }),
       Animated.timing(opacity, {
-        toValue: focused ? 1 : 0.7,
+        toValue: focused ? 1 : 0.8,
         duration: 200,
         useNativeDriver: true,
       }),
@@ -30,7 +30,7 @@ export function BottomTabButton({ children, onPress, accessibilityState }: Props
 
   const handlePressIn = () => {
     Animated.spring(scale, {
-      toValue: 0.9,
+      toValue: 0.96,
       useNativeDriver: true,
       friction: 8,
       tension: 200,
@@ -39,7 +39,7 @@ export function BottomTabButton({ children, onPress, accessibilityState }: Props
 
   const handlePressOut = () => {
     Animated.spring(scale, {
-      toValue: focused ? 1.08 : 1,
+      toValue: focused ? 1.02 : 1,
       useNativeDriver: true,
       friction: 7,
       tension: 40,

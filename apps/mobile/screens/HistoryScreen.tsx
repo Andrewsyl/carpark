@@ -8,6 +8,7 @@ import LottieView from "lottie-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { listMyBookings, type BookingSummary } from "../api";
 import { useAuth } from "../auth";
+import { useGlobalLoading } from "../components/GlobalLoading";
 import { cardShadow, colors, radius, spacing, textStyles } from "../styles/theme";
 import { BookingCard } from "../components/BookingCard";
 import { Spinner } from "../components/Spinner";
@@ -19,6 +20,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "History">;
 
 export function HistoryScreen({ navigation, route }: Props) {
   const { token, user } = useAuth();
+  const { reset: resetGlobalLoading } = useGlobalLoading();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const [tab, setTab] = useState<"upcoming" | "active" | "past">("upcoming");
@@ -30,6 +32,7 @@ export function HistoryScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [successTab, setSuccessTab] = useState<"upcoming" | "active" | "past">("upcoming");
   const [newBookingId, setNewBookingId] = useState<string | null>(null);
   const pendingNewBookingId = useRef<string | null>(null);
   const [mapCtaVisible, setMapCtaVisible] = useState(false);
@@ -132,20 +135,33 @@ export function HistoryScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (!route.params?.showSuccess) return;
-    setShowSuccess(true);
-    setTab("upcoming");
-    setDisplayTab("upcoming");
+    resetGlobalLoading();
+    let cancelled = false;
+    const targetTab = (route.params?.initialTab ?? "upcoming") as
+      | "upcoming"
+      | "active"
+      | "past";
+    setSuccessTab(targetTab);
+    setTab(targetTab);
+    setDisplayTab(targetTab);
     setIsSwitchingTab(false);
+    setTabSwitchingTo(targetTab);
+    segmentAnim.setValue(targetTab === "upcoming" ? 0 : targetTab === "active" ? 1 : 2);
+    lastTabIndexRef.current = targetTab === "upcoming" ? 0 : targetTab === "active" ? 1 : 2;
+    setTabDirection(1);
     setRevealBookings(false);
     setBookingTransitioning(true);
-
-    const startTime = Date.now();
+    setLoading(false);
+    setError(null);
 
     newBookingSlideAnim.setValue(50);
     newBookingOpacityAnim.setValue(0);
     const previousBookingIds = new Set(bookings.map((b) => b.id));
     skipNextFocusReload.current = true;
+    const startTime = Date.now();
     void loadBookings({ silent: true }).then((newBookings) => {
+      if (cancelled) return;
+      resetGlobalLoading();
       const list = newBookings ?? [];
       let nextBooking = list.find((b) => !previousBookingIds.has(b.id));
       if (!nextBooking && list.length > 0) {
@@ -156,40 +172,49 @@ export function HistoryScreen({ navigation, route }: Props) {
       pendingNewBookingId.current = nextBooking?.id ?? null;
 
       const elapsed = Date.now() - startTime;
-      const minOverlayMs = 600;
+      const minOverlayMs = 400;
       const delay = Math.max(0, minOverlayMs - elapsed);
 
       setTimeout(() => {
-        setShowSuccess(false);
-        setRevealBookings(true);
-        const idToAnimate = pendingNewBookingId.current;
-        if (idToAnimate) {
-          setNewBookingId(idToAnimate);
-          setTimeout(() => {
-            requestAnimationFrame(() => {
-              Animated.parallel([
-                Animated.spring(newBookingSlideAnim, {
-                  toValue: 0,
-                  useNativeDriver: true,
-                  tension: 50,
-                  friction: 8,
-                }),
-                Animated.timing(newBookingOpacityAnim, {
-                  toValue: 1,
-                  duration: 400,
-                  useNativeDriver: true,
-                }),
-              ]).start(() => {
-                setTimeout(() => setNewBookingId(null), 100);
+        if (cancelled) return;
+        setShowSuccess(true);
+        const overlayMs = 900;
+        setTimeout(() => {
+          if (cancelled) return;
+          setShowSuccess(false);
+          setRevealBookings(true);
+          const idToAnimate = pendingNewBookingId.current;
+          if (idToAnimate) {
+            setNewBookingId(idToAnimate);
+            setTimeout(() => {
+              requestAnimationFrame(() => {
+                Animated.parallel([
+                  Animated.spring(newBookingSlideAnim, {
+                    toValue: 0,
+                    useNativeDriver: true,
+                    tension: 50,
+                    friction: 8,
+                  }),
+                  Animated.timing(newBookingOpacityAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                  }),
+                ]).start(() => {
+                  setTimeout(() => setNewBookingId(null), 100);
+                });
               });
-            });
-          }, 120);
-        }
-        setTimeout(() => setBookingTransitioning(false), 200);
+            }, 120);
+          }
+          setTimeout(() => setBookingTransitioning(false), 200);
+        }, overlayMs);
       }, delay);
     });
 
-    navigation.setParams({ showSuccess: undefined });
+    navigation.setParams({ showSuccess: undefined, refreshToken: undefined, initialTab: undefined });
+    return () => {
+      cancelled = true;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -580,7 +605,9 @@ export function HistoryScreen({ navigation, route }: Props) {
               style={styles.successAnimation}
             />
             <Text style={styles.successTitle}>Booking confirmed!</Text>
-            <Text style={styles.successBody}>Your reservation is saved in Upcoming</Text>
+            <Text style={styles.successBody}>
+              Your reservation is saved in {successTab === "active" ? "Active" : successTab === "past" ? "Past" : "Upcoming"}
+            </Text>
           </View>
         </Pressable>
       ) : null}

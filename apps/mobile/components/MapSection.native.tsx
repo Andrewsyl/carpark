@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Ref } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import MapView, {
   type EdgePadding,
   Marker,
@@ -212,7 +212,7 @@ export default function MapSection({
         provider={providerValue}
         initialRegion={initialRegion}
         region={region}
-        cacheEnabled
+        cacheEnabled={Platform.OS !== "android"}
         loadingEnabled
         loadingBackgroundColor="#F9FAFB"
         onRegionChangeComplete={(nextRegion) => {

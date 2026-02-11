@@ -9,6 +9,7 @@ type GlobalLoadingApi = {
   state: GlobalLoadingState;
   show: (message?: string) => void;
   hide: () => void;
+  reset: () => void;
 };
 
 const GlobalLoadingContext = createContext<GlobalLoadingApi | null>(null);
@@ -42,9 +43,18 @@ export function GlobalLoadingProvider({ children }: { children: React.ReactNode 
     setState((prev) => ({ ...prev, visible: false }));
   }, []);
 
+  const reset = useCallback(() => {
+    pendingCount.current = 0;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setState((prev) => ({ ...prev, visible: false }));
+  }, []);
+
   const value = useMemo<GlobalLoadingApi>(
-    () => ({ state, show, hide }),
-    [state, show, hide]
+    () => ({ state, show, hide, reset }),
+    [state, show, hide, reset]
   );
 
   return <GlobalLoadingContext.Provider value={value}>{children}</GlobalLoadingContext.Provider>;

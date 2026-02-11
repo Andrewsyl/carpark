@@ -105,7 +105,7 @@ export async function findAvailableSpaces(input: SpaceSearchInput) {
       )
     )
     ORDER BY distance_m ASC
-    LIMIT 50;
+    LIMIT 200;
   `;
 
   const legacyQuery = `
@@ -137,7 +137,7 @@ export async function findAvailableSpaces(input: SpaceSearchInput) {
       AND tstzrange(b.start_time, b.end_time, '[)') && tstzrange($4::timestamptz, $5::timestamptz, '[)')
     )
     ORDER BY distance_m ASC
-    LIMIT 50;
+    LIMIT 200;
   `;
 
   const params = [lng, lat, radiusKm * 1000, from, to, spaceTypeFilter];
@@ -261,7 +261,7 @@ export async function findSpacesWithAvailability(input: SpaceSearchInput) {
     AND status <> 'archived'
     AND ($6::text IS NULL OR lower(title) LIKE $6)
     ORDER BY distance_m ASC
-    LIMIT 50;
+    LIMIT 200;
   `;
 
   const legacyQuery = `
@@ -289,7 +289,7 @@ export async function findSpacesWithAvailability(input: SpaceSearchInput) {
     AND status <> 'archived'
     AND ($6::text IS NULL OR lower(title) LIKE $6)
     ORDER BY distance_m ASC
-    LIMIT 50;
+    LIMIT 200;
   `;
 
   const params = [lng, lat, radiusKm * 1000, from, to, spaceTypeFilter];

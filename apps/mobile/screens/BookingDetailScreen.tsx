@@ -1,6 +1,17 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useCallback, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -12,6 +23,7 @@ import { useAuth } from "../auth";
 import { getNotificationImageAttachment } from "../notifications";
 import type { RootStackParamList } from "../types";
 import { Ionicons } from "@expo/vector-icons";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { format, formatDateTimeLabel } from "../utils/dateFormat";
 import { formatBookingReference } from "../utils/bookingFormat";
 
@@ -101,17 +113,18 @@ export function BookingDetailScreen({ navigation, route }: Props) {
     Date.now() <= end.getTime();
   const canBookAgain = !isUpcoming && !isInProgress;
   const mapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
-  const mapCenter =
-    booking.latitude && booking.longitude
-      ? `${booking.latitude},${booking.longitude}`
-      : booking.address;
+  const mapCoords =
+    typeof booking.latitude === "number" && typeof booking.longitude === "number"
+      ? { latitude: booking.latitude, longitude: booking.longitude }
+      : null;
+  const mapCenter = mapCoords ? `${mapCoords.latitude},${mapCoords.longitude}` : null;
   const staticMapUrl =
     mapsKey && mapCenter
       ? `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(
           mapCenter
-        )}&zoom=16&size=640x280&scale=2&maptype=roadmap&markers=color:0x10B981|${encodeURIComponent(
+        )}&zoom=16&size=640x280&scale=2&format=png&maptype=roadmap&markers=color:0x10B981|${encodeURIComponent(
           mapCenter
-        )}&key=${mapsKey}`
+        )}&key=${mapsKey}&v=${encodeURIComponent(booking.id)}`
       : null;
 
   const performCancel = async () => {
@@ -260,8 +273,22 @@ export function BookingDetailScreen({ navigation, route }: Props) {
         {(isUpcoming || isInProgress) && localStatus !== "canceled" ? (
           <View style={styles.mapSection}>
             <Pressable style={styles.mapImageButton} onPress={handleOpenMaps}>
-              {staticMapUrl ? (
+              {Platform.OS !== "ios" && staticMapUrl ? (
                 <Image source={{ uri: staticMapUrl }} style={styles.mapImage} />
+              ) : mapCoords ? (
+                <MapView
+                  provider={PROVIDER_GOOGLE}
+                  style={styles.mapImage}
+                  region={{
+                    latitude: mapCoords.latitude,
+                    longitude: mapCoords.longitude,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  }}
+                  pointerEvents="none"
+                >
+                  <Marker coordinate={mapCoords} />
+                </MapView>
               ) : (
                 <View style={styles.mapPlaceholder}>
                   <Text style={styles.mapPlaceholderText}>Map preview unavailable</Text>
@@ -734,7 +761,7 @@ const styles = StyleSheet.create({
 
   // Map section
   mapSection: {
-    marginHorizontal: 20,
+    marginHorizontal: 0,
     marginBottom: 20,
   },
 
@@ -766,7 +793,7 @@ const styles = StyleSheet.create({
   },
 
   mapImageButton: {
-    borderRadius: 16,
+    borderRadius: 0,
     overflow: "hidden",
     marginBottom: 12,
   },
@@ -780,7 +807,7 @@ const styles = StyleSheet.create({
   mapPlaceholder: {
     height: 200,
     backgroundColor: '#F3F4F6',
-    borderRadius: 16,
+    borderRadius: 0,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -804,6 +831,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignSelf: 'stretch',
     marginBottom: 4,
+    marginHorizontal: 20,
   },
 
   mapButtonText: {

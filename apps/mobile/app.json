@@ -45,7 +45,7 @@
       "targetSdkVersion": 35,
       "buildToolsVersion": "35.0.0",
       "notification": {
-        "icon": "ic_notification",
+        "icon": "./assets/notification-icon.png",
         "color": "#10B981"
       },
       "googleServicesFile": "./google-services.json",

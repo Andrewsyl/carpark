@@ -168,9 +168,9 @@ function MainTabs() {
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 6,
-    paddingTop: 6,
-    paddingBottom: Math.max(12, insets.bottom),
-    height: 60 + Math.max(12, insets.bottom),
+    paddingTop: 4,
+    paddingBottom: Math.max(6, insets.bottom),
+    height: 52 + Math.max(6, insets.bottom),
   };
   return (
     <Tab.Navigator
@@ -182,9 +182,9 @@ function MainTabs() {
         tabBarInactiveTintColor: colors.text.muted,
         tabBarStyle: baseTabBarStyle,
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: '600',
-          marginTop: 2,
+          marginTop: 0,
           letterSpacing: 0.1,
         },
         tabBarButton: (props) => <BottomTabButton {...props} />,

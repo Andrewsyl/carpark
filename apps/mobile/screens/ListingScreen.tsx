@@ -399,7 +399,7 @@ export function ListingScreen({ navigation, route }: Props) {
 
   return (
     <>
-      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <SafeAreaView style={styles.container} edges={["bottom"]}>
         {loading ? (
           <View style={styles.centered}>
             <ActivityIndicator />
@@ -411,7 +411,7 @@ export function ListingScreen({ navigation, route }: Props) {
         ) : listing ? (
           <>
             {/* Content Card */}
-            <View style={[styles.heroFixed, { height: heroHeight + insets.top, top: -insets.top + 22 }]}>
+            <View style={[styles.heroFixed, { height: heroHeight + insets.top, top: 0 }]}>
               {imageUrls.length ? (
                 <Image
                   source={{ uri: imageUrls[0] }}
@@ -436,9 +436,9 @@ export function ListingScreen({ navigation, route }: Props) {
             </View>
 
             {/* Header Overlay */}
-            <View style={styles.headerOverlay}>
+            <View style={[styles.headerOverlay, { top: insets.top + 8 }]}>
               <Pressable style={styles.backButtonRound} onPress={() => navigation.goBack()}>
-                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                <Ionicons name="arrow-back" size={24} color="#111827" />
               </Pressable>
               <Pressable style={styles.favoriteButtonRound} onPress={handleToggleFavorite}>
                 <Text style={[styles.favoriteIcon, isFavorite(id) && styles.favoriteIconActive]}>
@@ -460,7 +460,7 @@ export function ListingScreen({ navigation, route }: Props) {
             <Pressable
               style={[
                 styles.heroTapOverlay,
-                { height: Math.max(0, heroHeight - 54), top: -insets.top + 54 },
+                { height: Math.max(0, heroHeight), top: 0 },
               ]}
               onPress={() => {
                 setViewerIndex(0);
@@ -483,12 +483,6 @@ export function ListingScreen({ navigation, route }: Props) {
                   <Ionicons name="location-outline" size={16} color="#6B7280" />
                   <Text style={styles.location}>{listing.address}</Text>
                 </View>
-                <View style={styles.finalAddressRow}>
-                  <Ionicons name="location-sharp" size={14} color="#6B7280" />
-                  <Text style={[styles.location, styles.finalAddressText]}>
-                    Final address will be shared after payment
-                  </Text>
-                </View>
                 <View style={styles.ratingRow}>
                   <Ionicons name="star" size={16} color="#F59E0B" />
                   <Text style={styles.rating}>
@@ -496,6 +490,12 @@ export function ListingScreen({ navigation, route }: Props) {
                   </Text>
                   <Text style={styles.reviewCount}>
                     ({listing.rating_count ?? 0})
+                  </Text>
+                </View>
+                <View style={styles.finalAddressRow}>
+                  <Ionicons name="location-sharp" size={14} color="#6B7280" />
+                  <Text style={[styles.location, styles.finalAddressText]}>
+                    Final address will be shared after payment
                   </Text>
                 </View>
                 {priceSummary ? (
@@ -528,7 +528,9 @@ export function ListingScreen({ navigation, route }: Props) {
                           <Text style={styles.dateTimeLabel}>From</Text>
                           <Text style={styles.dateTimeValue}>{formatDateTimeLabel(startAt)}</Text>
                         </View>
-                        <Ionicons name="chevron-down" size={16} color="#0f766e" />
+                        <View style={styles.timePickerChevron}>
+                          <Ionicons name="chevron-down" size={16} color="#0f766e" />
+                        </View>
                       </View>
                     </Pressable>
                     <View style={styles.timePickerArrow}>
@@ -540,7 +542,9 @@ export function ListingScreen({ navigation, route }: Props) {
                           <Text style={styles.dateTimeLabel}>Until</Text>
                           <Text style={styles.dateTimeValue}>{formatDateTimeLabel(endAt)}</Text>
                         </View>
-                        <Ionicons name="chevron-down" size={16} color="#0f766e" />
+                        <View style={styles.timePickerChevron}>
+                          <Ionicons name="chevron-down" size={16} color="#0f766e" />
+                        </View>
                       </View>
                     </Pressable>
                   </View>
@@ -1545,7 +1549,7 @@ const styles = StyleSheet.create({
   },
   headerOverlay: {
     position: 'absolute',
-    top: 50,
+    top: 0,
     left: 20,
     right: 20,
     flexDirection: 'row',
@@ -1553,25 +1557,35 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   backButtonRound: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
   },
   favoriteButtonRound: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
   },
   favoriteIcon: {
-    color: '#FFFFFF',
-    fontSize: 20,
+    color: '#111827',
+    fontSize: 18,
     fontWeight: '600',
   },
   favoriteIconActive: {
@@ -1604,28 +1618,29 @@ const styles = StyleSheet.create({
   },
   titleSection: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
   },
   category: {
     fontFamily: "Poppins-Medium",
     fontSize: 13,
     fontWeight: '600',
     color: '#D97706',
-    letterSpacing: 1,
-    marginBottom: 8,
+    letterSpacing: 0.8,
+    marginBottom: 6,
   },
   cardTitle: {
     fontFamily: "Poppins-SemiBold",
     fontSize: 28,
     fontWeight: '800',
     color: '#111827',
+    lineHeight: 33,
     marginBottom: 6,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 8,
+    gap: 6,
+    marginBottom: 2,
   },
   location: {
     fontFamily: "Poppins-Regular",
@@ -1637,7 +1652,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 2,
+    marginTop: 4,
   },
   summaryStrip: {
     flexDirection: "row",
@@ -1646,7 +1661,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    marginTop: 14,
+    marginTop: 10,
     paddingVertical: 10,
   },
   summaryCell: {
@@ -1736,6 +1751,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#bfe2d8",
     backgroundColor: "#f7fffb",
+    overflow: "hidden",
+  },
+  timePickerChevron: {
+    width: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   timePickerColumn: {
     flex: 1,
@@ -1789,13 +1811,13 @@ const styles = StyleSheet.create({
   finalAddressRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
-    marginTop: 1,
-    alignSelf: "flex-start",
-    marginLeft: -10,
+    marginTop: 2,
+    alignSelf: "center",
     backgroundColor: "#F3F4F6",
     borderRadius: 999,
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
     paddingVertical: 4,
   },
   finalAddressText: {
@@ -1803,6 +1825,7 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     fontSize: 12,
     fontWeight: "400",
+    textAlign: "center",
   },
   hoursRow: {
     flexDirection: "row",

@@ -18,7 +18,7 @@ import {
 import LottieView from "lottie-react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import type MapView from "react-native-maps";
 import DatePicker from "react-native-date-picker";
 import * as Location from "expo-location";
@@ -140,6 +140,9 @@ export function SearchScreen({ navigation }: Props) {
   const { show: showGlobalLoading, hide: hideGlobalLoading } = useGlobalLoading();
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<ListingSummary[]>([]);
+  const [pendingResults, setPendingResults] = useState<ListingSummary[] | null>(null);
+  const [isRefreshingPins, setIsRefreshingPins] = useState(false);
+  const resultsRef = useRef<ListingSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dismissingCard, setDismissingCard] = useState(false);
   const [addressQuery, setAddressQuery] = useState("");
@@ -178,6 +181,7 @@ export function SearchScreen({ navigation }: Props) {
   const isProgrammaticMoveRef = useRef(false);
   const { user } = useAuth();
   const { launchComplete } = useAppLaunch();
+  const isFocused = useIsFocused();
   const { favorites, isFavorite, toggle } = useFavorites();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -196,6 +200,8 @@ export function SearchScreen({ navigation }: Props) {
   const mapReadyEventsRef = useRef({ ready: false, loaded: false });
   const mapReadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mapReadyFailSafeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialSearchTriggeredRef = useRef(false);
+  const currentRegionRef = useRef<typeof mapRegion | null>(null);
   const mapSpinnerAnim = useRef(new Animated.Value(0)).current;
   const mapSpinnerLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const mapRegionSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -250,12 +256,49 @@ export function SearchScreen({ navigation }: Props) {
     };
   }, []);
 
+  useEffect(() => {
+    resultsRef.current = results;
+  }, [results]);
+
+  const isWithinRadius = useCallback(
+    (listing: ListingSummary, center: { lat: number; lng: number }, radiusM: number) => {
+      if (typeof listing.latitude !== "number" || typeof listing.longitude !== "number") {
+        return false;
+      }
+      const toRad = (value: number) => (value * Math.PI) / 180;
+      const R = 6371000;
+      const dLat = toRad(listing.latitude - center.lat);
+      const dLng = toRad(listing.longitude - center.lng);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(center.lat)) *
+          Math.cos(toRad(listing.latitude)) *
+          Math.sin(dLng / 2) ** 2;
+      const distanceM = 2 * R * Math.asin(Math.sqrt(a));
+      return distanceM <= radiusM;
+    },
+    []
+  );
+
+  const radiusKmForRegion = useCallback((region: typeof mapRegion) => {
+    const diagDelta = Math.sqrt(
+      region.latitudeDelta ** 2 + region.longitudeDelta ** 2
+    );
+    return Math.max(0.5, (diagDelta * 111) / 2) * 1.2;
+  }, []);
+
   const buildSearchParams = useCallback(
     (overrides?: Partial<SearchParams>): SearchParams => {
+      const region = currentRegionRef.current;
+      const nextLat = region ? region.latitude.toFixed(6) : lat;
+      const nextLng = region ? region.longitude.toFixed(6) : lng;
+      const nextRadiusKm = region
+        ? radiusKmForRegion(region).toFixed(2)
+        : radiusKm;
       const next: SearchParams = {
-        lat,
-        lng,
-        radiusKm,
+        lat: nextLat,
+        lng: nextLng,
+        radiusKm: nextRadiusKm,
         from,
         to,
         includeUnavailable: true,
@@ -276,6 +319,7 @@ export function SearchScreen({ navigation }: Props) {
       radiusKm,
       from,
       to,
+      radiusKmForRegion,
       priceMin,
       priceMax,
       securityLevel,
@@ -308,14 +352,16 @@ export function SearchScreen({ navigation }: Props) {
       paramsOverride?: Partial<SearchParams>,
       options?: { showGlobal?: boolean }
     ) => {
+      let nextResultsSnapshot: ListingSummary[] | null = null;
       const requestId = searchRequestIdRef.current + 1;
       searchRequestIdRef.current = requestId;
       searchStartedAtRef.current = Date.now();
-      const shouldShowGlobal = options?.showGlobal ?? true;
+      const shouldShowGlobal = (options?.showGlobal ?? true) && isFocused;
       if (shouldShowGlobal) {
         showGlobalLoading("Searching...");
       }
       setLoading(true);
+      setIsRefreshingPins(true);
       setError(null);
       const params = buildSearchParams(paramsOverride);
       logInfo("Search started", params);
@@ -329,7 +375,17 @@ export function SearchScreen({ navigation }: Props) {
       try {
         const spaces = await searchListings(params);
         if (searchRequestIdRef.current !== requestId) return;
-        setResults(spaces);
+        const center = {
+          lat: Number.parseFloat(params.lat),
+          lng: Number.parseFloat(params.lng),
+        };
+        const radiusM = Math.max(0.5, Number(params.radiusKm)) * 1000;
+        const nextIds = new Set(spaces.map((listing) => listing.id));
+        const carryOver = resultsRef.current.filter(
+          (listing) => !nextIds.has(listing.id) && isWithinRadius(listing, center, radiusM)
+        );
+        nextResultsSnapshot = [...spaces, ...carryOver];
+        setPendingResults(nextResultsSnapshot);
         setSelectedId((prev) => {
           if (
             prev &&
@@ -345,22 +401,26 @@ export function SearchScreen({ navigation }: Props) {
         logError("Search error", { message });
         setError(message);
         if (searchRequestIdRef.current === requestId) {
-          setResults([]);
+          setPendingResults([]);
         }
       } finally {
         const elapsed = Date.now() - searchStartedAtRef.current;
         const remaining = Math.max(0, 1000 - elapsed);
         setTimeout(() => {
-          if (searchRequestIdRef.current === requestId) {
-            setLoading(false);
             if (shouldShowGlobal) {
               hideGlobalLoading();
             }
+          if (searchRequestIdRef.current !== requestId) return;
+          setLoading(false);
+          if (nextResultsSnapshot) {
+            setResults(nextResultsSnapshot);
+            setPendingResults(null);
           }
+          setIsRefreshingPins(false);
         }, remaining);
       }
     },
-    [buildSearchParams, hideGlobalLoading, showGlobalLoading]
+    [buildSearchParams, hideGlobalLoading, showGlobalLoading, pendingResults]
   );
 
   const scheduleMapReady = useCallback(() => {
@@ -377,7 +437,11 @@ export function SearchScreen({ navigation }: Props) {
     mapReadyEventsRef.current[type] = true;
     scheduleMapReady();
     initialRegionHandledRef.current = true;
+    if (!currentRegionRef.current) {
+      currentRegionRef.current = mapInitialRegion ?? mapRegion;
+    }
     if (!results.length && !loading && type === "ready") {
+      initialSearchTriggeredRef.current = true;
       isProgrammaticMoveRef.current = true;
       void runSearch();
     }
@@ -387,6 +451,12 @@ export function SearchScreen({ navigation }: Props) {
     setFrom(startAt.toISOString());
     setTo(endAt.toISOString());
   }, [startAt, endAt]);
+
+  useEffect(() => {
+    if (!currentRegionRef.current && mapInitialRegion) {
+      currentRegionRef.current = mapInitialRegion;
+    }
+  }, [mapInitialRegion]);
 
   useEffect(() => {
     if (!timeSearchPendingRef.current) return;
@@ -503,15 +573,41 @@ export function SearchScreen({ navigation }: Props) {
   const handleUseCurrentLocation = async () => {
     setLocationError(null);
     setLocating(true);
+    const loadingTimer = setTimeout(() => {
+      showGlobalLoading("Locating...");
+    }, 120);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         setLocationError("Location permission needed.");
         return;
       }
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        setLocationError("Location services are off.");
+        return;
+      }
+      const withTimeout = async <T,>(promise: Promise<T>, ms: number) =>
+        Promise.race([
+          promise,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error("Location timeout")), ms)
+          ),
+        ]);
+      let position = await withTimeout(
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        8000
+      );
+      if (!position) {
+        position = await Location.getLastKnownPositionAsync({
+          maxAge: 5 * 60 * 1000,
+          requiredAccuracy: 200,
+        });
+      }
+      if (!position) {
+        setLocationError("Unable to fetch location.");
+        return;
+      }
       const nextLat = position.coords.latitude.toFixed(6);
       const nextLng = position.coords.longitude.toFixed(6);
       setLat(nextLat);
@@ -537,10 +633,14 @@ export function SearchScreen({ navigation }: Props) {
         280
       );
       setSearchSheetOpen(false);
-      void runSearch({ lat: nextLat, lng: nextLng });
+      clearTimeout(loadingTimer);
+      hideGlobalLoading();
+      void runSearch({ lat: nextLat, lng: nextLng }, { showGlobal: true });
     } catch {
       setLocationError("Unable to fetch location.");
     } finally {
+      clearTimeout(loadingTimer);
+      hideGlobalLoading();
       setLocating(false);
     }
   };
@@ -666,6 +766,13 @@ export function SearchScreen({ navigation }: Props) {
   }, [launchComplete, mapReady, mapSpinnerAnim]);
 
   useEffect(() => {
+    if (!launchComplete || !mapReady || loading || results.length > 0) return;
+    if (initialSearchTriggeredRef.current) return;
+    initialSearchTriggeredRef.current = true;
+    void runSearch();
+  }, [launchComplete, mapReady, loading, results.length, runSearch]);
+
+  useEffect(() => {
     if (showFilters) {
       setFiltersVisible(true);
       slideAnim.setValue(windowHeight);
@@ -755,6 +862,7 @@ export function SearchScreen({ navigation }: Props) {
   const closeFilters = () => setShowFilters(false);
 
   const handleRegionChange = (nextRegion: typeof mapRegion) => {
+    currentRegionRef.current = nextRegion;
     if (ignoreNextRegionChangeRef.current) {
       ignoreNextRegionChangeRef.current = false;
       return;
@@ -795,14 +903,7 @@ export function SearchScreen({ navigation }: Props) {
 
     const nextLat = nextRegion.latitude.toFixed(6);
     const nextLng = nextRegion.longitude.toFixed(6);
-    const maxDelta = Math.max(nextRegion.latitudeDelta, nextRegion.longitudeDelta);
-    // Use a larger multiplier so the radius fully covers the visible map area
-    // (prevents pins near edges from being dropped after "Search this area").
-    const radiusKmValue = Math.max(0.5, (maxDelta * 111) / 2) * 1.6;
-    const currentRadiusKm = Number(radiusKm) || 0;
-    // Don't shrink radius when zooming in; keeps pins within the current search radius.
-    const nextRadiusValue = Math.max(radiusKmValue, currentRadiusKm);
-    const nextRadius = nextRadiusValue.toFixed(2);
+    const nextRadius = radiusKmForRegion(nextRegion).toFixed(2);
     setPendingSearch({ lat: nextLat, lng: nextLng, radiusKm: nextRadius });
     setShowSearchArea(true);
   };
@@ -856,7 +957,7 @@ export function SearchScreen({ navigation }: Props) {
             onRegionChangeComplete={handleRegionChange}
             selectedId={selectedId}
             mapRef={mapRef}
-            freezeMarkers={loading}
+            freezeMarkers={loading || isRefreshingPins}
             onMapLoaded={() => handleMapReady("loaded")}
             onMapReady={() => handleMapReady("ready")}
             onOverlappingPins={setOverlappingPins}
@@ -896,49 +997,60 @@ export function SearchScreen({ navigation }: Props) {
                 </Pressable>
               ) : null}
             </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.filterFab,
-                showFilters && styles.filterFabActive,
-                pressed && styles.filterFabPressed,
-              ]}
-              onPress={() => setShowFilters((prev) => !prev)}
-              accessibilityLabel="Filters"
-              android_ripple={null}
-            >
-              <Ionicons
-                name="options-outline"
-                size={18}
-                color={showFilters ? colors.accent : colors.text}
-              />
-              {(priceMin || priceMax || securityLevel || vehicleSize || coveredParking || evCharging || instantBook) ? (
-                <View style={styles.filterDot} />
-              ) : null}
-            </Pressable>
-            <View style={styles.searchDivider} />
-          <View style={styles.dateRow}>
-            <Pressable
-              style={styles.dateTimeColumn}
-              onPress={() => openPicker("start")}
-              android_ripple={null}
-            >
-              <Text style={styles.dateTimeLabel}>From</Text>
-              <Text style={styles.dateTimeValue} numberOfLines={1} ellipsizeMode="tail">
-                {formatDateTimeLabel(startAt)}
-              </Text>
-            </Pressable>
-            <Ionicons name="arrow-forward" size={18} color="#9CA3AF" style={styles.dateArrowIcon} />
-            <Pressable
-              style={styles.dateTimeColumn}
-              onPress={() => openPicker("end")}
-              android_ripple={null}
-            >
-              <Text style={styles.dateTimeLabel}>Until</Text>
-              <Text style={styles.dateTimeValue} numberOfLines={1} ellipsizeMode="tail">
-                {formatDateTimeLabel(endAt)}
-              </Text>
-            </Pressable>
+            <View style={styles.searchActions}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  showFilters && styles.actionButtonActive,
+                  pressed && styles.actionButtonPressed,
+                ]}
+                onPress={() => setShowFilters((prev) => !prev)}
+                accessibilityLabel="Filters"
+                android_ripple={null}
+              >
+                <Ionicons
+                  name="options-outline"
+                  size={18}
+                  color={showFilters ? colors.accent : colors.text}
+                />
+                {(priceMin || priceMax || securityLevel || vehicleSize || coveredParking || evCharging || instantBook) ? (
+                  <View style={styles.filterDot} />
+                ) : null}
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
+                onPress={handleUseCurrentLocation}
+                accessibilityLabel="Center on current location"
+                android_ripple={null}
+              >
+                <Ionicons name="locate-outline" size={18} color={colors.text} />
+              </Pressable>
+            </View>
           </View>
+          <View style={styles.dateRowCard}>
+            <View style={styles.dateRow}>
+              <Pressable
+                style={styles.dateTimeColumn}
+                onPress={() => openPicker("start")}
+                android_ripple={null}
+              >
+                <Text style={styles.dateTimeLabel}>From</Text>
+                <Text style={styles.dateTimeValue} numberOfLines={1} ellipsizeMode="tail">
+                  {formatDateTimeLabel(startAt)}
+                </Text>
+              </Pressable>
+              <Ionicons name="arrow-forward" size={18} color="#9CA3AF" style={styles.dateArrowIcon} />
+              <Pressable
+                style={styles.dateTimeColumn}
+                onPress={() => openPicker("end")}
+                android_ripple={null}
+              >
+                <Text style={styles.dateTimeLabel}>Until</Text>
+                <Text style={styles.dateTimeValue} numberOfLines={1} ellipsizeMode="tail">
+                  {formatDateTimeLabel(endAt)}
+                </Text>
+              </Pressable>
+            </View>
           </View>
           {showSearchArea && pendingSearch ? (
             <View style={styles.searchAreaWrap} pointerEvents="box-none">
@@ -1524,19 +1636,26 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   searchGroup: {
-    backgroundColor: colors.cardBg,
-    borderRadius: 20,
-    overflow: "hidden",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     position: "relative",
-    ...cardShadow,
   },
   searchBar: {
     alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 22,
+    flex: 1,
     flexDirection: "row",
     gap: 10,
-    paddingRight: 40,
+    height: 44,
+    paddingHorizontal: 14,
+    paddingRight: 34,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
   },
   searchInput: {
     color: colors.text,
@@ -1546,7 +1665,7 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     alignItems: "center",
-    backgroundColor: colors.appBg,
+    backgroundColor: "#F3F4F6",
     borderRadius: radius.pill,
     height: 22,
     justifyContent: "center",
@@ -1558,36 +1677,31 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 18,
   },
-  filterFab: {
+  searchActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  actionButton: {
     alignItems: "center",
     backgroundColor: "#ffffff",
     borderRadius: radius.pill,
-    height: 32,
+    height: 40,
     justifyContent: "center",
-    position: "absolute",
-    right: 10,
-    top: 8,
-    width: 32,
+    width: 40,
     shadowColor: "#0f172a",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
-  searchDivider: {
-    height: 1,
-    backgroundColor: "#E5E7EB",
-    opacity: 0.5,
-    marginTop: 10,
-    marginBottom: 10,
-  },
-  filterFabActive: {
+  actionButtonActive: {
     borderColor: colors.accent,
     borderWidth: 1,
     backgroundColor: "#ecfdf7",
   },
-  filterFabPressed: {
-    opacity: 1,
+  actionButtonPressed: {
+    opacity: 0.9,
   },
   filterDot: {
     backgroundColor: colors.accent,
@@ -1597,6 +1711,18 @@ const styles = StyleSheet.create({
     right: 8,
     top: 8,
     width: 8,
+  },
+  dateRowCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   searchOverlayTrigger: {
     bottom: 0,
@@ -1992,14 +2118,17 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   dateTimeLabel: {
-    fontSize: 9,
+    fontSize: 11,
     color: "#6B7280",
     marginBottom: 4,
+    letterSpacing: 0.2,
+    fontFamily: "Inter-Medium",
   },
   dateTimeValue: {
     color: "#111827",
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "700",
+    fontFamily: "Inter-SemiBold",
   },
   dateArrowIcon: {
     marginHorizontal: 4,
@@ -2071,11 +2200,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    marginBottom: 48,
+    marginBottom: 24,
     paddingBottom: 24,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 12,
-    marginHorizontal: 16,
+    marginHorizontal: 0,
   },
   pickerHeader: {
     alignItems: "center",

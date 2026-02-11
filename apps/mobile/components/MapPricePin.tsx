@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 
 type MapPricePinProps = {
   price: number;
@@ -10,10 +10,7 @@ type MapPricePinProps = {
 
 export function MapPricePin({ price, selected = false, soldOut = false }: MapPricePinProps) {
   const priceText = soldOut ? "Sold out" : `€${price}`;
-  
-  // Airbnb-style: larger pins when selected for better visibility
-  const scale = 1;
-  
+
   const dimensions = useMemo(() => {
     const textLength = priceText.length;
     const baseWidth = soldOut ? 56 : 46;
@@ -23,7 +20,7 @@ export function MapPricePin({ price, selected = false, soldOut = false }: MapPri
     const tailHeight = soldOut ? 5 : 6;
     const totalHeight = bubbleHeight + tailHeight;
     const tailWidth = soldOut ? 8 : 10;
-    
+
     return { width, bubbleHeight, tailHeight, totalHeight, tailWidth };
   }, [priceText, soldOut]);
 
@@ -60,12 +57,8 @@ export function MapPricePin({ price, selected = false, soldOut = false }: MapPri
   const viewBoxHeight = totalHeight + padding * 2;
 
   return (
-    <View style={[styles.container, { width: viewBoxWidth * scale, height: viewBoxHeight * scale }]}>
-      <Svg
-        width={viewBoxWidth * scale}
-        height={viewBoxHeight * scale}
-        viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-      >
+    <View style={[styles.container, { width: viewBoxWidth, height: viewBoxHeight }]}>
+      <Svg width={viewBoxWidth} height={viewBoxHeight} viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}>
         <Path
           d={pinPath}
           fill={soldOut ? "#f1f5f9" : selected ? "#000000" : "#FFFFFF"}
@@ -74,9 +67,15 @@ export function MapPricePin({ price, selected = false, soldOut = false }: MapPri
           strokeLinejoin="round"
         />
       </Svg>
-      
+
       <View style={styles.textContainer} pointerEvents="none">
-        <Text style={[styles.priceText, soldOut && styles.priceTextSoldOut, selected && !soldOut && styles.priceTextSelected]}>
+        <Text
+          style={[
+            styles.priceText,
+            soldOut && styles.priceTextSoldOut,
+            selected && !soldOut && styles.priceTextSelected,
+          ]}
+        >
           {priceText}
         </Text>
       </View>
@@ -88,7 +87,6 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "flex-start",
-    // Airbnb-style: add drop shadow for better depth perception
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
