@@ -11,7 +11,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowLeft, ChevronDown, Star } from "lucide-react-native";
 import { listListingReviews, type ListingReview } from "../api";
-import { colors, radius } from "../styles/theme";
+import { colors } from "../styles/theme";
+import { GREEN, INK, MUTED, PILL, RULE, WHITE } from "../styles/pageTokens";
+import { PageHeader, PillButton, Rule } from "../components/ui/page";
 import type { RootStackParamList } from "../types";
 import { formatReviewDate } from "../utils/dateFormat";
 import { fallbackRoutes, goBackOrFallback, resetToSafeRoute } from "../navigation/safeNavigation";
@@ -64,74 +66,92 @@ export function ListingReviewsScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => goBackOrFallback(navigation, fallbackRoutes.search)}>
-          <ArrowLeft size={20} color={colors.text} strokeWidth={2.5} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Reviews</Text>
-        <View style={{ width: 38 }} />
-      </View>
+      <PageHeader
+        title="Reviews"
+        onBack={() => goBackOrFallback(navigation, fallbackRoutes.search)}
+      />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.summarySection}>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryLeft}>
-              <Star size={20} color={colors.text} fill={colors.text} strokeWidth={2} />
-              <View>
-                <Text style={styles.summaryRating}>{ratingValue.toFixed(2)}</Text>
-                <Text style={styles.summaryCount}>{totalReviews} Reviews</Text>
-              </View>
-            </View>
-            <Pressable
-              style={styles.sortButton}
-              onPress={() =>
-                setSort((prev) => (prev === "Most relevant" ? "Newest" : "Most relevant"))
-              }
-            >
-              <Text style={styles.sortText}>{sort}</Text>
-              <ChevronDown size={16} color={colors.textMuted} strokeWidth={2.2} />
-            </Pressable>
-          </View>
+        {/* Same shape the listing's own reviews block uses: score, then what
+            it is based on — no boxed card. */}
+        <View style={styles.summary}>
+          <Star size={16} color={GREEN} fill={GREEN} strokeWidth={0} />
+          <Text style={styles.summaryScore}>{ratingValue.toFixed(1)}</Text>
+          <Text style={styles.summaryMeta}>
+            {`Based on ${totalReviews} recent ${totalReviews === 1 ? "booking" : "bookings"}`}
+          </Text>
+          <Pressable
+            style={styles.sortButton}
+            onPress={() =>
+              setSort((prev) => (prev === "Most relevant" ? "Newest" : "Most relevant"))
+            }
+            accessibilityRole="button"
+          >
+            <Text style={styles.sortText}>{sort}</Text>
+            <ChevronDown size={15} color={MUTED} strokeWidth={2.2} />
+          </Pressable>
         </View>
+
+        <Rule />
 
         {loading ? (
           <View style={styles.loader}>
-            <ActivityIndicator />
+            <ActivityIndicator color={INK} />
           </View>
         ) : sortedReviews.length ? (
           <View style={styles.reviewList}>
-            {sortedReviews.map((review) => {
+            {sortedReviews.map((review, index) => {
               const createdAt = (review as { created_at?: string }).created_at ?? review.createdAt;
               const author =
                 (review as { author_name?: string }).author_name ?? review.authorName ?? "Guest";
               return (
-                <View key={review.id} style={styles.reviewRow}>
-                  <Text style={styles.reviewAuthor}>{author}</Text>
-                  <View style={styles.reviewStarsRow}>
-                    {[0, 1, 2, 3, 4].map((idx) => (
-                      <Star
-                        key={`${review.id}-star-${idx}`}
-                        size={12}
-                        color={idx < Math.round(review.rating) ? colors.star.active : colors.star.inactive}
-                        fill={idx < Math.round(review.rating) ? colors.star.active : "none"}
-                        strokeWidth={2}
-                      />
-                    ))}
-                    <Text style={styles.reviewMeta}>
-                      {formatReviewDate(new Date(createdAt))}
-                    </Text>
+                <View key={review.id}>
+                  {index > 0 ? <View style={styles.reviewDivider} /> : null}
+                  <View style={styles.reviewRow}>
+                    <View style={styles.reviewTop}>
+                      <View
+                        style={[styles.reviewAvatar, { backgroundColor: avatarFill(author) }]}
+                      >
+                        <Text style={styles.reviewAvatarText}>
+                          {author.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.reviewWho}>
+                        <Text style={styles.reviewAuthor} numberOfLines={1}>
+                          {author}
+                        </Text>
+                        <Text style={styles.reviewMeta}>
+                          {formatReviewDate(new Date(createdAt))}
+                        </Text>
+                      </View>
+                      <View style={styles.reviewScore}>
+                        <Star size={12} color={GREEN} fill={GREEN} strokeWidth={0} />
+                        <Text style={styles.reviewScoreText}>{review.rating.toFixed(1)}</Text>
+                      </View>
+                    </View>
+                    {review.comment ? (
+                      <Text style={styles.reviewBody}>{review.comment}</Text>
+                    ) : null}
                   </View>
-                  <Text style={styles.reviewBody}>{review.comment}</Text>
                 </View>
               );
             })}
           </View>
         ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No reviews yet.</Text>
-            <Pressable style={styles.emptyButton} onPress={() => resetToSafeRoute(navigation, fallbackRoutes.search)}>
-              <Text style={styles.emptyButtonText}>Browse spaces</Text>
-            </Pressable>
+          <View style={styles.empty}>
+            <View style={styles.emptyIcon}>
+              <Star size={22} color={GREEN} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.emptyTitle}>No reviews yet</Text>
+            <Text style={styles.emptyHint}>
+              Be the first to park here and share your experience.
+            </Text>
+            <View style={styles.emptyAction}>
+              <PillButton
+                label="Browse spaces"
+                onPress={() => resetToSafeRoute(navigation, fallbackRoutes.search)}
+              />
+            </View>
           </View>
         )}
       </ScrollView>
@@ -139,144 +159,64 @@ export function ListingReviewsScreen({ navigation, route }: Props) {
   );
 }
 
+// The theme's avatar palette, keyed off the first letter so a given name always
+// gets the same colour — same behaviour as the listing's own review rail.
+const avatarFill = (name: string) =>
+  colors.avatarFills[(name.charCodeAt(0) || 0) % colors.avatarFills.length];
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.cardBgMuted,
+  container: { flex: 1, backgroundColor: WHITE },
+  content: { paddingBottom: 32 },
+
+  summary: {
+    flexDirection: "row", alignItems: "center", gap: 7,
+    paddingHorizontal: 24, paddingTop: 20,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-    backgroundColor: colors.cardBg,
-  },
-  backButton: {
-    width: 38,
-    height: 38,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 17,
-    color: colors.text,
-    letterSpacing: -0.3,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-  },
-  summarySection: {
-    backgroundColor: colors.cardBgMuted,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-    paddingHorizontal: 0,
-    paddingVertical: 12,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  summaryLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  summaryRating: {
-    fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 17,
-    color: colors.text,
-  },
-  summaryCount: {
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 2,
+  summaryScore: { fontFamily: "PlusJakartaSans-Bold", fontSize: 15, color: INK },
+  summaryMeta: {
+    flex: 1, minWidth: 0,
+    fontFamily: "PlusJakartaSans-Regular", fontSize: 15, color: MUTED,
   },
   sortButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.divider,
-    backgroundColor: colors.cardBg,
+    flexShrink: 0, flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: PILL, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
   },
-  sortText: {
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 12,
-    color: colors.text,
+  sortText: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 14, color: INK },
+
+  loader: { paddingTop: 24, alignItems: "center" },
+
+  reviewList: { paddingHorizontal: 24 },
+  // Rows are separated by a hairline, not boxed — the listing has no cards.
+  reviewDivider: { height: 1, backgroundColor: RULE },
+  reviewRow: { paddingVertical: 18 },
+  reviewTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  reviewAvatar: {
+    width: 34, height: 34, borderRadius: 17,
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
-  loader: {
-    marginTop: 24,
-    alignItems: "center",
-  },
-  reviewList: {
-    marginTop: 12,
-    gap: 10,
-  },
-  reviewRow: {
-    backgroundColor: colors.cardBg,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.divider,
-    padding: 16,
-    gap: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  reviewAuthor: {
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 14,
-    color: colors.text,
-  },
-  reviewStarsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  reviewMeta: {
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 11,
-    color: colors.textDisabled,
-  },
+  reviewAvatarText: { fontFamily: "PlusJakartaSans-Bold", fontSize: 14, color: INK },
+  reviewWho: { flex: 1, minWidth: 0 },
+  reviewAuthor: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 15, color: INK },
+  reviewMeta: { fontFamily: "PlusJakartaSans-Regular", fontSize: 13, color: MUTED },
+  reviewScore: { flexDirection: "row", alignItems: "center", gap: 3 },
+  reviewScoreText: { fontFamily: "PlusJakartaSans-Bold", fontSize: 13, color: GREEN },
   reviewBody: {
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 14,
-    color: colors.text,
-    lineHeight: 21,
-    marginTop: 2,
+    fontFamily: "PlusJakartaSans-Regular", fontSize: 15, lineHeight: 22,
+    color: MUTED, marginTop: 10,
   },
-  emptyState: {
-    alignItems: "center",
-    paddingTop: 20,
+
+  empty: { alignItems: "center", paddingHorizontal: 24, paddingTop: 40 },
+  emptyIcon: {
+    width: 48, height: 48, borderRadius: 24, backgroundColor: colors.pageAccentSoft,
+    alignItems: "center", justifyContent: "center", marginBottom: 12,
   },
-  emptyText: {
-    fontFamily: "PlusJakartaSans-Regular",
-    color: colors.textDisabled,
-    fontSize: 13,
-    textAlign: "center",
+  emptyTitle: {
+    fontFamily: "PlusJakartaSans-Bold", fontSize: 16, color: INK, textAlign: "center",
   },
-  emptyButton: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    marginTop: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
+  emptyHint: {
+    fontFamily: "PlusJakartaSans-Regular", fontSize: 15, lineHeight: 21,
+    color: MUTED, textAlign: "center", marginTop: 4,
   },
-  emptyButtonText: {
-    color: colors.textInverse,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 14,
-  },
+  emptyAction: { alignSelf: "stretch", marginTop: 20 },
 });

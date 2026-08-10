@@ -30,11 +30,6 @@ export type RootStackParamList = {
     // "monthly" = a one-off single-month booking priced off the host's monthly
     // rate (from → from+1 month). Absent/"daily" = the hourly/daily flow.
     mode?: "daily" | "monthly";
-    // PROTOTYPE (12a): render the "Review and continue" layout instead of the
-    // standard summary. Same screen, same handlePayment, same everything below
-    // the surface — only the presentation differs, so the Stripe sheet still
-    // opens from here with no navigation in between.
-    review?: boolean;
   };
   VehicleType:
     | {

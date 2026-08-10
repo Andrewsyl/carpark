@@ -11,11 +11,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { BadgeCheck } from "lucide-react-native";
+import { CalendarDays, CalendarRange, Clock } from "lucide-react-native";
+import { ChoiceOptionRow } from "./ChoiceTile";
 import { useListingFlow } from "./context";
 import { applyServiceFee } from "../../utils/pricing";
 import { suggestPrices } from "../../utils/priceSuggestions";
 import { FlowHeader } from "./FlowHeader";
+import { StepQuestion, StepSection } from "./StepQuestion";
 import { FlowFooter } from "./FlowFooter";
 import { hostFlowColors } from "./hostFlowTheme";
 import { colors } from "../../styles/theme";
@@ -27,16 +29,9 @@ type FlowStackParamList = {
 
 type Props = NativeStackScreenProps<FlowStackParamList, "ListingPrice">;
 
-const ACCENT = hostFlowColors.accent;
 const FG = hostFlowColors.text;
 const MUTED = hostFlowColors.textMuted;
-const CARD_SHADOW = {
-  shadowColor: "#2d1a0e",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.09,
-  shadowRadius: 12,
-  elevation: 4,
-} as const;
+// No card shadow: the system separates with a rule and white space.
 
 // Daily rate ≈ 6 hours of parking — used to auto-derive an hourly rate from
 // the host's daily rate until they edit hourly themselves.
@@ -47,16 +42,19 @@ const PRICING_MODES = [
     key: "hourly_daily",
     label: "Hourly & daily",
     sub: "Short stays — drivers book your space by the hour or day.",
+    icon: Clock,
   },
   {
     key: "monthly",
     label: "Monthly",
     sub: "Long-term parking — drivers enquire to arrange a monthly space.",
+    icon: CalendarDays,
   },
   {
     key: "both",
     label: "Both",
     sub: "Offer short stays and monthly parking from the one listing.",
+    icon: CalendarRange,
   },
 ] as const;
 
@@ -301,7 +299,7 @@ export function ListingPriceScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      <FlowHeader current={8} total={9} onClose={exitFlow} />
+      <FlowHeader current={8} onClose={exitFlow} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -314,52 +312,33 @@ export function ListingPriceScreen({ navigation, route }: Props) {
           showsVerticalScrollIndicator={false}
         >
           {/* Header card */}
-          <View style={styles.headerCard}>
-            <View style={styles.headerCardTop}>
-              <Text style={styles.headerKicker}>Step 8 · Pricing</Text>
-              <Text style={styles.headerTitle}>
-                {pricingMode ? "Set your rates" : "How do you want to rent your space?"}
-              </Text>
-            </View>
-          </View>
+          <StepQuestion
+            title={pricingMode ? "Set your rates" : "How do you want to rent your space?"}
+          hint={"You can change this any time."}
+/>
 
           {/* Pricing type card — the host explicitly chooses before any rate
               fields appear, rather than being dropped into a default mode. */}
-          <View style={styles.card}>
-            <Text style={styles.cardHeader}>Rental type</Text>
+          <View style={styles.section}>
+            <StepSection title="Rental type" />
             <View style={styles.optionsWrap}>
-              {PRICING_MODES.map((mode, i) => {
-                const active = pricingMode === mode.key;
-                return (
-                  <Pressable
-                    key={mode.key}
-                    style={[
-                      styles.option,
-                      i > 0 && styles.optionBorder,
-                      active && styles.optionActive,
-                    ]}
-                    onPress={() => setDraft((p) => ({ ...p, pricingMode: mode.key }))}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: active }}
-                  >
-                    <View style={[styles.radio, active && styles.radioActive]}>
-                      {active ? <View style={styles.radioDot} /> : null}
-                    </View>
-                    <View style={styles.optionTextWrap}>
-                      <Text style={[styles.optionTitle, active && styles.optionTitleActive]}>
-                        {mode.label}
-                      </Text>
-                      <Text style={styles.optionSub}>{mode.sub}</Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
+              {PRICING_MODES.map((mode) => (
+                <ChoiceOptionRow
+                  key={mode.key}
+                  badgeIcon={mode.icon}
+                  title={mode.label}
+                  hint={mode.sub}
+                  selected={pricingMode === mode.key}
+                  onPress={() => setDraft((p) => ({ ...p, pricingMode: mode.key }))}
+                  single
+                />
+              ))}
             </View>
           </View>
 
           {/* Rates card — only once a rental type is chosen */}
           {pricingMode ? (
-          <View style={styles.card}>
+          <View style={styles.section}>
             <View style={styles.cardHeaderWrap}>
               <Text style={styles.cardHeaderTitle}>Rates</Text>
               {!listingId ? (
@@ -404,25 +383,22 @@ export function ListingPriceScreen({ navigation, route }: Props) {
           </View>
           ) : null}
 
+          {/* The design closes this step with one centred muted line rather than
+              a tinted callout, which is also what keeps green off a page whose
+              only green should be the forward action. */}
           {showHourlyDaily ? (
-            <View style={styles.keepCard}>
-              <View style={styles.keepRow}>
-                <BadgeCheck size={17} color={ACCENT} strokeWidth={2.2} />
-                <Text style={styles.keepTitle}>You keep everything you set</Text>
-              </View>
-              <Text style={styles.keepBody}>
-                The 8% service fee is added on top for the driver — it never comes
-                out of your rate.
-                {driverPreview ? (
-                  <Text style={styles.keepBody}> Drivers will see {driverPreview}.</Text>
-                ) : null}
-              </Text>
-            </View>
+            <Text style={styles.footnote}>
+              You keep everything you set — the 8% service fee is added on top for
+              the driver.
+              {driverPreview ? ` Drivers will see ${driverPreview}.` : ""}
+            </Text>
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
 
       <FlowFooter
+        current={8}
+        total={9}
         onBack={() => (fromReview ? navigation.navigate("ListingReview") : navigation.goBack())}
         primaryLabel={fromReview ? "Save changes" : "Continue"}
         primaryDisabled={!pricingMode}
@@ -436,62 +412,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: hostFlowColors.bg },
   flex: { flex: 1 },
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: 24,
+    paddingTop: 28,
     gap: 14,
   },
 
-  // ── Header card (matches location screen style) ──────────────
-  headerCard: {
-    backgroundColor: hostFlowColors.cardBg,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  headerCardTop: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 14,
-  },
-  headerKicker: {
-    color: ACCENT,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 10,
-    letterSpacing: 1.4,
-    marginBottom: 2,
-    textTransform: "uppercase",
-  },
-  headerTitle: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 18,
-    letterSpacing: -0.5,
-    lineHeight: 24,
-  },
-
-  // ── Cards ────────────────────────────────────────────────────
-  card: {
-    backgroundColor: hostFlowColors.cardBg,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  cardHeader: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 15,
-    letterSpacing: -0.3,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: hostFlowColors.border,
-  },
-  // Rates header variant: title + suggestion note share the bordered block.
+  section: { paddingTop: 24 },
+  // Rates header: title + suggestion note share the bordered block.
   cardHeaderWrap: {
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -513,92 +440,16 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
 
-  // ── Rental-type option rows ──────────────────────────────────
-  optionsWrap: {
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-  },
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  optionBorder: {
-    borderTopWidth: 1,
-    borderTopColor: hostFlowColors.border,
-  },
-  optionActive: {
-    backgroundColor: hostFlowColors.accentSoft,
-    // The soft-fill highlight replaces the divider so selected rows read as a
-    // single contiguous block.
-    borderTopColor: "transparent",
-  },
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: hostFlowColors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  radioActive: {
-    borderColor: ACCENT,
-  },
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: ACCENT,
-  },
-  optionTextWrap: {
-    flex: 1,
-    gap: 2,
-  },
-  optionTitle: {
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 15,
-    color: FG,
-  },
-  optionTitleActive: {
-    color: ACCENT,
-  },
-  optionSub: {
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 12.5,
-    lineHeight: 17,
-    color: hostFlowColors.textSoft,
-  },
+  /** The rows carry their own fill and radius; this only spaces them. */
+  optionsWrap: { gap: 12, paddingTop: 12 },
 
-  // ── "You keep everything you set" advantage card ─────────────
-  keepCard: {
-    backgroundColor: hostFlowColors.accentSoft,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.accentSoftBorder,
-    padding: 16,
-  },
-  keepRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 6,
-  },
-  keepTitle: {
-    color: ACCENT,
-    fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 14,
-    letterSpacing: -0.2,
-    flexShrink: 1,
-  },
-  keepBody: {
-    color: MUTED,
+  // The design's closing line: centred, muted, no tile.
+  footnote: {
     fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 14,
+    lineHeight: 20,
+    color: MUTED,
+    textAlign: "center",
+    marginTop: 16,
   },
 });

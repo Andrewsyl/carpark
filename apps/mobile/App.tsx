@@ -594,7 +594,15 @@ function AppNavigator() {
             options={{ contentStyle: { backgroundColor: 'transparent' }, statusBarTranslucent: true }}
           />
           <Stack.Screen name="Listings" component={ListingsScreen} />
-          <Stack.Screen name="BookingSummary" component={BookingSummaryScreen} />
+          {/* Slides up, not across: the review step is a decision you can back
+              out of, and it carries its own close button rather than a back
+              arrow. A push would read as "next page in a flow"; a modal reads
+              as "confirm or dismiss", which is what it is. */}
+          <Stack.Screen
+            name="BookingSummary"
+            component={BookingSummaryScreen}
+            options={{ presentation: "modal", animation: "slide_from_bottom" }}
+          />
           <Stack.Screen name="VehicleType" component={VehicleTypeScreen} />
           <Stack.Screen
             name="Auth"

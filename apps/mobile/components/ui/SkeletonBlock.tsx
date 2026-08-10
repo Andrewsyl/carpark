@@ -8,15 +8,26 @@ interface Props {
   borderRadius?: number;
   style?: ViewStyle;
   pulse: Animated.Value;
+  /**
+   * The fill. Defaults to the original palette's skeleton grey; screens on the
+   * `page*` set pass theirs, so a skeleton never drags the old tokens onto a
+   * surface built from the new ones. Shape stays neutral either way, which is
+   * what lets this stay a shared primitive rather than forking per system.
+   */
+  color?: string;
 }
 
-export function SkeletonBlock({ width, height, borderRadius = 6, style, pulse }: Props) {
+export function SkeletonBlock({
+  width,
+  height,
+  borderRadius = 6,
+  style,
+  pulse,
+  color = colors.skeletonBg,
+}: Props) {
   return (
     <Animated.View
-      style={[
-        { width, height, borderRadius, backgroundColor: colors.skeletonBg, opacity: pulse },
-        style,
-      ]}
+      style={[{ width, height, borderRadius, backgroundColor: color, opacity: pulse }, style]}
     />
   );
 }

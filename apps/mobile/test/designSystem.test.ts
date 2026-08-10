@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 
 /**
@@ -12,11 +12,31 @@ import { join } from "path";
  * them whole. The list only ever grows; removing a name to make the suite pass
  * is the failure this test exists to catch.
  */
+// Paths are relative to `screens/`, so a screen in a subdirectory names its
+// folder — the host flow lives in `listingFlow/` and was invisible to this
+// guard until it did.
 const CONVERTED = [
   "ListingScreen.tsx",
   "BookingReviewBody.tsx",
-  "BookingSummaryScreen.tsx",
+  "ListingReviewsScreen.tsx",
   "BookingDetailScreen.tsx",
+  "BookingSummaryScreen.tsx",
+  // The host flow. Every one of these declares its colour through
+  // `hostFlowTheme`, which is where the flow's remaining off-system values are
+  // now concentrated — that file is the next thing to fold into the palette.
+  "listingFlow/ChoiceTile.tsx",
+  "listingFlow/FlowFooter.tsx",
+  "listingFlow/FlowHeader.tsx",
+  "listingFlow/StepQuestion.tsx",
+  "listingFlow/ListingAccessScreen.tsx",
+  "listingFlow/ListingAvailabilityScreen.tsx",
+  "listingFlow/ListingDetailsScreen.tsx",
+  "listingFlow/ListingFeaturesScreen.tsx",
+  "listingFlow/ListingLocationScreen.tsx",
+  "listingFlow/ListingPhotosScreen.tsx",
+  "listingFlow/ListingPriceScreen.tsx",
+  "listingFlow/ListingReviewScreen.tsx",
+  "listingFlow/ListingStreetViewScreen.tsx",
 ];
 
 const SCREENS_DIR = join(__dirname, "..", "screens");
@@ -67,10 +87,62 @@ const RAW_VALUE_BUDGET: Record<string, { fontSize: number; radius: number }> = {
   // in kind: the new layout has more distinct rounded shapes (tinted fields,
   // reg plate, map, viewer, chips) and none of them go through a radius scale
   // yet. Closing that is the next thing this budget should force down.
-  "ListingScreen.tsx": { fontSize: 32, radius: 17 },
-  "BookingReviewBody.tsx": { fontSize: 15, radius: 5 },
-  "BookingSummaryScreen.tsx": { fontSize: 37, radius: 14 },
-  "BookingDetailScreen.tsx": { fontSize: 23, radius: 8 },
+  // 32/17 -> 29/15: the parking window's grey summary strip went (the dock
+  // already states the total and the duration), and its fields take their
+  // corner from `radii.surface` rather than a raw 10. The sheet's two corners
+  // went with the curve over the photo but don't show here — the check only
+  // sees `borderRadius`, not `borderTopLeftRadius`, which is a hole worth
+  // closing the next time this file is touched.
+  "ListingScreen.tsx": { fontSize: 29, radius: 15 },
+  // Went 15 -> 18 -> 20 as this screen absorbed promo entry and the payment
+  // recovery notice from the summary it replaced, then back to 15 once `Field`
+  // and `Notice` took those shapes into the kit. That round trip is the budget
+  // working: it named the missing components rather than letting the screen
+  // quietly grow.
+  // 11 -> 16 rebuilding to the 12a checkout: a summary card, edit links and a
+  // price ledger with a 26px total are shapes the kit does not own yet. The
+  // summary card and the label/value/edit row are the two worth extracting.
+  "BookingReviewBody.tsx": { fontSize: 20, radius: 4 },
+  "ListingReviewsScreen.tsx": { fontSize: 10, radius: 3 },
+  // 37 -> 3 and 14 -> 0: the classic summary this screen used to render was
+  // deleted when the review body became the confirm page, and 78 of its 88
+  // styles went with it. What is left is loading, signed out, and not found.
+  "BookingSummaryScreen.tsx": { fontSize: 3, radius: 0 },
+  // radius 8 -> 0: every corner moved onto the `radii` scale when this screen
+  // converted properly (it had been on the kit's components but still using
+  // its own greys, 14/16/20 corners and a card shadow).
+  "BookingDetailScreen.tsx": { fontSize: 15, radius: 0 },
+
+  // The host flow, measured on the day it entered the guard rather than chosen.
+  // These are high — the flow declares 17 distinct font sizes and 16 radii
+  // against a system of 6 and 5 — and that is the point: they are a ratchet, so
+  // the numbers record where the rebuild actually is and can only come down.
+  // The two worth attacking first are the review screen (24/15, the largest
+  // single source of drift in the app) and the availability screen, whose
+  // custom-schedule modal is still on the pre-rebuild token set.
+  // 3 -> 9 and 3 -> 7, the only rise here, recorded rather than hidden. This
+  // file absorbed three shapes the screens were each drawing themselves:
+  // `ChoiceSummary` (details + access), `ChoicePill` (16a's highlight pill, now
+  // the features step) and `ChoiceOptionRow` (16a's discounts row, now the
+  // pricing step). Every screen that handed a shape over came down by more than
+  // this went up — one file paying so several don't is the trade the kit exists
+  // to make. It is now the flow's shape library and should be read as one.
+  "listingFlow/ChoiceTile.tsx": { fontSize: 9, radius: 7 },
+  "listingFlow/FlowFooter.tsx": { fontSize: 3, radius: 3 },
+  "listingFlow/FlowHeader.tsx": { fontSize: 1, radius: 1 },
+  "listingFlow/StepQuestion.tsx": { fontSize: 4, radius: 0 },
+  "listingFlow/ListingAccessScreen.tsx": { fontSize: 6, radius: 4 },
+  "listingFlow/ListingAvailabilityScreen.tsx": { fontSize: 13, radius: 4 },
+  "listingFlow/ListingDetailsScreen.tsx": { fontSize: 2, radius: 1 },
+  // 0/0: every value on this step now comes from the kit.
+  "listingFlow/ListingFeaturesScreen.tsx": { fontSize: 0, radius: 0 },
+  "listingFlow/ListingLocationScreen.tsx": { fontSize: 8, radius: 6 },
+  "listingFlow/ListingPhotosScreen.tsx": { fontSize: 7, radius: 7 },
+  // 11/6 -> 8/2: the radio rows and the green "you keep everything" callout both
+  // went when this step moved onto the discounts row shape.
+  "listingFlow/ListingPriceScreen.tsx": { fontSize: 8, radius: 2 },
+  "listingFlow/ListingReviewScreen.tsx": { fontSize: 24, radius: 15 },
+  "listingFlow/ListingStreetViewScreen.tsx": { fontSize: 3, radius: 2 },
 };
 
 function countRaw(file: string, prop: "fontSize" | "borderRadius"): number {
@@ -108,7 +180,14 @@ describe("design system", () => {
 
   it("every converted screen is a real file", () => {
     // Catches a rename that silently drops a screen out of the check.
-    const present = readdirSync(SCREENS_DIR);
-    for (const screen of CONVERTED) expect(present).toContain(screen);
+    for (const screen of CONVERTED) {
+      expect(existsSync(join(SCREENS_DIR, screen))).toBe(true);
+    }
+  });
+
+  it("the converted list has no duplicates", () => {
+    // A name listed twice reads as two screens covered and is one — the list
+    // carried `BookingDetailScreen.tsx` twice before this check existed.
+    expect([...new Set(CONVERTED)]).toEqual(CONVERTED);
   });
 });

@@ -37,15 +37,14 @@ import { MapTimePickerSheet } from "../components/MapTimePickerSheet";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import {
   ArrowLeft,
-  ArrowRight,
   BatteryCharging,
   Car,
+  CalendarClock,
   Cctv,
   Check,
   ChevronDown,
   ChevronRight,
   CircleCheck,
-  Clock,
   Fence,
   KeyRound,
   Lightbulb,
@@ -90,6 +89,7 @@ import {
   FactRow,
   ListRow,
   PillButton,
+  radii,
   Rule,
   ScrollHeader,
   SectionTitle,
@@ -131,9 +131,9 @@ function HeaderFadeButton({
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      {/* The dark disc is only there to hold contrast against a photo. Once
-          the white bar is behind the icon it has nothing to do, so it leaves
-          rather than becoming a white circle on white. */}
+      {/* The white disc is only there to hold the ink icon off a photo. Once
+          the white bar has arrived behind it, it has nothing to do, so it
+          leaves rather than staying as a white circle on white. */}
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
@@ -146,12 +146,7 @@ function HeaderFadeButton({
           },
         ]}
       />
-      <View>
-        {icon(WHITE)}
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: solidOpacity }]}>
-          {icon(INK)}
-        </Animated.View>
-      </View>
+      {icon(INK)}
     </Pressable>
   );
 }
@@ -208,7 +203,9 @@ export function ListingScreen({ navigation, route }: Props) {
   const viewerDragY = useRef(new Animated.Value(0)).current;
   const header = useScrollHeader({
     barRange: [heroHeight - 140, heroHeight - 90],
-    titleRange: [heroTotalForHeader - 20, heroTotalForHeader + 40],
+    // Tracks where the page's own title now sits: the sheet no longer starts
+    // 20 above the photo's bottom edge, so the handover happens that much later.
+    titleRange: [heroTotalForHeader, heroTotalForHeader + 60],
     // The tap layer over the photo has to stand down once the sheet covers it,
     // or it eats scrolls meant for the content.
     listener: (event) => {
@@ -402,6 +399,46 @@ export function ListingScreen({ navigation, route }: Props) {
   const distanceKm =
     typeof listing?.distance_m === "number" ? listing.distance_m / 1000 : null;
 
+  /**
+   * What this driver will actually be sent, from what this host actually left.
+   *
+   * The row used to say "Access code and exact address sent on booking" for
+   * every listing. Most spaces have no code — `access_code` and
+   * `arrival_instructions` are both optional on the host flow — so the page was
+   * promising a code that would never arrive. Each line below is now claimed
+   * only when the field behind it is non-empty, and a listing with neither says
+   * nothing beyond the address, which is the one part that is always true.
+   */
+  const accessLines = useMemo(() => {
+    const source = listing as
+      | {
+          access_code?: string | null;
+          accessCode?: string | null;
+          arrival_instructions?: string | null;
+          arrivalInstructions?: string | null;
+        }
+      | null;
+    const hasCode = Boolean((source?.access_code ?? source?.accessCode ?? "").trim());
+    const hasInstructions = Boolean(
+      (source?.arrival_instructions ?? source?.arrivalInstructions ?? "").trim()
+    );
+    const lines = ["The exact address is shared the moment you book."];
+    if (hasCode && hasInstructions) {
+      lines.push("This host has left an access code and arrival instructions.");
+    } else if (hasCode) {
+      lines.push("This host has left an access code.");
+    } else if (hasInstructions) {
+      lines.push("This host has left arrival instructions.");
+    }
+    return lines;
+  }, [listing]);
+
+  /** The host's own words, shown only when they wrote some. */
+  const availabilityLabel = useMemo(() => {
+    const raw = (listing?.availability_text ?? "").trim();
+    return raw.length ? raw : null;
+  }, [listing?.availability_text]);
+
   const ratingValue = listing?.rating ?? null;
   const reviewCount = listing?.rating_count ?? reviews.length;
   const hasReviews = reviewCount > 0 && ratingValue !== null;
@@ -580,17 +617,17 @@ export function ListingScreen({ navigation, route }: Props) {
     // nothing about what is arriving.
     return (
       <View style={styles.screen}>
-        <SkeletonBlock height={heroHeight + insets.top} borderRadius={0} pulse={skeletonPulse} />
+        <SkeletonBlock height={heroHeight + insets.top} borderRadius={0} pulse={skeletonPulse} color={RULE} />
         <View style={styles.skeletonSheet}>
-          <SkeletonBlock height={31} width="72%" borderRadius={8} pulse={skeletonPulse} />
-          <SkeletonBlock height={22} width="52%" borderRadius={8} pulse={skeletonPulse} style={styles.skeletonGap} />
+          <SkeletonBlock height={31} width="72%" borderRadius={8} pulse={skeletonPulse} color={RULE} />
+          <SkeletonBlock height={22} width="52%" borderRadius={8} pulse={skeletonPulse} color={RULE} style={styles.skeletonGap} />
           <View style={styles.skeletonStats}>
             {[0, 1, 2].map((i) => (
-              <SkeletonBlock key={i} height={48} borderRadius={8} pulse={skeletonPulse} style={styles.skeletonStat} />
+              <SkeletonBlock key={i} height={48} borderRadius={8} pulse={skeletonPulse} color={RULE} style={styles.skeletonStat} />
             ))}
           </View>
-          <SkeletonBlock height={22} width="40%" borderRadius={8} pulse={skeletonPulse} style={styles.skeletonSection} />
-          <SkeletonBlock height={92} borderRadius={10} pulse={skeletonPulse} style={styles.skeletonGap} />
+          <SkeletonBlock height={22} width="40%" borderRadius={8} pulse={skeletonPulse} color={RULE} style={styles.skeletonSection} />
+          <SkeletonBlock height={92} borderRadius={10} pulse={skeletonPulse} color={RULE} style={styles.skeletonGap} />
         </View>
       </View>
     );
@@ -701,8 +738,10 @@ export function ListingScreen({ navigation, route }: Props) {
         onScroll={header.onScroll}
       >
         {/* Spacer, not the photo: the hero is fixed behind this scroll view,
-            so the sheet below slides up over a photo that stays put. */}
-        <View style={{ height: heroTotal - 20 }} pointerEvents="none" />
+            so the sheet below slides up over a photo that stays put. Its full
+            height, with nothing subtracted — the sheet used to be pulled 20 up
+            to tuck its corners over the photo, and there are no corners now. */}
+        <View style={{ height: heroTotal }} pointerEvents="none" />
 
         <View style={styles.sheet}>
         {/* ── Centred masthead ── */}
@@ -790,19 +829,17 @@ export function ListingScreen({ navigation, route }: Props) {
               </Text>
             </>
           ) : null}
-        </View>
 
-        <Rule />
+          {/* The window closes the masthead rather than opening the ground:
+              it is the last thing about *this space* before the page turns to
+              what comes with it. The hairline is the sheet's own, not a page
+              rule — nothing on the ground below uses one. */}
+          <View style={styles.mastheadRule} />
+          <Text style={styles.sectionTitle}>Your parking window</Text>
 
-        {/* ── Parking window ── */}
-        <SectionTitle>Your parking window</SectionTitle>
-        <View style={styles.windowBody}>
-          {/* Each end of the window is its own bordered, tinted field with a
-              chevron — the update makes them read as two controls you press,
-              not two facts printed side by side. */}
           <View style={styles.window}>
             <Pressable
-              style={styles.windowCol}
+              style={({ pressed }) => [styles.windowField, pressed && styles.windowFieldPressed]}
               onPress={() => openPicker("start")}
               accessibilityRole="button"
               accessibilityLabel="Change arrival time"
@@ -812,54 +849,38 @@ export function ListingScreen({ navigation, route }: Props) {
                 <Text style={styles.windowTime}>
                   {isMonthly ? formatDateLabel(startAt) : formatTimeLabel(startAt)}
                 </Text>
-                <ChevronDown size={16} color={INK} strokeWidth={2} />
+                <ChevronDown size={15} color={MUTED} strokeWidth={2.4} />
               </View>
               {isMonthly ? null : (
                 <Text style={styles.windowDate}>{formatDateLabel(startAt)}</Text>
               )}
             </Pressable>
-            <View style={styles.windowArrow}>
-              <ArrowRight size={16} color={GREEN} strokeWidth={2.2} />
-            </View>
+            {/* On a monthly stay the end is derived (start + 1 month), so this
+                half is a fact rather than a control — no chevron, no press. */}
             <Pressable
-              style={styles.windowCol}
-              onPress={() => openPicker("end")}
-              accessibilityRole="button"
-              accessibilityLabel="Change departure time"
+              style={({ pressed }) => [
+                styles.windowField,
+                pressed && !isMonthly && styles.windowFieldPressed,
+              ]}
+              onPress={isMonthly ? undefined : () => openPicker("end")}
+              disabled={isMonthly}
+              accessibilityRole={isMonthly ? "text" : "button"}
+              accessibilityLabel={isMonthly ? undefined : "Change departure time"}
             >
               <Text style={styles.windowLabel}>{isMonthly ? "Until" : "Leaving"}</Text>
               <View style={styles.windowValueRow}>
                 <Text style={styles.windowTime}>
                   {isMonthly ? formatDateLabel(monthlyEnd) : formatTimeLabel(endAt)}
                 </Text>
-                {/* Derived (start + 1 month), so it is shown, not editable. */}
-                {isMonthly ? null : <ChevronDown size={16} color={INK} strokeWidth={2} />}
+                {isMonthly ? null : <ChevronDown size={15} color={MUTED} strokeWidth={2.4} />}
               </View>
               {isMonthly ? null : (
                 <Text style={styles.windowDate}>{formatDateLabel(endAt)}</Text>
               )}
             </Pressable>
           </View>
-          {/* Duration and total in one tinted strip. The struck price only
-              appears when the day rate actually beat the hourly total — it is
-              a real saving on this window, not a permanent decoration. */}
-          <View style={styles.windowSummary}>
-            <Clock size={16} color={MUTED} strokeWidth={1.9} />
-            <Text style={styles.windowSummaryDuration}>
-              {isMonthly ? "1 month" : priceSummary?.durationLabel ?? ""}
-            </Text>
-            {priceSummary?.dailyCapApplied ? (
-              <Text style={styles.windowSummaryWas}>
-                {`€${formatPriceValue(
-                  priceSummary.grossTotal + priceSummary.dailyCapSavingGross
-                )}`}
-              </Text>
-            ) : null}
-            <Text style={styles.windowSummaryTotal}>
-              {`€${formatPriceValue(isMonthly ? monthlyPrice : priceSummary?.grossTotal ?? 0)}`}
-            </Text>
-          </View>
         </View>
+
 
         {allFeatures.length > 0 ? (
           <>
@@ -923,7 +944,10 @@ export function ListingScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* ── Things to know ── */}
+        {/* ── Things to know ──
+            Every line here is read off this listing. Booking and cancellation
+            are platform facts and are always true; everything else appears
+            only when the host filled the field behind it in. */}
         <Rule />
         <SectionTitle>Things to know</SectionTitle>
         <View style={styles.listBody}>
@@ -932,11 +956,10 @@ export function ListingScreen({ navigation, route }: Props) {
             title="Booking"
             lines={["Reserved instantly, no host approval.", FREE_CANCELLATION_TEXT]}
           />
-          <FactRow
-            icon={KeyRound}
-            title="Access"
-            lines={["Access code and exact address sent on booking."]}
-          />
+          <FactRow icon={KeyRound} title="Access" lines={accessLines} />
+          {availabilityLabel ? (
+            <FactRow icon={CalendarClock} title="Availability" lines={[availabilityLabel]} />
+          ) : null}
           {/* The design's third row is "The bay — 5.2 m × 2.6 m". FreeSpace stores no
               bay dimensions, so the row carries the host's size declaration
               instead, and is dropped entirely when they didn't make one. */}
@@ -1047,6 +1070,9 @@ export function ListingScreen({ navigation, route }: Props) {
         titleOpacity={header.titleOpacity}
         insetLeft={68}
         insetRight={118}
+        // The controls below sit at insets.top + 12 and are 40 tall, so their
+        // centre line is 32 — the title has to meet it, not the bar's middle.
+        titleCentre={32}
       />
 
       {/* Floating controls — glass over the photo, ink over the white bar. */}
@@ -1160,7 +1186,6 @@ export function ListingScreen({ navigation, route }: Props) {
               from: startAt.toISOString(),
               to: (isMonthly ? monthlyEnd : endAt).toISOString(),
               mode: isMonthly ? "monthly" : undefined,
-              review: true,
             });
           }}
         >
@@ -1290,16 +1315,16 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, overflow: "hidden",
     alignItems: "center", justifyContent: "center",
   },
-  glassBtnDisc: { backgroundColor: "rgba(17,17,17,0.32)", borderRadius: 20 },
+  glassBtnDisc: { backgroundColor: WHITE, borderRadius: 20 },
   // Cleared past the controls, and they are NOT symmetrical: one button on the
   // left (16 + 40 + 12), two on the right (16 + 40 + 10 + 40 + 12). A shared
   // inset put a long title straight under the share icon.
   // Carries the white and the corner radius now that the masthead no longer
   // has to overlap on its own.
-  sheet: {
-    backgroundColor: WHITE,
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-  },
+  // Square. The content meets the photo on a straight edge rather than
+  // curving over it — the corners were the one piece of decoration on a page
+  // that otherwise separates everything with a hairline.
+  sheet: { backgroundColor: WHITE },
   viewerRoot: { flex: 1 },
   viewerBackdrop: { backgroundColor: colors.viewerBackdrop },
   viewerStage: { flex: 1 },
@@ -1315,52 +1340,65 @@ const styles = StyleSheet.create({
   },
   viewerCountText: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 14, color: WHITE },
 
-  // The sheet lifts over the photo by 28, matching its own corner radius.
-  masthead: { paddingHorizontal: 24, paddingTop: 20 },
+  // 20 rather than the page's 24: the masthead is centred copy, and a
+  // narrower measure on a wider inset is what makes a two-line title break
+  // where the design breaks it. No bottom border — the section below opens
+  // with a rule of its own, and the two together read as a double line.
+  masthead: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20 },
   title: {
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 26, lineHeight: 31, letterSpacing: -0.6, color: INK, textAlign: "center",
+    fontFamily: "PlusJakartaSans-Bold",
+    fontSize: 26, lineHeight: 31, letterSpacing: -0.3, color: INK, textAlign: "center",
   },
   subtitle: {
     fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 16, lineHeight: 22, color: MUTED, textAlign: "center",
+    fontSize: 14, lineHeight: 20, color: INK, textAlign: "center",
   },
   // The pin rides with the text rather than above it, so the line still reads
   // as one centred phrase.
   subtitleRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 6, marginTop: 6,
+    gap: 6, marginTop: 10,
   },
 
-  stats: { flexDirection: "row", alignItems: "stretch", marginTop: 16 },
+  stats: { flexDirection: "row", alignItems: "center", marginTop: 18 },
   stat: { flex: 1, alignItems: "center" },
   statValue: {
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 22, lineHeight: 26, letterSpacing: -0.4, color: INK, textAlign: "center",
+    fontFamily: "PlusJakartaSans-Bold",
+    fontSize: 19, lineHeight: 24, color: INK, textAlign: "center",
   },
-  statLabel: { fontFamily: "PlusJakartaSans-Regular", fontSize: 14, color: GREEN, marginTop: 2 },
-  // 4 rather than the label's 2: the star's optical centre sits higher than a
-  // cap-height glyph, so it needs the extra to line up with its neighbours.
-  statLabelIcon: { marginTop: 4 },
+  // Muted, not green. Three green words under three ink values made the row
+  // the loudest green on the page, which is the opposite of rationing it.
+  statLabel: { fontFamily: "PlusJakartaSans-Regular", fontSize: 13, color: MUTED, marginTop: 1 },
+  // Stars occupy the label's slot, so a column showing them still lines up
+  // with the columns showing a word — 3 rather than 1 because the star's
+  // optical centre sits higher than a cap-height glyph.
+  statLabelIcon: { marginTop: 3 },
   // Stars occupy the label's slot, so a column showing them still lines up
   // with the columns showing a word.
   chips: {
     flexDirection: "row", flexWrap: "wrap", justifyContent: "center",
     gap: 8, marginTop: 16,
   },
+  // Outlined, not filled: it sits under a stat row that is already three
+  // blocks of type, and a grey slab there reads as a fourth.
   chip: {
-    flexDirection: "row", alignItems: "center", gap: 7,
-    backgroundColor: PILL, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 9,
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: WHITE, borderWidth: 1, borderColor: RULE, borderRadius: 999,
+    paddingHorizontal: 16, paddingVertical: 8,
   },
-  chipAccent: { backgroundColor: ACCENT_SOFT },
-  chipText: { fontFamily: "PlusJakartaSans-Regular", fontSize: 15, color: INK },
-  chipAccentText: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 15, color: GREEN_DARK },
-  statDivider: { width: 1, backgroundColor: RULE, marginVertical: 2 },
+  chipAccent: { backgroundColor: ACCENT_SOFT, borderColor: ACCENT_SOFT },
+  chipText: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 14, color: INK },
+  chipAccentText: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 14, color: GREEN_DARK },
+  // A fixed 32 rather than a stretched divider: the columns are two lines and
+  // the rule separates them without slicing the block.
+  statDivider: { width: 1, height: 32, backgroundColor: RULE },
 
 
+  // Left-aligned and ink under a centred masthead: it is the only prose on
+  // the screen, and centred body copy stops being readable past two lines.
   description: {
     fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 15, lineHeight: 22, color: MUTED, marginTop: 16, textAlign: "center",
+    fontSize: 15, lineHeight: 22, color: INK, marginTop: 16, textAlign: "left",
   },
 
   // Runs inside the paragraph's own <Text>, so it sits on the last line
@@ -1376,56 +1414,38 @@ const styles = StyleSheet.create({
     fontSize: 19, lineHeight: 24, letterSpacing: -0.3, color: INK,
   },
   sectionBody: { paddingHorizontal: 24, paddingTop: 4 },
-  // The window sits 8 below its heading rather than 4 — the tall numerals
-  // need the extra clearance the shorter list rows don't.
-  windowBody: { paddingHorizontal: 24, paddingTop: 8 },
   listBody: { paddingHorizontal: 24, paddingTop: 4 },
   muted: { fontFamily: "PlusJakartaSans-Regular", fontSize: 15, color: MUTED },
-
-  window: { flexDirection: "row", alignItems: "stretch", gap: 10 },
-  windowCol: {
-    flex: 1,
-    borderWidth: 1.5, borderColor: GREEN, backgroundColor: ACCENT_SOFT,
-    borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14,
-  },
-  windowArrow: { justifyContent: "center", flexShrink: 0 },
-  windowLabel: { fontFamily: "PlusJakartaSans-Regular", fontSize: 13, color: MUTED },
-  windowValueRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
-  windowTime: {
-    flex: 1,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 22, lineHeight: 27, letterSpacing: -0.4, color: INK,
-  },
-  windowDate: {
-    fontFamily: "PlusJakartaSans-Regular", fontSize: 13, color: MUTED, marginTop: 1,
-  },
-  windowSummary: {
-    flexDirection: "row", alignItems: "center", gap: 10, marginTop: 14,
-    backgroundColor: PILL, borderRadius: 10,
-    paddingVertical: 12, paddingHorizontal: 14,
-  },
-  windowSummaryDuration: {
-    flex: 1, fontFamily: "PlusJakartaSans-Regular", fontSize: 15, color: INK,
-  },
-  windowSummaryWas: {
-    fontFamily: "PlusJakartaSans-Regular", fontSize: 15, color: MUTED,
-    textDecorationLine: "line-through",
-  },
-  windowSummaryTotal: {
-    fontFamily: "PlusJakartaSans-SemiBold", fontSize: 15, color: INK,
-  },
-
   pillSpacer: { height: 16 },
   pill: {
     marginHorizontal: 24, backgroundColor: PILL, borderRadius: 8,
     height: 46, alignItems: "center", justifyContent: "center",
   },
-
-
   knowLine: {
     fontFamily: "PlusJakartaSans-Regular",
     fontSize: 15, lineHeight: 21, color: MUTED, marginTop: 1,
   },
+
+  mastheadRule: { height: 1, backgroundColor: RULE, marginVertical: 18 },
+  window: { flexDirection: "row", alignItems: "stretch", gap: 10, marginTop: 14 },
+  // Fill only, no border. The masthead is white and the field is grey; on one
+  // flat surface that difference is the whole edge, and a rule around it puts
+  // a box back on a page that just stopped using them.
+  windowField: {
+    flex: 1, alignItems: "center", backgroundColor: PILL,
+    borderRadius: radii.surface, paddingVertical: 14, paddingHorizontal: 16,
+  },
+  windowFieldPressed: { opacity: 0.6 },
+  windowLabel: { fontFamily: "PlusJakartaSans-Regular", fontSize: 14, color: MUTED },
+  windowValueRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
+  windowTime: {
+    fontFamily: "PlusJakartaSans-Bold",
+    fontSize: 24, lineHeight: 29, letterSpacing: -0.5, color: INK,
+  },
+  windowDate: {
+    fontFamily: "PlusJakartaSans-Regular", fontSize: 13, color: MUTED, marginTop: 2,
+  },
+
 
   map: { height: 150, borderRadius: 12, overflow: "hidden", backgroundColor: MAP_GROUND, marginTop: 10 },
   mapMarker: { alignItems: "center", justifyContent: "center", width: 104, height: 104 },
@@ -1505,12 +1525,12 @@ const styles = StyleSheet.create({
   },
   dockCopy: { flex: 1, minWidth: 0 },
   dockPrice: {
-    fontFamily: "PlusJakartaSans-SemiBold", fontSize: 20, letterSpacing: -0.2, color: INK,
+    fontFamily: "PlusJakartaSans-Bold", fontSize: 22, letterSpacing: -0.4, color: INK,
   },
-  dockMeta: { fontFamily: "PlusJakartaSans-Regular", fontSize: 13, color: MUTED, marginTop: 1 },
+  dockMeta: { fontFamily: "PlusJakartaSans-Regular", fontSize: 15, color: MUTED, marginTop: 2 },
   reserve: {
-    backgroundColor: GREEN, borderRadius: 999, height: 48,
-    paddingHorizontal: 26, alignItems: "center", justifyContent: "center", flexShrink: 0,
+    backgroundColor: GREEN, borderRadius: 999, height: 52,
+    paddingHorizontal: 30, alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
-  reserveLabel: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 16, color: WHITE },
+  reserveLabel: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 17, color: WHITE },
 });

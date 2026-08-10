@@ -1,6 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
+  Image,
   Linking,
   Platform,
   Pressable,
@@ -10,7 +11,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { SquircleBtn } from "../components/SquircleBtn";
+import { PaymentBrandMark } from "../components/PaymentBrandMark";
 import { AppDialog, type DialogAction, type DialogTone } from "../components/AppDialog";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,7 +29,12 @@ import {
 } from "../notifications";
 import type { RootStackParamList } from "../types";
 import {
+  ArrowRight,
+  CarFront,
   ChevronRight,
+  LifeBuoy,
+  MapPin,
+  RotateCcw,
   CircleCheck,
   CirclePlay,
   CircleX,
@@ -42,8 +50,26 @@ import { formatTimeLabel } from "../utils/dateFormat";
 import { formatBookingReference } from "../utils/bookingFormat";
 import { evaluateCancellationRefund } from "../utils/cancellationPolicy";
 import { fallbackRoutes, goBackOrFallback } from "../navigation/safeNavigation";
-import { colors, cardShadow } from "../styles/theme";
-import { Masthead, Section, Tile } from "../components/ui";
+import { colors } from "../styles/theme";
+import {
+  ACCENT_SOFT as PAGE_ACCENT_SOFT,
+  GREEN_DARK as PAGE_ACCENT_DARK,
+  GREEN,
+  INK,
+  MUTED as PAGE_MUTED,
+  PILL as PAGE_PILL,
+  RULE,
+  WHITE,
+} from "../styles/pageTokens";
+import { radii } from "../styles/tokens";
+import {
+  DataRow,
+  PageHeader,
+  PillButton,
+  Rule,
+  SectionTitle,
+  StatusPill,
+} from "../components/ui/page";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingDetail">;
 
@@ -420,194 +446,157 @@ export function BookingDetailScreen({ navigation, route }: Props) {
     ? Math.min(1, Math.max(0, (now - start.getTime()) / (end.getTime() - start.getTime())))
     : 0;
 
+  const heroUri = booking.imageUrls?.[0] ?? null;
+  const hasCoords =
+    typeof booking.latitude === "number" && typeof booking.longitude === "number";
+  // The band carries the state at a glance. Tones come from the shared status
+  // palette so a cancelled booking is the same red wherever it appears.
+  const ticketTone = isRefunded
+    ? { band: colors.status.refunded.text }
+    : isCanceled
+      ? { band: colors.status.canceled.text }
+      : isInProgress || isCompleted
+        ? { band: GREEN }
+        : { band: INK };
+
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <StatusBar style="dark" translucent={false} backgroundColor={colors.pageBg} />
+      <StatusBar style="dark" translucent={false} backgroundColor={WHITE} />
 
       {/* Same masthead as the checkout the driver just came from — a centred
           nav bar here made the two screens read as different apps. */}
-      <Masthead
-        variant="step"
-        title="Booking details"
+      <PageHeader
+        title="Your booking"
+        align="left"
         onBack={() => goBackOrFallback(navigation, fallbackRoutes.bookings)}
       />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.content, styles.contentFill]}
+        showsVerticalScrollIndicator={false}
+      >
 
-        {/* ── Review CTA — full bleed ── */}
-        {canReview && !reviewed ? (
-          <View style={styles.reviewSection}>
-            <Text style={styles.reviewTitle}>How was your parking?</Text>
-            <View style={styles.reviewStars}>
-              {Array.from({ length: 5 }).map((_, i) => {
-                const star = i + 1;
-                const filled = pendingRating !== null && star <= pendingRating;
-                return (
-                  <Pressable key={i} onPress={() => handleStarPress(star)}
-                    style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })} hitSlop={12}>
-                    <Star
-                      size={36}
-                      color={filled ? colors.star.review : "rgba(255,255,255,0.45)"}
-                      fill={filled ? colors.star.review : "none"}
-                      strokeWidth={2}
-                    />
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        ) : canReview && reviewed ? (
-          <View style={[styles.reviewSection, styles.reviewSectionDone]}>
-            <Text style={styles.reviewTitleDone}>Thanks for your review</Text>
-            <View style={styles.reviewStars}>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  size={22}
-                  color={reviewedRating != null && i < Math.round(reviewedRating) ? colors.star.review : colors.star.inactive}
-                  fill={reviewedRating != null && i < Math.round(reviewedRating) ? colors.star.review : "none"}
-                  strokeWidth={2}
-                />
-              ))}
-            </View>
-          </View>
-        ) : null}
-
-        {/* ── Cards ── */}
-        <View style={styles.cards}>
-
-          {/* Combined header + time card; the title area opens the listing */}
-          <View style={styles.headerCard}>
-            <Pressable onPress={handleOpenListing} style={({ pressed }) => pressed && { opacity: 0.9 }}>
-              <View style={styles.headerCardTop}>
-                <View style={[styles.statusPill, isCanceled && !isRefunded && styles.statusPillCanceled, isRefunded && styles.statusPillRefunded, (isInProgress || isCompleted) && styles.statusPillActive]}>
-                  <StatusIcon
-                    size={11}
-                    color={isRefunded ? colors.status.refunded.text : isCanceled ? colors.danger : (isInProgress || isCompleted) ? ACCENT : colors.text}
-                    strokeWidth={2.4}
-                  />
-                  <Text style={[styles.statusPillText, isCanceled && !isRefunded && styles.statusPillTextCanceled, isRefunded && styles.statusPillTextRefunded, (isInProgress || isCompleted) && styles.statusPillTextActive]}>
-                    {statusConfig.label}
-                  </Text>
-                </View>
-                <Text style={styles.headerTitle} numberOfLines={2}>{booking.title}</Text>
-                <Text style={styles.headerSubtitle}>{booking.address}</Text>
-              </View>
-            </Pressable>
-            <View style={styles.heroBody}>
-              <View style={styles.timeRow}>
-                <View style={styles.timeSlot}>
-                  <Text style={styles.timeSlotLabel}>ARRIVING</Text>
-                  <Text style={styles.timeSlotTime}>{formatTimeLabel(start)}</Text>
-                  <Text style={styles.timeSlotDate}>{startDateLabel}</Text>
-                </View>
-                <View style={styles.timeArrow}>
-                  <View style={styles.timeArrowLine} />
-                  <Text style={styles.timeArrowDuration}>{durationLabel}</Text>
-                  <View style={styles.timeArrowLine} />
-                </View>
-                <View style={styles.timeSlot}>
-                  <Text style={styles.timeSlotLabel}>LEAVING</Text>
-                  <Text style={styles.timeSlotTime}>{formatTimeLabel(end)}</Text>
-                  <Text style={styles.timeSlotDate}>{endDateLabel}</Text>
-                </View>
-              </View>
-              {isInProgress ? (
-                <View style={styles.progressWrap}>
-                  <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: `${Math.round(progressPct * 100)}%` as `${number}%` }]} />
-                  </View>
-                </View>
-              ) : null}
-              {/* Gated on confirmed: handleExtend no-ops for pending bookings,
-                  so showing the row there would be a dead control. */}
-              {(isUpcoming || isInProgress) && localStatus === "confirmed" ? (
-                <Pressable
-                  style={({ pressed }) => [styles.extendRow, pressed && { opacity: 0.6 }]}
-                  onPress={() => setExtendOpen(true)}
-                  disabled={extendBusy}
-                >
-                  <Clock size={14} color={ACCENT} strokeWidth={2.2} />
-                  <Text style={styles.extendText}>{extendBusy ? "Extending…" : "Extend end time"}</Text>
-                  <ChevronRight size={13} color={ACCENT} strokeWidth={2.2} />
-                </Pressable>
-              ) : null}
-            </View>
-          </View>
-
-          {/* Arrival info outranks reference details while a booking is live:
-              on the day, the entry code and directions are what the driver
-              came for — Details (price/reference) reads last. */}
-
-          {/* Getting in card */}
-          {showArrivalInfo ? (
-            <>
-              <Section title="Getting in" />
-              <Tile>
-                {live.arrivalInstructions?.trim() ? (
-                  <Text style={styles.instructionsText}>{live.arrivalInstructions.trim()}</Text>
-                ) : null}
-                {live.accessCode?.trim() ? (
-                  <View style={[styles.codeBox, live.arrivalInstructions?.trim() ? { marginTop: 12 } : null]}>
-                    <Text style={styles.codeLabel}>Entry code</Text>
-                    <Text style={styles.codeValue} selectable>{live.accessCode.trim()}</Text>
-                  </View>
-                ) : null}
-              </Tile>
-            </>
+        {/* The space itself. A booking is a record of a real place, and the
+            listing already carries a photo of it — worth more than another
+            block of grey text. */}
+        <View style={styles.hero}>
+          {heroUri ? (
+            <Image source={{ uri: heroUri }} style={styles.heroImage} resizeMode="cover" />
           ) : null}
+        </View>
 
-          {/* Directions card — stays visible through the check-in window;
-              arrival is exactly when directions are needed. */}
-          {(isUpcoming || isInProgress) && !isCanceled ? (
-            <>
-              <Section title="Location" />
-              {/* Pressable wraps the tile rather than styling it, so the tile
-                  keeps one geometry whether or not it happens to be tappable. */}
-              <TouchableOpacity onPress={handleOpenMaps} activeOpacity={0.8}>
-                <Tile rows>
-                  <View style={styles.detailRow}>
-                    <View style={styles.directionsIconWrap}>
-                      <Navigation size={16} color={ACCENT} strokeWidth={2.2} />
-                    </View>
-                    <Text style={styles.directionsAddress} numberOfLines={2}>{booking.address}</Text>
-                    <ChevronRight size={16} color={MUTED} strokeWidth={2.2} />
-                  </View>
-                </Tile>
-              </TouchableOpacity>
-            </>
-          ) : null}
 
-          {/* Details card */}
-          <Section title="Details" />
-          <Tile rows>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Total paid</Text>
-              <Text style={styles.detailValue}>€{(localAmountCents / 100).toFixed(2)}</Text>
+          {/* Masthead in the listing's language: centred title, place beneath
+              it, state as a pill — not a bordered card with a left-aligned
+              heading. The two screens are one flow and should read as one. */}
+          <Pressable onPress={handleOpenListing} style={styles.masthead}>
+            {/* Below the photo on white, not over it — the state reads first,
+                then what it is about. */}
+            <View style={styles.mastheadStatus}>
+              <StatusPill
+                label={statusConfig.label}
+                icon={StatusIcon}
+                tone={
+                  isRefunded ? "info" : isCanceled ? "danger" : isInProgress || isCompleted ? "positive" : "neutral"
+                }
+              />
             </View>
-            {isRefunded && refundedDateLabel ? (
-              <View style={[styles.detailRow, styles.detailRowBorder]}>
-                <Text style={styles.detailLabel}>Refunded</Text>
-                <Text style={styles.detailValue}>{refundedDateLabel}</Text>
+            <Text style={styles.mastheadTitle} numberOfLines={2}>{booking.title}</Text>
+            <View style={styles.mastheadPlace}>
+              <MapPin size={15} color={MUTED} strokeWidth={1.8} />
+              <Text style={styles.mastheadAddress} numberOfLines={1}>{booking.address}</Text>
+            </View>
+          </Pressable>
+
+          <Rule tight />
+
+          <SectionTitle>Your parking window</SectionTitle>
+          <View style={styles.block}>
+            <View style={styles.windowTimes}>
+              <Text style={styles.windowTime}>{formatTimeLabel(start)}</Text>
+              <ArrowRight size={16} color={MUTED} strokeWidth={2} style={styles.windowArrow} />
+              <Text style={styles.windowTime}>{formatTimeLabel(end)}</Text>
+            </View>
+            <Text style={styles.windowMeta}>{`${startDateLabel} · ${durationLabel}`}</Text>
+            {isInProgress ? (
+              <View style={styles.progressWrap}>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${Math.round(progressPct * 100)}%` as `${number}%` }]} />
+                </View>
               </View>
             ) : null}
-            <View style={[styles.detailRow, styles.detailRowBorder]}>
-              <Text style={styles.detailLabel}>Reference</Text>
-              <Text style={[styles.detailValue, styles.detailRef]} selectable>{formatBookingReference(booking.id)}</Text>
-            </View>
+          </View>
+
+          <Rule tight />
+
+          <SectionTitle>Details</SectionTitle>
+          <View style={styles.block}>
+            <DataRow
+              label="Reference"
+              valueNode={
+                <Text style={styles.detailRef} selectable>
+                  {formatBookingReference(booking.id)}
+                </Text>
+              }
+            />
             {live.vehiclePlate ? (
-              <View style={[styles.detailRow, styles.detailRowBorder]}>
-                <Text style={styles.detailLabel}>Vehicle</Text>
-                <Text style={styles.detailValue}>{live.vehiclePlate}</Text>
-              </View>
+              <DataRow
+                label="Vehicle"
+                valueNode={<Text style={styles.detailRef}>{live.vehiclePlate}</Text>}
+              />
             ) : null}
             {checkedInAt ? (
-              <View style={[styles.detailRow, styles.detailRowBorder]}>
-                <Text style={styles.detailLabel}>Checked in</Text>
-                <Text style={[styles.detailValue, { color: ACCENT }]}>{formatTimeLabel(checkedInAt)}</Text>
-              </View>
+              <DataRow
+                label="Checked in"
+                valueNode={<Text style={styles.detailCheckedIn}>{formatTimeLabel(checkedInAt)}</Text>}
+              />
             ) : null}
-          </Tile>
+            <DataRow label="Total paid" value={`€${(localAmountCents / 100).toFixed(2)}`} last />
+          </View>
+
+          {isRefunded ? (
+            <View style={styles.refund}>
+              <RotateCcw size={17} color={PAGE_ACCENT_DARK} strokeWidth={2} />
+              <Text style={styles.refundText}>
+                {`Refunded in full — €${(localAmountCents / 100).toFixed(2)} back to your card within 3–5 days.`}
+              </Text>
+            </View>
+          ) : null}
+
+          {canReview && !reviewed ? (
+            <>
+              <Rule tight />
+              <SectionTitle>How was your parking?</SectionTitle>
+              <View style={styles.block}>
+                <Text style={styles.reviewHint}>
+                  Your rating helps the next driver decide.
+                </Text>
+                <View style={styles.reviewStars}>
+                  {Array.from({ length: 5 }).map((_, i) => {
+                    const star = i + 1;
+                    const filled = pendingRating !== null && star <= pendingRating;
+                    return (
+                      <Pressable
+                        key={i}
+                        onPress={() => handleStarPress(star)}
+                        hitSlop={12}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Rate ${star} out of 5`}
+                      >
+                        <Star
+                          size={34}
+                          color={filled ? colors.star.review : RULE}
+                          fill={filled ? colors.star.review : RULE}
+                          strokeWidth={0}
+                        />
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </>
+          ) : null}
 
           {/* Cancellation note */}
           {isCanceled ? (
@@ -621,18 +610,42 @@ export function BookingDetailScreen({ navigation, route }: Props) {
             </View>
           ) : null}
 
-        </View>
 
-        {/* Actions */}
+        <View style={styles.actionsSpacer} />
+
+        {/* Closing actions: one green pill for what most people want next,
+            then quiet links. Cancel stays separate — a destructive action does
+            not belong beside a primary. */}
         <View style={styles.actionsSection}>
-          {canBookAgain ? (
-            <TouchableOpacity style={styles.secondaryBtn} onPress={handleOpenListing}>
-              <RefreshCw size={16} color={FG} strokeWidth={2.2} />
-              <Text style={styles.secondaryBtnText}>Book again</Text>
-            </TouchableOpacity>
+          {extendError ? <Text style={styles.errorText}>{extendError}</Text> : null}
+
+          {(isUpcoming || isInProgress) && localStatus === "confirmed" ? (
+            <Pressable
+              style={styles.primaryAction}
+              onPress={() => setExtendOpen(true)}
+              disabled={extendBusy}
+              accessibilityRole="button"
+            >
+              <Clock size={17} color={WHITE} strokeWidth={2} />
+              <Text style={styles.primaryActionText}>
+                {extendBusy ? "Extending…" : "Extend end time"}
+              </Text>
+            </Pressable>
+          ) : canBookAgain ? (
+            <Pressable
+              style={styles.primaryAction}
+              onPress={handleOpenListing}
+              accessibilityRole="button"
+            >
+              <RefreshCw size={17} color={WHITE} strokeWidth={2} />
+              <Text style={styles.primaryActionText}>Book this space again</Text>
+            </Pressable>
           ) : null}
 
-          {extendError ? <Text style={styles.errorText}>{extendError}</Text> : null}
+          <Pressable style={styles.helpRow} onPress={handleContactSupport} accessibilityRole="button">
+            <LifeBuoy size={16} color={MUTED} strokeWidth={1.9} />
+            <Text style={styles.helpText}>Need help?</Text>
+          </Pressable>
 
           {isUpcoming && !isCanceled ? (
             <Pressable style={styles.cancelRow} onPress={handleCancel} disabled={canceling}>
@@ -643,16 +656,13 @@ export function BookingDetailScreen({ navigation, route }: Props) {
             </Pressable>
           ) : null}
 
-          <View style={styles.linkRow}>
-            {receiptUrl ? (
+          {receiptUrl ? (
+            <View style={styles.linkRow}>
               <Pressable onPress={() => Linking.openURL(receiptUrl)}>
                 <Text style={styles.linkText}>View receipt</Text>
               </Pressable>
-            ) : null}
-            <Pressable onPress={handleContactSupport}>
-              <Text style={styles.linkText}>Help</Text>
-            </Pressable>
-          </View>
+            </View>
+          ) : null}
         </View>
 
       </ScrollView>
@@ -665,7 +675,7 @@ export function BookingDetailScreen({ navigation, route }: Props) {
           <SquircleBtn
             label="Check in"
             onPress={handleCheckIn}
-            icon={<CircleCheck size={18} color={colors.cardBg} strokeWidth={2.2} />}
+            icon={<CircleCheck size={18} color={WHITE} strokeWidth={2.2} />}
             fullWidth
           />
         </View>
@@ -696,180 +706,155 @@ export function BookingDetailScreen({ navigation, route }: Props) {
 
 // Sourced from styles/theme.ts (see docs/PARKING_DESIGN_BIBLE.md §0) — kept as
 // local aliases so the styles below don't need touching one by one.
-const ACCENT = colors.primary;
-const FG     = colors.text;
-const MUTED  = colors.textMuted;
-const SUBTLE = colors.textSoft;
-const LINE   = colors.divider;
-
-const CARD_SHADOW = cardShadow;
+const ACCENT = GREEN;
+const FG     = INK;
+const MUTED  = PAGE_MUTED;
+const SUBTLE = PAGE_MUTED;
+const LINE   = RULE;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.pageBg },
+  // ── Masthead — the listing's, centred ──────────────────────────────────────
+  block: { paddingHorizontal: 24 },
+
+  masthead: { paddingHorizontal: 24, paddingTop: 18 },
+  mastheadTitle: {
+    fontFamily: "PlusJakartaSans-SemiBold",
+    fontSize: 24, lineHeight: 29, letterSpacing: -0.5, color: INK, marginTop: 10,
+  },
+  mastheadPlace: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 },
+  mastheadAddress: {
+    flexShrink: 1,
+    fontFamily: "PlusJakartaSans-Regular", fontSize: 15, lineHeight: 21, color: MUTED,
+  },
+
+  windowTimes: { flexDirection: "row", alignItems: "baseline", gap: 10 },
+  windowArrow: { alignSelf: "center" },
+  windowTime: {
+    fontFamily: "PlusJakartaSans-SemiBold",
+    fontSize: 22, lineHeight: 27, letterSpacing: -0.4, color: INK,
+  },
+  windowMeta: {
+    fontFamily: "PlusJakartaSans-Regular", fontSize: 15, color: MUTED, marginTop: 4,
+  },
+  progressWrap: { marginTop: 14 },
+  progressTrack: { height: 4, borderRadius: radii.round, backgroundColor: PAGE_PILL, overflow: "hidden" },
+  progressFill: { height: 4, borderRadius: radii.round, backgroundColor: ACCENT },
+
+  detailRef: {
+    fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
+    fontSize: 15, color: INK,
+  },
+  detailCheckedIn: { fontFamily: "PlusJakartaSans-Regular", fontSize: 15, color: ACCENT },
+
+
+  // ── Hero — the space itself, above the ticket ─────────────────────────────
+  hero: { height: 152, backgroundColor: PAGE_PILL },
+  heroImage: { width: "100%", height: "100%" },
+  mastheadStatus: { alignSelf: "flex-start" },
+  // The ticket rides up over the photo, so the two read as one object rather
+  // than a picture with a card underneath it.
+
+  reviewHint: {
+    fontFamily: "PlusJakartaSans-Regular", fontSize: 15, lineHeight: 21, color: MUTED,
+  },
+  reviewStars: { flexDirection: "row", gap: 10, marginTop: 14 },
+  // The code gets the accent tint so it reads as the thing to act on, and
+  // stays selectable — people copy it into a keypad app or a note.
+  // The one deliberate exception to the type scale: an entry code is read off
+  // a phone at a gate, monospaced with wide tracking. It is not body type.
+
+  refund: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    marginHorizontal: 24, marginTop: 16,
+    backgroundColor: PAGE_ACCENT_SOFT, borderRadius: radii.surface,
+    paddingVertical: 12, paddingHorizontal: 14,
+  },
+  refundText: {
+    flex: 1, fontFamily: "PlusJakartaSans-Regular", fontSize: 15, lineHeight: 21,
+    color: PAGE_ACCENT_DARK,
+  },
+
+
+  // Rides up over the photo so the sheet reads as lifted off it, the same
+  // relationship the listing has between its hero and its content.
+
+
+
+
+  // ── Parking window — the listing's tinted pair, read-only ─────────────────
+
+  // What the tiles used to give: an inset block on the page, no border.
+
+  container: { flex: 1, backgroundColor: WHITE },
 
   // ── Nav header ──────────────────────────────────────────────
 
   // ── Scroll content ───────────────────────────────────────────
-  content: { paddingBottom: 48 },
+  content: { paddingBottom: 20 },
+  contentFill: { flexGrow: 1 },
+  actionsSpacer: { flex: 1, minHeight: 20 },
 
   // ── Pinned check-in bar ──────────────────────────────────────
   checkInBar: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     paddingTop: 12,
-    backgroundColor: colors.cardBg,
+    backgroundColor: WHITE,
     borderTopWidth: 1,
-    borderTopColor: colors.divider,
+    borderTopColor: RULE,
   },
 
   // ── Full-bleed banners ───────────────────────────────────────
-  reviewSection: {
-    backgroundColor: ACCENT,
-    paddingVertical: 28, paddingHorizontal: 20,
-    alignItems: "center", gap: 14,
-  },
-  reviewSectionDone: { backgroundColor: colors.pageBg },
-  reviewTitle: { fontFamily: "PlusJakartaSans-Bold", fontSize: 18, color: colors.cardBg, letterSpacing: -0.3 },
-  reviewTitleDone: { fontFamily: "PlusJakartaSans-Bold", fontSize: 16, color: FG },
-  reviewStars: { flexDirection: "row", gap: 8 },
 
-  directionsIconWrap: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: colors.accentSoft,
-    alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: 12,
-  },
-  directionsAddress: { fontFamily: "PlusJakartaSans-Regular", fontSize: 14, color: FG, flex: 1, lineHeight: 20 },
 
   // ── Cards wrapper ─────────────────────────────────────────────
-  cards: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    gap: 14,
-  },
 
   // ── Header card (status + title + time) ──────────────────────
-  // colors.border (not divider) for card edges: divider-weight hairlines wash
+  // RULE (not divider) for card edges: divider-weight hairlines wash
   // out against light grounds on iOS — same lesson as BookingCard/Favourites
   // (2026-07-09).
-  headerCard: {
-    backgroundColor: colors.cardBg,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  headerCardTop: {
-    borderBottomColor: LINE,
-    borderBottomWidth: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
-    alignItems: "flex-start",
-    gap: 4,
-  },
-  headerTitle: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 20,
-    letterSpacing: -0.5,
-    lineHeight: 26,
-    textAlign: "left",
-  },
-  headerSubtitle: {
-    color: MUTED,
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: "left",
-  },
 
   // ── Status pill ──────────────────────────────────────────────
-  statusPill: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: colors.cardBgMuted, borderRadius: 999,
-    paddingHorizontal: 10, paddingVertical: 5,
-  },
-  statusPillCanceled: { backgroundColor: colors.status.canceled.background },
-  statusPillRefunded: { backgroundColor: colors.status.refunded.background },
-  statusPillActive: { backgroundColor: colors.accentSoft },
-  statusPillText: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 12, color: colors.text },
-  statusPillTextCanceled: { color: colors.danger },
-  statusPillTextRefunded: { color: colors.status.refunded.text },
-  statusPillTextActive: { color: ACCENT },
 
   // ── Card (generic) ───────────────────────────────────────────
 
   // ── Time row ─────────────────────────────────────────────────
   // The status hero is its own surface, not a tile, so it carries its own 16.
-  heroBody: { padding: 16 },
-  timeRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  timeSlot: { flex: 1, alignItems: "center", paddingVertical: 8 },
-  timeSlotLabel: {
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 11, color: ACCENT,
-    letterSpacing: 1.2, textTransform: "uppercase" as const, marginBottom: 5,
-  },
-  timeSlotTime: {
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 28, color: FG, letterSpacing: -0.8, lineHeight: 32,
-  },
-  timeSlotDate: { fontFamily: "PlusJakartaSans-Regular", fontSize: 12, color: MUTED, marginTop: 2 },
-  timeArrow: { alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 4 },
-  timeArrowLine: { width: 16, height: 1, backgroundColor: colors.divider },
-  timeArrowDuration: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 11, color: SUBTLE, letterSpacing: 0.2 },
 
   // ── Progress bar (in-progress bookings) ──────────────────────
-  progressWrap: { marginTop: 14 },
-  progressTrack: { height: 4, borderRadius: 999, backgroundColor: colors.cardBgMuted, overflow: "hidden" },
-  progressFill: { height: "100%", borderRadius: 999, backgroundColor: ACCENT },
 
   // ── Extend row ───────────────────────────────────────────────
-  extendRow: {
-    flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "center",
-    marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: LINE,
-  },
-  extendText: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 13, color: ACCENT },
 
   // ── Detail rows (inside Details card) ────────────────────────
   // The tile supplies the 16 inset and the 6px row rhythm used across the
   // system; the row only spaces itself from its neighbours.
-  detailRow: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingVertical: 6,
-  },
-  detailRowBorder: { borderTopWidth: 1, borderTopColor: LINE },
-  detailLabel: { fontFamily: "PlusJakartaSans-Regular", fontSize: 13, color: MUTED },
-  detailValue: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 13, color: FG },
-  detailRef: { fontFamily: "PlusJakartaSans-Bold", letterSpacing: 1.2, fontVariant: ["tabular-nums"] as const },
 
   // ── Getting in ───────────────────────────────────────────────
-  instructionsText: { fontFamily: "PlusJakartaSans-Regular", fontSize: 15, color: MUTED, lineHeight: 22 },
-  codeBox: { padding: 16, backgroundColor: colors.cardBgMuted, borderRadius: 14, borderWidth: 1, borderColor: LINE },
-  codeLabel: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 11, color: MUTED, letterSpacing: 0.6, textTransform: "uppercase" as const, marginBottom: 6 },
-  codeValue: { fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }), fontSize: 30, color: FG, letterSpacing: 6, fontVariant: ["tabular-nums"] as const },
+  // The one deliberate exception to the type scale: an entry code is read off
+  // a phone at a gate, monospaced with 6pt tracking. It is not body type and
+  // shouldn't be sized like it.
 
   // ── Cancellation note ────────────────────────────────────────
-  cancellationNote: { paddingHorizontal: 4 },
-  cancellationText: { fontFamily: "PlusJakartaSans-Regular", fontSize: 14, color: MUTED, lineHeight: 21 },
+  cancellationNote: { paddingHorizontal: 24, paddingTop: 16 },
+  cancellationText: { fontFamily: "PlusJakartaSans-Regular", fontSize: 15, color: MUTED, lineHeight: 21 },
   sectionLink: { fontFamily: "PlusJakartaSans-SemiBold", color: ACCENT },
 
   // ── Actions ──────────────────────────────────────────────────
-  actionsSection: { paddingHorizontal: 16, paddingTop: 14, gap: 10 },
-  secondaryBtn: {
-    backgroundColor: colors.cardBg, minHeight: 52, borderRadius: 16,
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
-    borderWidth: 1, borderColor: colors.border,
+  actionsSection: { paddingHorizontal: 24, paddingBottom: 20, gap: 14 },
+  primaryAction: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    height: 50, borderRadius: radii.round, backgroundColor: ACCENT,
   },
-  secondaryBtnText: { color: FG, fontSize: 15, fontFamily: "PlusJakartaSans-SemiBold", letterSpacing: -0.2 },
+  primaryActionText: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 16, color: WHITE },
+  helpRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  helpText: { fontFamily: "PlusJakartaSans-Regular", fontSize: 15, color: MUTED },
   errorText: { color: colors.danger, fontSize: 13, textAlign: "center", fontFamily: "PlusJakartaSans-Regular" },
   cancelRow: {
-    borderWidth: 1, borderColor: colors.status.canceled.border, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.status.canceled.border, borderRadius: radii.field,
     backgroundColor: colors.status.canceled.background,
     paddingVertical: 14, alignItems: "center",
   },
   cancelText: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 14, color: colors.danger },
-  cancelSubtext: { fontFamily: "PlusJakartaSans-Regular", fontSize: 11.5, color: colors.danger, marginTop: 2, opacity: 0.8 },
+  cancelSubtext: { fontFamily: "PlusJakartaSans-Regular", fontSize: 13, color: colors.danger, marginTop: 2, opacity: 0.8 },
   linkRow: { flexDirection: "row", justifyContent: "center", gap: 24, paddingVertical: 4 },
   linkText: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 13, color: MUTED },
-  linkTextDanger: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 13, color: colors.danger },
 });

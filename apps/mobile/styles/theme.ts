@@ -76,10 +76,20 @@ export const colors = {
   // neutral[100], so white tiles sitting on it read as raised.
   ground: "#F2F5F4",
 
-  // ── Page surface (listing + booking review) ─────────────────────────────
+  // ── Page surface — THE DIRECTION ────────────────────────────────────────
   // A colder, higher-contrast set than the tokens above, introduced with the
-  // listing rebuild. The two coexist while the rest of the app migrates —
-  // don't mix them within one screen.
+  // listing rebuild. This is where the app is going: new surfaces should reach
+  // for `page*` and `components/ui/page`, not for `text`/`divider`/`ground`
+  // and `Tile`/`Section`.
+  //
+  // The two sets coexist deliberately rather than being swapped in one go —
+  // replacing the originals in place would restyle every screen at once, with
+  // no way to look at any single one and say whether it is right. They collapse
+  // to one set when the booking pair moves over, which is the last thing still
+  // using the old layout kit.
+  //
+  // Until then: don't mix them within a screen. A surface is on one set or the
+  // other, never both.
   pageInk: "#111111",
   pageMuted: "#6A6A6A",
   pageRule: "#E3E3E1",

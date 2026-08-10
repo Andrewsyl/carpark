@@ -6,9 +6,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { PROVIDER_GOOGLE, type Region } from "react-native-maps";
 import { MapPinned, Search } from "lucide-react-native";
 import { MapPin } from "../../components/MapPin";
-import { LIGHT_MAP_STYLE } from "../../components/mapStyles";
 import { useListingFlow } from "./context";
 import { FlowHeader } from "./FlowHeader";
+import { StepQuestion } from "./StepQuestion";
 import { hostFlowColors } from "./hostFlowTheme";
 import { colors } from "../../styles/theme";
 import { TextInput as AppTextInput } from "../../components/ui";
@@ -37,13 +37,7 @@ type PlaceDetailsResponse = {
 const ACCENT = hostFlowColors.accent;
 const FG = hostFlowColors.text;
 const MUTED = hostFlowColors.textMuted;
-const CARD_SHADOW = {
-  shadowColor: "#2d1a0e",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.09,
-  shadowRadius: 12,
-  elevation: 4,
-} as const;
+// No card shadow: the system separates with a rule and white space.
 
 export function ListingLocationScreen({ navigation, route }: Props) {
   const { draft, setDraft, savedDraftUpdatedAt, discardSavedDraft } = useListingFlow();
@@ -142,7 +136,7 @@ export function ListingLocationScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      <FlowHeader current={1} total={9} onClose={exitFlow} />
+      <FlowHeader current={1} onClose={exitFlow} />
 
       {savedDraftUpdatedAt ? (
         <View style={styles.resumeBanner}>
@@ -155,15 +149,20 @@ export function ListingLocationScreen({ navigation, route }: Props) {
         </View>
       ) : null}
 
-      {/* Search card (header) — its own section above the map, like Street View */}
+      {/* 16a: the question is the header — no kicker, no card around it. The
+          24px gutter lives here because this screen has no scroll container. */}
+      <View style={styles.questionBlock}>
+        <StepQuestion
+          title="Where is your space?"
+          hint="Search your address, then confirm it on the map."
+        />
+      </View>
+
       <View style={styles.searchSection}>
         <View style={styles.searchCard}>
-          <View style={styles.searchCardHeader}>
-            <Text style={styles.searchCardKicker}>Step 1 · Location</Text>
-            <Text style={styles.searchCardTitle}>Confirm your parking spot</Text>
-          </View>
+
           <View style={styles.searchInputRow}>
-            <Search size={18} color={ACCENT} strokeWidth={2.2} />
+            <Search size={18} color={FG} strokeWidth={2} />
             <AppTextInput
               ref={searchInputRef}
               containerStyle={styles.searchInputContainer}
@@ -220,8 +219,10 @@ export function ListingLocationScreen({ navigation, route }: Props) {
               style={StyleSheet.absoluteFill}
               initialRegion={initialRegion}
               provider={PROVIDER_GOOGLE}
+              // Satellite, so a host can recognise their own driveway from the
+              // roof line. Google ignores customMapStyle on satellite, so no
+              // style is passed — it would be dead config, not a silent default.
               mapType="satellite"
-              customMapStyle={LIGHT_MAP_STYLE}
               onRegionChangeComplete={(region) => void handleRegionChangeComplete(region)}
             />
             <View style={styles.centerPin} pointerEvents="none">
@@ -247,6 +248,8 @@ export function ListingLocationScreen({ navigation, route }: Props) {
       </View>
 
       <FlowFooter
+        current={1}
+        total={9}
         onBack={() => (fromReview ? navigation.navigate("ListingReview") : navigation.goBack())}
         primaryLabel={loading ? "Loading…" : fromReview ? "Save changes" : "Confirm location"}
         onPrimary={() => navigation.navigate(fromReview ? "ListingReview" : "ListingStreetView")}
@@ -260,6 +263,13 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: hostFlowColors.bg,
     flex: 1,
+  },
+
+  /** 16a's step inset, carried here because this screen has no scroll view. */
+  questionBlock: {
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 14,
   },
 
   resumeBanner: {
@@ -286,23 +296,20 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   // Its own section above the map; the suggestions dropdown hangs off its bottom.
-  searchSection: {
-    position: "relative",
-    zIndex: 20,
-    marginHorizontal: 16,
-    marginTop: 12,
-  },
+  // zIndex so the absolutely-positioned suggestions sit above the map card
+  // below them — without it the map paints over the list and eats the taps.
+  searchSection: { zIndex: 10, elevation: 10 },
   mapCard: {
     // Contained rounded card matching the Street View viewer, rather than a
-    // full-bleed edge-to-edge map.
+    // full-bleed edge-to-edge map. Insets at the step's 24 gutter so it shares
+    // a left edge with the question and the search card above it.
     flex: 1,
     position: "relative",
-    marginHorizontal: 16,
+    marginHorizontal: 24,
     marginTop: 8,
     marginBottom: 16,
-    borderRadius: 18,
+    borderRadius: 12,
     overflow: "hidden",
-    ...CARD_SHADOW,
   },
 
   centerPin: {
@@ -322,7 +329,6 @@ const styles = StyleSheet.create({
   },
   mapPlaceholderIconCircle: {
     alignItems: "center",
-    backgroundColor: hostFlowColors.accentSoft,
     borderColor: hostFlowColors.accentSoftBorder,
     borderRadius: 999,
     borderWidth: 2,
@@ -366,42 +372,23 @@ const styles = StyleSheet.create({
 
   // Search card: header (kicker+title) + input row — matches the Street View
   // header card (1px border + soft card shadow).
+  // 16a's field: a 52px pill on a light outline. It previously carried a 2px ink
+  // border and stacked its own padding on the inner row's, which made a ~78px
+  // slab that read as the loudest thing on the step.
   searchCard: {
-    backgroundColor: hostFlowColors.cardBg,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  searchCardHeader: {
+    marginHorizontal: 24,
+    marginTop: 20,
+    height: 52,
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: hostFlowColors.borderStrong,
+    borderRadius: 999,
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: hostFlowColors.border,
-  },
-  searchCardKicker: {
-    color: ACCENT,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 10,
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-    marginBottom: 2,
-  },
-  searchCardTitle: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 18,
-    letterSpacing: -0.5,
-    lineHeight: 24,
   },
   searchInputRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
   },
   searchInputContainer: {
     flex: 1,
@@ -424,21 +411,22 @@ const styles = StyleSheet.create({
     // pushing it down.
     position: "absolute",
     top: "100%",
-    left: 0,
-    right: 0,
+    left: 24,
+    right: 24,
+    zIndex: 11,
+    elevation: 11,
     backgroundColor: hostFlowColors.cardBg,
     borderRadius: 14,
     marginTop: 8,
     overflow: "hidden",
-    shadowColor: "#000000",
+    shadowColor: colors.viewerBackdrop,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 14,
-    elevation: 6,
   },
   suggestionItem: {
     alignItems: "center",
-    borderBottomColor: "rgba(17, 24, 39, 0.06)",
+    borderBottomColor: hostFlowColors.border,
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: 12,
@@ -450,7 +438,6 @@ const styles = StyleSheet.create({
   },
   suggestionIconCircle: {
     alignItems: "center",
-    backgroundColor: hostFlowColors.accentSoft,
     borderRadius: 20,
     flexShrink: 0,
     height: 34,

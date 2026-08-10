@@ -176,11 +176,6 @@ const styles = StyleSheet.create({
   heroBlock: {
     marginBottom: 36,
   },
-  heroImage: {
-    width: "100%",
-    height: 220,
-    marginBottom: 24,
-  },
   eyebrow: {
     color: hostFlowColors.accent,
     fontFamily: "PlusJakartaSans-SemiBold",

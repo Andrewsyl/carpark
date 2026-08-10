@@ -4,6 +4,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { FlowHeader } from "./FlowHeader";
+import { StepQuestion } from "./StepQuestion";
 import { useListingFlow } from "./context";
 import { hostFlowColors } from "./hostFlowTheme";
 import { colors } from "../../styles/theme";
@@ -17,15 +18,8 @@ type FlowStackParamList = {
 type Props = NativeStackScreenProps<FlowStackParamList, "ListingStreetView">;
 
 const ACCENT = hostFlowColors.accent;
-const FG = hostFlowColors.text;
 const MUTED = hostFlowColors.textMuted;
-const CARD_SHADOW = {
-  shadowColor: "#2d1a0e",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.09,
-  shadowRadius: 12,
-  elevation: 4,
-} as const;
+// No card shadow: the system separates with a rule and white space.
 
 export function ListingStreetViewScreen({ navigation }: Props) {
   const { draft, setDraft } = useListingFlow();
@@ -90,14 +84,14 @@ export function ListingStreetViewScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      <FlowHeader current={2} total={9} onClose={exitFlow} />
+      <FlowHeader current={2} onClose={exitFlow} />
 
-      {/* Header card */}
-      <View style={styles.headerCard}>
-        <View style={styles.headerCardTop}>
-          <Text style={styles.headerKicker}>Step 2 · Street view</Text>
-          <Text style={styles.headerTitle}>Choose your cover image</Text>
-        </View>
+      {/* 16a's step inset, carried here because this screen has no scroll view. */}
+      <View style={styles.questionBlock}>
+        <StepQuestion
+          title="Choose your cover image"
+          hint="Pick the angle that shows your space best."
+        />
       </View>
       <Pressable
         style={styles.skipButton}
@@ -168,6 +162,8 @@ export function ListingStreetViewScreen({ navigation }: Props) {
       </View>
 
       <FlowFooter
+        current={2}
+        total={9}
         onBack={() => navigation.goBack()}
         primaryLabel={canUseView && !panoAvailable ? "Continue without Street View" : "Use this view"}
         onPrimary={() => {
@@ -198,39 +194,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  headerCard: {
-    backgroundColor: hostFlowColors.cardBg,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    marginHorizontal: 16,
-    marginTop: 12,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  headerCardTop: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 14,
-  },
-  headerKicker: {
-    color: ACCENT,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 10,
-    letterSpacing: 1.4,
-    marginBottom: 2,
-    textTransform: "uppercase",
-  },
-  headerTitle: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 18,
-    letterSpacing: -0.5,
-    lineHeight: 24,
-  },
   skipButton: {
     marginTop: 6,
-    marginHorizontal: 16,
+    marginHorizontal: 24,
     paddingVertical: 4,
   },
   skipButtonText: {
@@ -239,17 +205,24 @@ const styles = StyleSheet.create({
     color: ACCENT,
   },
 
+  // One left edge with the question above it: the step's gutter is 24, and this
+  // card sitting at 16 put the viewer 8px outside the text it belongs to.
   viewerCard: {
     flex: 1,
-    marginHorizontal: 16,
+    marginHorizontal: 24,
     marginBottom: 16,
     marginTop: 8,
-    borderRadius: 18,
+    borderRadius: 12,
     overflow: "hidden",
-    ...CARD_SHADOW,
   },
   webView: {
     flex: 1,
+  },
+  /** 16a's step inset, carried here because this screen has no scroll view. */
+  questionBlock: {
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 14,
   },
   webFallback: {
     alignItems: "center",

@@ -16,6 +16,7 @@ import { Briefcase, Check, ChevronRight, Clock, SlidersHorizontal, X } from "luc
 import { Button } from "../../components/ui";
 import { useListingFlow } from "./context";
 import { FlowHeader } from "./FlowHeader";
+import { StepQuestion, StepSection } from "./StepQuestion";
 import { hostFlowColors } from "./hostFlowTheme";
 import { FlowFooter } from "./FlowFooter";
 import { colors, radius, spacing } from "../../styles/theme";
@@ -37,13 +38,7 @@ const ACCENT = hostFlowColors.accent;
 const FG = hostFlowColors.text;
 const MUTED = hostFlowColors.textMuted;
 const SOFT = hostFlowColors.textSoft;
-const CARD_SHADOW = {
-  shadowColor: "#2d1a0e",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.09,
-  shadowRadius: 12,
-  elevation: 4,
-} as const;
+// No card shadow: the system separates with a rule and white space.
 
 function DayTimeReveal({ visible, children }: { visible: boolean; children: React.ReactNode }) {
   const progress = useState(() => new Animated.Value(visible ? 1 : 0))[0];
@@ -372,22 +367,19 @@ export function ListingAvailabilityScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      <FlowHeader current={6} total={9} onClose={exitFlow} />
+      <FlowHeader current={6} onClose={exitFlow} />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
         {/* Header card */}
-        <View style={styles.headerCard}>
-          <View style={styles.headerCardTop}>
-            <Text style={styles.headerKicker}>Step 6 · Availability</Text>
-            <Text style={styles.headerTitle}>Set when your space is available</Text>
-          </View>
-        </View>
+        <StepQuestion
+            title={"Set when your space is available"}
+          />
 
         {/* Schedule card */}
-        <View style={styles.card}>
-          <Text style={styles.cardHeader}>Schedule</Text>
+        <View style={styles.section}>
+          <StepSection title="Schedule" />
           {PRESETS.map(({ key, label, body, Icon }, idx) => {
             const active = preset === key;
             const isLast = idx === PRESETS.length - 1;
@@ -398,15 +390,15 @@ export function ListingAvailabilityScreen({ navigation, route }: Props) {
                 style={[styles.optionRow, !isLast && styles.optionRowBorder, active && styles.optionRowActive]}
                 onPress={() => selectPreset(key)}
               >
-                <View style={[styles.optionIconBox, active && styles.optionIconBoxActive]}>
-                  {Icon(active)}
-                </View>
+                <View style={styles.optionIconBox}>{Icon(active)}</View>
                 <View style={styles.optionTextWrap}>
-                  <Text style={[styles.optionTitle, active && styles.optionTitleActive]}>{label}</Text>
+                  {/* Selection is carried by the row's border and its check —
+                      nothing happens to the label. */}
+                  <Text style={styles.optionTitle}>{label}</Text>
                   <Text style={styles.optionBody}>{body}</Text>
                 </View>
                 {active
-                  ? <Check size={16} color={ACCENT} strokeWidth={2.8} />
+                  ? <Check size={20} color={hostFlowColors.text} strokeWidth={2.4} />
                   : isCustom
                   ? <ChevronRight size={18} color={SOFT} strokeWidth={2.4} />
                   : null}
@@ -432,6 +424,8 @@ export function ListingAvailabilityScreen({ navigation, route }: Props) {
       </ScrollView>
 
       <FlowFooter
+        current={6}
+        total={9}
         onBack={() => (fromReview ? navigation.navigate("ListingReview") : navigation.goBack())}
         primaryLabel={fromReview ? "Save changes" : "Continue"}
         onPrimary={() => navigation.navigate(fromReview ? "ListingReview" : "ListingPhotos")}
@@ -538,62 +532,16 @@ export function ListingAvailabilityScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: hostFlowColors.bg },
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: 24,
+    paddingTop: 28,
     paddingBottom: 140,
     gap: 14,
   },
 
   // ── Header card (matches location screen style) ──────────────
-  headerCard: {
-    backgroundColor: hostFlowColors.cardBg,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  headerCardTop: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 14,
-  },
-  headerKicker: {
-    color: ACCENT,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 10,
-    letterSpacing: 1.4,
-    marginBottom: 2,
-    textTransform: "uppercase",
-  },
-  headerTitle: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 18,
-    letterSpacing: -0.5,
-    lineHeight: 24,
-  },
 
   // ── Schedule card ────────────────────────────────────────────
-  card: {
-    backgroundColor: hostFlowColors.cardBg,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  cardHeader: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 15,
-    letterSpacing: -0.3,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: hostFlowColors.border,
-  },
+  section: { paddingTop: 24 },
   optionRow: {
     alignItems: "center",
     flexDirection: "row",
@@ -605,20 +553,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: hostFlowColors.border,
   },
+  // Border weight alone, and a radius: without one the 2px border drew a square
+  // band across the full width. Padding drops to hold the row's size steady.
   optionRowActive: {
-    backgroundColor: hostFlowColors.accentSoft,
+    borderWidth: 2,
+    borderColor: hostFlowColors.text,
+    borderRadius: 12,
+    borderBottomColor: hostFlowColors.text,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
   },
+  // A plain glyph, not a boxed one: 16a puts no frame around its icons, and the
+  // framed version put a second selected-looking border inside the selected row.
   optionIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: hostFlowColors.accentSoft,
+    width: 28,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-  },
-  optionIconBoxActive: {
-    backgroundColor: hostFlowColors.accentSoftBorder,
   },
   optionTextWrap: { flex: 1 },
   optionTitle: {
@@ -627,9 +579,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     letterSpacing: -0.2,
     lineHeight: 20,
-  },
-  optionTitleActive: {
-    color: ACCENT,
   },
   optionBody: {
     color: MUTED,
@@ -675,31 +624,6 @@ const styles = StyleSheet.create({
   },
 
   // ── Tips card ────────────────────────────────────────────────
-  tipsCard: {
-    backgroundColor: hostFlowColors.accentSoft,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.accentSoftBorder,
-    padding: 16,
-  },
-  tipsRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 6,
-  },
-  tipsTitle: {
-    color: ACCENT,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 13,
-    letterSpacing: -0.1,
-  },
-  tipsBody: {
-    color: MUTED,
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 13,
-    lineHeight: 19,
-  },
 
   // ── Modal ────────────────────────────────────────────────────
   modalBackdrop: {

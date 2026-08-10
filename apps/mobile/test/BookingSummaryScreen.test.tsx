@@ -72,12 +72,12 @@ describe("BookingSummaryScreen", () => {
     mockPresentPaymentSheet.mockResolvedValue({});
   });
 
-  it("renders the booking summary header", async () => {
-    const { getByText } = render(
+  it("renders the booking review header", async () => {
+    const { getAllByText } = render(
       <GlobalToastProvider><GlobalLoadingProvider><BookingSummaryScreen navigation={navigation as any} route={route as any} /></GlobalLoadingProvider></GlobalToastProvider>
     );
 
-    await waitFor(() => expect(getByText("Your booking")).toBeTruthy());
+    await waitFor(() => expect(getAllByText("Confirm and pay").length).toBeGreaterThan(0));
   });
 
   it("starts payment when tapping the pay button", async () => {
@@ -86,7 +86,7 @@ describe("BookingSummaryScreen", () => {
     );
     const user = userEvent.setup({ delay: null as unknown as number });
 
-    const payCta = await waitFor(() => getByLabelText(/^Confirm and pay €\d+\.\d{2}$/i));
+    const payCta = await waitFor(() => getByLabelText(/^Pay €\d+\.\d{2}$/i));
     await user.press(payCta);
 
     const api = require("../api");
@@ -101,7 +101,7 @@ describe("BookingSummaryScreen", () => {
     );
     const user = userEvent.setup({ delay: null as unknown as number });
 
-    const payCta = await waitFor(() => getByLabelText(/^Confirm and pay €\d+\.\d{2}$/i));
+    const payCta = await waitFor(() => getByLabelText(/^Pay €\d+\.\d{2}$/i));
     await user.press(payCta);
 
     await waitFor(() => expect(mockPresentPaymentSheet).toHaveBeenCalled());
@@ -113,27 +113,27 @@ describe("BookingSummaryScreen", () => {
       error: { code: "Failed", message: "Your card was declined." },
     });
 
-    const { getByLabelText, findByText } = render(
+    const { getByLabelText, findByText, findAllByText } = render(
       <GlobalToastProvider><GlobalLoadingProvider><BookingSummaryScreen navigation={navigation as any} route={route as any} /></GlobalLoadingProvider></GlobalToastProvider>
     );
     const user = userEvent.setup({ delay: null as unknown as number });
 
-    const payCta = await waitFor(() => getByLabelText(/^Confirm and pay €\d+\.\d{2}$/i));
+    const payCta = await waitFor(() => getByLabelText(/^Pay €\d+\.\d{2}$/i));
     await user.press(payCta);
 
-    expect(await findByText(/Payment not completed\. No booking was created\./i)).toBeTruthy();
+    expect(await findAllByText(/Payment not completed\. No booking was created\./i)).toBeTruthy();
   });
 
   it("shows an error when payment intent creation fails", async () => {
     const api = require("../api");
     api.createBookingPaymentIntent.mockRejectedValueOnce(new Error("Service unavailable"));
 
-    const { getByLabelText, findByText } = render(
+    const { getByLabelText, findByText, findAllByText } = render(
       <GlobalToastProvider><GlobalLoadingProvider><BookingSummaryScreen navigation={navigation as any} route={route as any} /></GlobalLoadingProvider></GlobalToastProvider>
     );
     const user = userEvent.setup({ delay: null as unknown as number });
 
-    const payCta = await waitFor(() => getByLabelText(/^Confirm and pay €\d+\.\d{2}$/i));
+    const payCta = await waitFor(() => getByLabelText(/^Pay €\d+\.\d{2}$/i));
     await user.press(payCta);
 
     expect(await findByText(/Service unavailable/i)).toBeTruthy();

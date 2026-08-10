@@ -28,16 +28,15 @@ const styles = StyleSheet.create({
   },
   label: {
     color: hostFlowColors.textSoft,
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "PlusJakartaSans-SemiBold",
-    fontWeight: "700",
     letterSpacing: 0.2,
     marginBottom: 6,
   },
   bar: {
     backgroundColor: hostFlowColors.border,
     borderRadius: radius.pill,
-    height: 6,
+    height: 4,
     overflow: "hidden",
   },
   barFill: {

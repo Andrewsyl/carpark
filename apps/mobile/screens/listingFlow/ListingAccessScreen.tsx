@@ -3,7 +3,6 @@ import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleS
 import { useEffect, useState } from "react";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  CircleCheck,
   FileText,
   Hash,
   Lock,
@@ -11,6 +10,8 @@ import {
 } from "lucide-react-native";
 import { TextInput as AppTextInput } from "../../components/ui";
 import { FlowHeader } from "./FlowHeader";
+import { Checkbox, ChoiceRow, ChoiceSummary } from "./ChoiceTile";
+import { StepQuestion } from "./StepQuestion";
 import { useListingFlow } from "./context";
 import { hostFlowColors } from "./hostFlowTheme";
 import { FlowFooter } from "./FlowFooter";
@@ -27,13 +28,7 @@ const ACCENT = hostFlowColors.accent;
 const FG = hostFlowColors.text;
 const MUTED = hostFlowColors.textMuted;
 const SOFT = hostFlowColors.textSoft;
-const CARD_SHADOW = {
-  shadowColor: "#2d1a0e",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.09,
-  shadowRadius: 12,
-  elevation: 4,
-} as const;
+// No card shadow: the system separates with a rule and white space.
 
 const ACCESS_CHOICES = [
   {
@@ -127,7 +122,7 @@ export function ListingAccessScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      <FlowHeader current={5} total={9} onClose={exitFlow} />
+      <FlowHeader current={5} onClose={exitFlow} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior="padding"
@@ -139,70 +134,41 @@ export function ListingAccessScreen({ navigation, route }: Props) {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          {/* Header card */}
-          <View style={styles.headerCard}>
-            <View style={styles.headerCardTop}>
-              <Text style={styles.headerKicker}>Step 5 · Access</Text>
-              <Text style={styles.headerTitle}>How do drivers get in?</Text>
-            </View>
-          </View>
+          <StepQuestion
+            title="How do drivers get in?"
+            hint="Does getting in require a key, code, or instructions?"
+          />
 
-          {/* ── Access card ── */}
-          <View style={styles.card}>
-            <Text style={styles.cardHeader}>Access</Text>
-            <View style={styles.cardBody}>
-              <Text style={styles.accessQuestion}>
-                Does getting in require a key, code, or instructions?
-              </Text>
-
-              {/* Open / Restricted — full cards while choosing, a compact
+          <View style={styles.body}>
+              {/* Open / Restricted — full rows while choosing, a compact
                   summary row once chosen (tap "Change" to re-pick). */}
               {draft.requiresAccessCode === null || editingAccessType ? (
                 <View style={styles.accessTypeStack}>
-                  <Pressable
-                    style={[styles.accessTypeCard, draft.requiresAccessCode === false && styles.accessTypeCardActive]}
+                  <ChoiceRow
+                    title="Open access"
+                    hint="No key, code or instructions needed"
+                    selected={draft.requiresAccessCode === false}
                     onPress={() => chooseAccessType(false)}
-                  >
-                    <View style={[styles.accessTypeIconWrap, draft.requiresAccessCode === false && styles.accessTypeIconWrapActive]}>
-                      <Unlock size={20} color={draft.requiresAccessCode === false ? ACCENT : hostFlowColors.textMuted} strokeWidth={1.8} />
-                    </View>
-                    <View style={styles.accessTypeText}>
-                      <Text style={[styles.accessTypeLabel, draft.requiresAccessCode === false && styles.accessTypeLabelActive]}>Open access</Text>
-                      <Text style={styles.accessTypeDesc}>No key, code or instructions needed</Text>
-                    </View>
-                    {draft.requiresAccessCode === false ? (
-                      <CircleCheck size={20} color={ACCENT} strokeWidth={2.2} />
-                    ) : null}
-                  </Pressable>
-
-                  <Pressable
-                    style={[styles.accessTypeCard, draft.requiresAccessCode === true && styles.accessTypeCardActive]}
+                  />
+                  <ChoiceRow
+                    title="Restricted access"
+                    hint="Drivers need a key, code or instructions"
+                    selected={draft.requiresAccessCode === true}
                     onPress={() => chooseAccessType(true)}
-                  >
-                    <View style={[styles.accessTypeIconWrap, draft.requiresAccessCode === true && styles.accessTypeIconWrapActive]}>
-                      <Lock size={20} color={draft.requiresAccessCode === true ? ACCENT : hostFlowColors.textMuted} strokeWidth={1.8} />
-                    </View>
-                    <View style={styles.accessTypeText}>
-                      <Text style={[styles.accessTypeLabel, draft.requiresAccessCode === true && styles.accessTypeLabelActive]}>Restricted access</Text>
-                      <Text style={styles.accessTypeDesc}>Drivers need a key, code or instructions</Text>
-                    </View>
-                    {draft.requiresAccessCode === true ? (
-                      <CircleCheck size={20} color={ACCENT} strokeWidth={2.2} />
-                    ) : null}
-                  </Pressable>
+                  />
                 </View>
               ) : (
-                <Pressable style={styles.summaryRow} onPress={() => setEditingAccessType(true)}>
-                  <View style={[styles.accessTypeIconWrap, styles.accessTypeIconWrapActive]}>
-                    {draft.requiresAccessCode
-                      ? <Lock size={20} color={ACCENT} strokeWidth={1.8} />
-                      : <Unlock size={20} color={ACCENT} strokeWidth={1.8} />}
-                  </View>
-                  <Text style={styles.summaryLabel}>
-                    {draft.requiresAccessCode ? "Restricted access" : "Open access"}
-                  </Text>
-                  <Text style={styles.changeText}>Change</Text>
-                </Pressable>
+                <ChoiceSummary
+                  label={draft.requiresAccessCode ? "Restricted access" : "Open access"}
+                  onPress={() => setEditingAccessType(true)}
+                  leading={
+                    <View style={[styles.accessTypeIconWrap, styles.accessTypeIconWrapActive]}>
+                      {draft.requiresAccessCode
+                        ? <Lock size={20} color={ACCENT} strokeWidth={1.8} />
+                        : <Unlock size={20} color={ACCENT} strokeWidth={1.8} />}
+                    </View>
+                  }
+                />
               )}
 
               {/* Access methods — Restricted only, once the type is locked in.
@@ -225,16 +191,12 @@ export function ListingAccessScreen({ navigation, route }: Props) {
                               {choice.icon(active)}
                             </View>
                             <View style={styles.accessCardText}>
-                              <Text style={[styles.accessCardLabel, active && styles.accessCardLabelActive]}>
-                                {choice.label}
-                              </Text>
+                              {/* Selection is carried by the card's border and its
+                                  checkbox — nothing happens to the label. */}
+                              <Text style={styles.accessCardLabel}>{choice.label}</Text>
                               <Text style={styles.accessCardDesc}>{choice.description}</Text>
                             </View>
-                            {active ? (
-                              <CircleCheck size={20} color={ACCENT} strokeWidth={2.2} />
-                            ) : (
-                              <View style={styles.checkboxEmpty} />
-                            )}
+                            <Checkbox checked={active} />
                           </Pressable>
 
                           {active ? (
@@ -277,13 +239,14 @@ export function ListingAccessScreen({ navigation, route }: Props) {
                   </View>
                 </View>
               ) : null}
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
       {!keyboardVisible && (
         <FlowFooter
+        current={5}
+        total={9}
           onBack={() => (fromReview ? navigation.navigate("ListingReview") : navigation.goBack())}
           primaryLabel={fromReview ? "Save changes" : "Continue"}
           onPrimary={() => navigation.navigate(fromReview ? "ListingReview" : "ListingAvailability")}
@@ -298,92 +261,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: hostFlowColors.bg },
 
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: 24,
+    paddingTop: 28,
     gap: 14,
   },
 
-  // ── Header card ──────────────────────────────────────────────
-  headerCard: {
-    backgroundColor: hostFlowColors.cardBg,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  headerCardTop: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 14,
-  },
-  headerKicker: {
-    color: ACCENT,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 10,
-    letterSpacing: 1.4,
-    marginBottom: 2,
-    textTransform: "uppercase",
-  },
-  headerTitle: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 18,
-    letterSpacing: -0.5,
-    lineHeight: 24,
-  },
+  /** The step's own stack. No inset of its own — the gutter is the content's. */
+  body: { gap: 14 },
 
-  // ── Card ─────────────────────────────────────────────────────
-  card: {
-    backgroundColor: hostFlowColors.cardBg,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  cardHeader: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 15,
-    letterSpacing: -0.3,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: hostFlowColors.border,
-  },
-  cardBody: {
-    padding: 16,
-  },
-
-  // ── Access ───────────────────────────────────────────────────
-  accessQuestion: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 14,
-    letterSpacing: -0.1,
-  },
   accessTypeStack: {
     gap: 10,
     marginBottom: 16,
-  },
-  accessTypeCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    backgroundColor: hostFlowColors.bg,
-  },
-  accessTypeCardActive: {
-    borderColor: ACCENT,
-    backgroundColor: hostFlowColors.accentSoft,
   },
   accessTypeIconWrap: {
     width: 40,
@@ -391,65 +279,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: hostFlowColors.accentSoft,
     flexShrink: 0,
   },
   accessTypeIconWrapActive: {
-    backgroundColor: hostFlowColors.accentSoftBorder,
-  },
-  accessTypeText: {
-    flex: 1,
-  },
-  accessTypeLabel: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 15,
-    letterSpacing: -0.2,
-    lineHeight: 20,
-  },
-  accessTypeLabelActive: {
-    color: ACCENT,
-  },
-  accessTypeDesc: {
-    color: SOFT,
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 2,
+    borderWidth: 2,
+    borderColor: hostFlowColors.text,
+    backgroundColor: hostFlowColors.cardBgMuted,
   },
 
-  // Compact confirmed-choice row (Open/Restricted or the picked method).
-  summaryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderWidth: 1,
-    borderColor: ACCENT,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: hostFlowColors.accentSoft,
-  },
-  summaryLabel: {
-    flex: 1,
-    color: FG,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 15,
-    letterSpacing: -0.2,
-  },
-  changeText: {
-    color: ACCENT,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 13,
-  },
-  // Empty circle = unchecked multi-select affordance (Key/Pin/instructions).
-  checkboxEmpty: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: hostFlowColors.borderStrong,
-  },
   methodBlock: {
     marginTop: 14,
   },
@@ -474,21 +311,23 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: hostFlowColors.bg,
   },
+  // Border weight alone, no fill — 16a never washes a selected option.
   accessCardActive: {
-    borderColor: ACCENT,
-    backgroundColor: hostFlowColors.accentSoft,
+    borderWidth: 2,
+    borderColor: hostFlowColors.text,
+    paddingHorizontal: 13,
+    paddingVertical: 13,
   },
+  // A plain glyph, not a boxed one: 16a puts no frame around its icons.
   accessCardIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: hostFlowColors.accentSoft,
     flexShrink: 0,
   },
   accessCardIconActive: {
-    backgroundColor: hostFlowColors.accentSoftBorder,
+    backgroundColor: hostFlowColors.cardBgMuted,
   },
   accessCardText: {
     flex: 1,
@@ -500,9 +339,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     lineHeight: 20,
   },
-  accessCardLabelActive: {
-    color: ACCENT,
-  },
   accessCardDesc: {
     color: SOFT,
     fontFamily: "PlusJakartaSans-Regular",
@@ -512,9 +348,7 @@ const styles = StyleSheet.create({
   },
 
   inlineDetailBox: {
-    backgroundColor: hostFlowColors.accentSoft,
-    borderWidth: 1,
-    borderColor: hostFlowColors.accentSoftBorder,
+    backgroundColor: hostFlowColors.cardBgMuted,
     borderRadius: 12,
     padding: 14,
     marginTop: 8,
@@ -546,32 +380,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 10,
-  },
-
-  // ── Tips card ────────────────────────────────────────────────
-  tipsCard: {
-    backgroundColor: hostFlowColors.accentSoft,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.accentSoftBorder,
-    padding: 16,
-  },
-  tipsRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 6,
-  },
-  tipsTitle: {
-    color: ACCENT,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 13,
-    letterSpacing: -0.1,
-  },
-  tipsBody: {
-    color: MUTED,
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 13,
-    lineHeight: 19,
   },
 });

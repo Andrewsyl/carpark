@@ -18,6 +18,7 @@ import { getListingImageUploadUrl } from "../../api";
 import { useAuth } from "../../auth";
 import { useListingFlow } from "./context";
 import { FlowHeader } from "./FlowHeader";
+import { StepQuestion, StepSection } from "./StepQuestion";
 import { FlowFooter } from "./FlowFooter";
 import { hostFlowColors } from "./hostFlowTheme";
 import { colors } from "../../styles/theme";
@@ -39,13 +40,7 @@ type Props = NativeStackScreenProps<FlowStackParamList, "ListingPhotos">;
 const ACCENT = hostFlowColors.accent;
 const FG = hostFlowColors.text;
 const MUTED = hostFlowColors.textMuted;
-const CARD_SHADOW = {
-  shadowColor: "#2d1a0e",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.09,
-  shadowRadius: 12,
-  elevation: 4,
-} as const;
+// No card shadow: the system separates with a rule and white space.
 
 const MAX_PHOTO_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
@@ -68,8 +63,6 @@ function uploadToS3(uploadUrl: string, formData: FormData): Promise<{ ok: boolea
     xhr.send(formData);
   });
 }
-
-type PhotoItem = { uri: string; kind: "street-view" | "uploaded" };
 
 export function ListingPhotosScreen({ navigation, route }: Props) {
   const { draft, setDraft } = useListingFlow();
@@ -273,23 +266,21 @@ export function ListingPhotosScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      <FlowHeader current={7} total={9} onClose={exitFlow} />
+      <FlowHeader current={7} onClose={exitFlow} />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: 104 + Math.max(insets.bottom, 0) }]}
         showsVerticalScrollIndicator={false}
         scrollEnabled={draggingIndex === null}
       >
         {/* Header card */}
-        <View style={styles.headerCard}>
-          <View style={styles.headerCardTop}>
-            <Text style={styles.headerKicker}>Step 7 · Photos</Text>
-            <Text style={styles.headerTitle}>Show off your space</Text>
-          </View>
-        </View>
+        <StepQuestion
+            title={"Show off your space"}
+          hint={"The first photo is your cover — drag to reorder."}
+/>
 
         {/* Photos card */}
-        <View style={styles.card}>
-          <Text style={styles.cardHeader}>Your photos</Text>
+        <View style={styles.section}>
+          <StepSection title="Your photos" />
           <View style={styles.cardBody}>
             {uploadError ? <Text style={styles.errorText}>{uploadError}</Text> : null}
 
@@ -398,6 +389,8 @@ export function ListingPhotosScreen({ navigation, route }: Props) {
       </ScrollView>
 
       <FlowFooter
+        current={7}
+        total={9}
         onBack={() => (fromReview ? navigation.navigate("ListingReview") : navigation.goBack())}
         primaryLabel={fromReview ? "Save changes" : hasPhoto ? "Continue" : "Skip for now"}
         onPrimary={() => navigation.navigate(fromReview ? "ListingReview" : "ListingPrice")}
@@ -410,64 +403,18 @@ export function ListingPhotosScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: hostFlowColors.bg },
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: 24,
+    paddingTop: 28,
     gap: 14,
   },
 
   // ── Header card (matches location screen style) ──────────────
-  headerCard: {
-    backgroundColor: hostFlowColors.cardBg,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  headerCardTop: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 14,
-  },
-  headerKicker: {
-    color: ACCENT,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 10,
-    letterSpacing: 1.4,
-    marginBottom: 2,
-    textTransform: "uppercase",
-  },
-  headerTitle: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 18,
-    letterSpacing: -0.5,
-    lineHeight: 24,
-  },
 
   // ── Photos card ──────────────────────────────────────────────
-  card: {
-    backgroundColor: hostFlowColors.cardBg,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  cardHeader: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 15,
-    letterSpacing: -0.3,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: hostFlowColors.border,
-  },
-  cardBody: {
-    padding: 16,
-  },
+  section: { paddingTop: 14 },
+  // No inset of its own: the 24px gutter belongs to the step's content
+  // container, and a second padding here pushed photos off that shared edge.
+  cardBody: {},
   errorText: {
     color: colors.danger,
     fontSize: 12,
@@ -539,7 +486,7 @@ const styles = StyleSheet.create({
     borderColor: ACCENT,
   },
   photoCardLifted: {
-    shadowColor: "#000000",
+    shadowColor: colors.viewerBackdrop,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -621,29 +568,4 @@ const styles = StyleSheet.create({
   },
 
   // ── Tips card ────────────────────────────────────────────────
-  tipsCard: {
-    backgroundColor: hostFlowColors.accentSoft,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.accentSoftBorder,
-    padding: 16,
-  },
-  tipsRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 6,
-  },
-  tipsTitle: {
-    color: ACCENT,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 13,
-    letterSpacing: -0.1,
-  },
-  tipsBody: {
-    color: MUTED,
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 13,
-    lineHeight: 19,
-  },
 });

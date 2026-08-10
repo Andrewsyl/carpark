@@ -30,6 +30,7 @@ import type { RootStackParamList } from "../../types";
 import { useListingFlow } from "./context";
 import { generateListingDescription } from "./generateDescription";
 import { FlowHeader } from "./FlowHeader";
+import { StepSection } from "./StepQuestion";
 import { colors, spacing } from "../../styles/theme";
 import { hostFlowColors } from "./hostFlowTheme";
 import { clearHostListingDraft, saveHostListingDraft } from "./draftStorage";
@@ -429,7 +430,7 @@ export function ListingReviewScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      <FlowHeader current={9} total={9} onClose={exitFlow} />
+      <FlowHeader current={9} onClose={exitFlow} />
 
       <KeyboardAvoidingView
         style={styles.kav}
@@ -488,7 +489,7 @@ export function ListingReviewScreen({ navigation }: Props) {
         {/* ── Description (reviewable text, lightweight edit) ── */}
         <View style={styles.descCard}>
           <View style={styles.descHeaderRow}>
-            <Text style={styles.cardHeader}>Title &amp; description</Text>
+            <StepSection title="Title &amp; description" />
             <Pressable onPress={() => setEditingDescription((v) => !v)} hitSlop={10}>
               <Text style={styles.editLink}>{editingDescription ? "Done" : "Edit"}</Text>
             </Pressable>
@@ -525,9 +526,9 @@ export function ListingReviewScreen({ navigation }: Props) {
         </View>
 
         {/* ── Review & edit (only what isn't already shown above) ── */}
-        <View style={styles.card}>
+        <View style={styles.section}>
           <View style={styles.reviewHeaderRow}>
-            <Text style={styles.cardHeader}>Review &amp; edit</Text>
+            <StepSection title="Review &amp; edit" />
             <Text style={styles.reviewHeaderHint}>Tap to change</Text>
           </View>
           <DetailRow
@@ -628,8 +629,8 @@ export function ListingReviewScreen({ navigation }: Props) {
         />
         {/* Only offered when the host genuinely can't publish yet (missing fields
             or unverified email) — for a completable listing it was a standing
-            invitation to defer at the moment of commitment. The header X still
-            offers save-and-leave at any time. */}
+            invitation to defer at the moment of commitment. The header's
+            "Save & exit" still offers save-and-leave at any time. */}
         {!listingId && (!canPublish || user?.emailVerified === false) ? (
           <Pressable
             style={styles.saveLaterBtn}
@@ -738,19 +739,13 @@ function DetailRow({
 
 // ── Styles ─────────────────────────────────────────────────────────────────
 
-const CARD_SHADOW = {
-  shadowColor: "#2d1a0e",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.09,
-  shadowRadius: 12,
-  elevation: 4,
-};
+// No card shadow: the system separates with a rule and white space.
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: hostFlowColors.bg },
   kav: { flex: 1 },
 
-  scroll: { paddingTop: 4, paddingHorizontal: 16, gap: 14 },
+  scroll: { paddingTop: 28, paddingHorizontal: 24, gap: 14 },
 
   // ── Page header ──────────────────────────────────────────────
   pageHeader: { paddingTop: 10, paddingBottom: 2 },
@@ -778,7 +773,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: hostFlowColors.border,
     overflow: "hidden",
-    ...CARD_SHADOW,
     shadowOpacity: 0.12,
     shadowRadius: 16,
   },
@@ -846,20 +840,7 @@ const styles = StyleSheet.create({
   },
 
   // ── Cards ────────────────────────────────────────────────────
-  card: {
-    backgroundColor: CARD,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  cardHeader: {
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 15,
-    color: FG,
-    letterSpacing: -0.3,
-  },
+  section: { paddingTop: 24 },
 
   // ── Description (lighter than the surrounding cards) ─────────
   descCard: {
@@ -952,7 +933,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: hostFlowColors.accentSoft,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -1061,8 +1041,9 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   permissionCardActive: {
-    borderColor: ACCENT,
-    backgroundColor: hostFlowColors.accentSoft,
+    borderWidth: 2,
+    borderColor: hostFlowColors.text,
+    backgroundColor: hostFlowColors.cardBgMuted,
   },
   checkbox: {
     width: 24,
@@ -1076,8 +1057,9 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   checkboxActive: {
-    backgroundColor: ACCENT,
-    borderColor: ACCENT,
+    borderWidth: 2,
+    borderColor: hostFlowColors.text,
+    backgroundColor: hostFlowColors.cardBgMuted,
   },
   permissionText: { flex: 1 },
   permissionTitle: {
@@ -1141,7 +1123,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingVertical: 24,
     width: 240,
-    ...CARD_SHADOW,
   },
   successAnimation: { height: 130, width: 130 },
   successTitle: {

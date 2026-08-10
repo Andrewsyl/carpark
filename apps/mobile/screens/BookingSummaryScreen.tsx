@@ -46,7 +46,7 @@ import { useGlobalLoading } from "../components/GlobalLoading";
 import { useToastOnMessage } from "../components/GlobalToast";
 import { PaymentBrandMark, platformWallet } from "../components/PaymentBrandMark";
 import { VehicleBrandLogo } from "../components/VehicleBrandLogo";
-import { Button, Masthead, Section, SkeletonBlock, Tile, usePulse } from "../components/ui";
+import { Button, SkeletonBlock, usePulse } from "../components/ui";
 import { colors, radius } from "../styles/theme";
 import { isMobileE2EActive } from "../e2e/testMode";
 import { trackEvent } from "../analytics";
@@ -57,7 +57,7 @@ import {
   calculateMonthlyTotal,
   formatPriceValue,
 } from "../utils/pricing";
-import { fallbackRoutes, goBackOrFallback } from "../navigation/safeNavigation";
+import { fallbackRoutes, goBackOrFallback, resetToSafeRoute } from "../navigation/safeNavigation";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingSummary">;
 
@@ -742,7 +742,22 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
   // PROTOTYPE (12a): the review layout, rendered by this screen so Pay is the
   // same button it always was — `handlePayment`, unchanged. Nothing about the
   // charge moves; only what sits above it.
-  if (route.params?.review && listing) {
+  /**
+   * The review layout is the confirm page — not an alternative to it.
+   *
+   * It used to sit behind a `review` param that only the listing passed, so a
+   * driver who signed in mid-flow, or came back from the vehicle screen, got
+   * the old summary instead: one booking, two visual identities. Rendering it
+   * whenever there is a listing to review removes that entirely.
+   *
+   * Payment recovery renders here too, as a notice above the booking. It used
+   * to fall through to the old summary, which meant a driver whose payment
+   * failed saw a different design at the worst possible moment.
+   *
+   * What remains below handles only what this body cannot be: still loading,
+   * signed out, or no listing at all. Those are states, not a second design.
+   */
+  if (listing && !loadingListing && user) {
     return (
       <BookingReviewBody
         onClose={() => goBackOrFallback(navigation, fallbackRoutes.search)}
@@ -758,6 +773,40 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
         startAt={startAt}
         endAt={endAt}
         priceSummary={priceSummary}
+        notice={
+          paymentFailureMessage
+            ? {
+                message: paymentFailureMessage,
+                actionLabel:
+                  paymentRecoveryAction === "bookings"
+                    ? "Open my bookings"
+                    : paymentRecoveryAction === "time"
+                      ? "Pick another time"
+                      : paymentRecoveryAction === "retry"
+                        ? "Try again"
+                        : undefined,
+                onAction:
+                  paymentRecoveryAction === "bookings"
+                    ? () => resetToSafeRoute(navigation, fallbackRoutes.bookings)
+                    : paymentRecoveryAction === "time"
+                      ? () => openPicker("start")
+                      : paymentRecoveryAction === "retry"
+                        ? () => {
+                            clearPaymentRecovery();
+                            void handlePayment();
+                          }
+                        : undefined,
+              }
+            : null
+        }
+        promo={{
+          code: appliedPromo?.code ?? null,
+          input: promoInput,
+          onInput: setPromoInput,
+          onApply: () => void applyPromo(),
+          busy: promoBusy,
+          error: promoError,
+        }}
         vehicleMake={vehicleMake}
         vehicleLine={vehicleLine}
         vehiclePlate={vehiclePlate}
@@ -809,403 +858,12 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
               <Button variant="secondary" style={styles.authButton} onPress={() => navigation.navigate("Auth", { screen: "Register", params: { returnTo: { screen: "BookingSummary" as const, params: route.params } } })} title="Create account" />
             </View>
           </View>
-        ) : listing ? (
-          <ScrollView
-            // Ground-coloured so the bottom spacer continues the tint rather
-            // than exposing the container's white between the last card and
-            // the dock.
-            style={styles.scrollBody}
-            contentContainerStyle={{ paddingBottom: footerSpacer }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <Masthead
-              variant="step"
-              title="Your booking"
-              onBack={() => goBackOrFallback(navigation, fallbackRoutes.search)}
-            />
-
-            {/* Where you're parking sits directly under the title — it's the
-                thing being booked, so it reads before the details of it.
-                Deliberately not a <FactRow>: this block carries three lines
-                (name, street, and what's withheld until booking) because the
-                header doesn't hold the address. A fact row is one line. */}
-            <View style={styles.sheetBlock}>
-              <View style={styles.subjectRow}>
-                <View style={styles.subjectIcon}>
-                  <MapPin size={18} color={MUTED} strokeWidth={1.9} />
-                </View>
-                <View style={styles.subjectCopy}>
-                  <Text style={styles.spaceName}>{listing.title || "Parking space"}</Text>
-                  {addressLine ? (
-                    <Text style={styles.spaceAddress}>{addressLine}</Text>
-                  ) : null}
-                  <Text style={styles.factMeta}>Exact address and gate code sent on booking</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* ── Ground: titled sections from here down ── */}
-            <View style={styles.ground}>
-              <Section title="When" />
-
-              {/* Arriving / leaving read as two editable fields side by side —
-                  the pair is what people re-check before paying, so each gets
-                  its own tap target instead of one combined date line. Monthly
-                  has no leaving time to show, so it keeps the single row. */}
-              {isMonthly ? (
-                <View style={styles.monthlyCard}>
-                  <Clock size={18} color={MUTED} strokeWidth={1.9} />
-                  <View style={styles.subjectCopy}>
-                    <Text style={styles.factTitle}>{whenLine}</Text>
-                    <Text style={styles.factMeta}>1 month · reserved instantly</Text>
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.whenCard}>
-                  <View style={styles.whenCols}>
-                    <Pressable style={styles.whenCol} onPress={() => openPicker("start")}>
-                      {/* Filled dot for arrival, hollow for departure — the pair
-                          reads as a journey between two points, matching the
-                          listing screen's picker. */}
-                      <View style={styles.whenLabelRow}>
-                        <View style={styles.whenDotFilled} />
-                        <Text style={styles.whenLabel}>ARRIVING</Text>
-                      </View>
-                      <View style={styles.whenValueRow}>
-                        <Text style={styles.whenTime}>{formatTimeLabel(start)}</Text>
-                        <ChevronDown size={14} color={SUBTLE} strokeWidth={2.6} />
-                      </View>
-                      <Text style={styles.whenDay}>{formatDateLabel(start)}</Text>
-                    </Pressable>
-                    <View style={styles.whenColDivider} />
-                    <Pressable style={styles.whenCol} onPress={() => openPicker("end")}>
-                      <View style={styles.whenLabelRow}>
-                        <View style={styles.whenDotHollow} />
-                        <Text style={styles.whenLabel}>LEAVING</Text>
-                      </View>
-                      <View style={styles.whenValueRow}>
-                        <Text style={styles.whenTime}>{formatTimeLabel(end)}</Text>
-                        <ChevronDown size={14} color={SUBTLE} strokeWidth={2.6} />
-                      </View>
-                      <Text style={styles.whenDay}>{formatDateLabel(end)}</Text>
-                    </Pressable>
-                  </View>
-                  <View style={styles.whenFooter}>
-                    <Clock size={15} color={MUTED} strokeWidth={1.9} />
-                    <Text style={styles.whenDuration}>{priceSummary?.durationLabel ?? ""}</Text>
-                    <Text style={styles.whenInstant}>Reserved instantly</Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Section title carries the action, so the card below holds only
-                  the vehicle itself. */}
-              <Section
-                title="Vehicle"
-                actionLabel={vehicleMake ? "Change" : "Add"}
-                onAction={() => navigation.navigate("VehicleType", { returnTo: "BookingSummary" })}
-              />
-
-              <View style={styles.vehicleCard}>
-                {/* One line: the car is a single fact, so make, body style and
-                    colour run together rather than stacking a title over a meta
-                    row. The plate underneath is what carries the weight. */}
-                <Pressable
-                  style={styles.vehicleRow}
-                  onPress={() => navigation.navigate("VehicleType", { returnTo: "BookingSummary" })}
-                >
-                  {vehicleMake ? (
-                    <VehicleBrandLogo make={vehicleMake} size={26} />
-                  ) : (
-                    <CarFront size={22} color={MUTED} strokeWidth={1.9} />
-                  )}
-                  <Text style={styles.vehicleName} numberOfLines={1}>
-                    {vehicleLine || "Add your vehicle"}
-                  </Text>
-                </Pressable>
-
-                {/* The plate is the one detail a host checks at the barrier, so
-                    it renders as a real Irish plate rather than another text
-                    row. Tapping it jumps straight to the plate field, not the
-                    top of the vehicle form. */}
-                <Pressable
-                  style={styles.plate}
-                  onPress={() =>
-                    navigation.navigate("VehicleType", { returnTo: "BookingSummary", focusField: "plate" })
-                  }
-                >
-                  <View style={styles.plateEuBadge}>
-                    <Text style={styles.plateEuText}>IRL</Text>
-                  </View>
-                  <View style={styles.plateBody}>
-                    <Text style={[styles.plateNumber, !hasVehiclePlate && styles.platePlaceholder]}>
-                      {hasVehiclePlate ? vehiclePlate.toUpperCase() : "Enter reg plate"}
-                    </Text>
-                  </View>
-                </Pressable>
-              </View>
-
-              {requiresVehicleDetails ? (
-                <Text style={styles.regHint}>Add your vehicle details to continue.</Text>
-              ) : null}
-
-              {selectedTimeUnavailable ? (
-                <Pressable
-                  style={styles.noticeCard}
-                  onPress={isMonthly ? () => goBackOrFallback(navigation, fallbackRoutes.search) : () => openPicker("start")}
-                >
-                  <CircleX size={16} color={colors.danger} strokeWidth={2.2} />
-                  <View style={styles.noticeCopy}>
-                    <Text style={styles.noticeTitle}>
-                      {isMonthly ? "Fully booked that month" : "This time is unavailable"}
-                    </Text>
-                    <Text style={styles.noticeBody}>
-                      {isMonthly ? "Pick another start date to continue." : "Choose another arrival time to continue."}
-                    </Text>
-                  </View>
-                </Pressable>
-              ) : null}
-
-              {paymentFailureMessage ? (
-                <View style={styles.recoveryCard}>
-                  <View style={styles.recoveryIconWrap}>
-                    <Info size={18} color={GREEN} strokeWidth={2.2} />
-                  </View>
-                  <View style={styles.recoveryCopy}>
-                    <Text style={styles.recoveryTitle}>
-                      {paymentRecoveryAction === "bookings"
-                        ? "Check booking status"
-                        : paymentRecoveryAction === "time"
-                          ? "Choose another time"
-                          : "Payment needs attention"}
-                    </Text>
-                    <Text style={styles.recoveryBody}>{paymentFailureMessage}</Text>
-                    <Pressable
-                      style={styles.recoveryButton}
-                      disabled={bookingBusy}
-                      onPress={
-                        paymentRecoveryAction === "bookings"
-                          ? goToBookings
-                          : paymentRecoveryAction === "time"
-                            ? () => openPicker("start")
-                            : handlePayment
-                      }
-                    >
-                      <Text style={styles.recoveryButtonText}>
-                        {paymentRecoveryAction === "bookings"
-                          ? "Open My bookings"
-                          : paymentRecoveryAction === "time"
-                            ? "Change time"
-                            : "Try payment again"}
-                      </Text>
-                    </Pressable>
-                  </View>
-                </View>
-              ) : null}
-
-              {/* ── Payment details ── */}
-              <Section title="Payment details" />
-              <Tile rows>
-                <View style={styles.priceRow}>
-                  <Text style={styles.priceLabel}>
-                    {`Parking · ${isMonthly ? "1 month" : priceSummary?.durationLabel ?? ""}`}
-                  </Text>
-                  <Text style={styles.priceValueStrong}>
-                    €{formatPriceValue(priceSummary?.grossTotal ?? 0)}
-                  </Text>
-                </View>
-
-                <Pressable
-                  style={styles.priceRow}
-                  accessibilityRole="button"
-                  accessibilityLabel="Show service fee details"
-                  onPress={() => setShowServiceFeeInfo((current) => !current)}
-                >
-                  <Text style={styles.priceLabel}>Service fee</Text>
-                  <Text style={styles.priceValueStrong}>Included</Text>
-                </Pressable>
-                {showServiceFeeInfo ? (
-                  <Text style={styles.serviceFeeInfoText}>
-                    {`Service fee included in total: €${pricing.serviceFee.toFixed(2)}. This helps cover secure payments, support, and platform operations.`}
-                  </Text>
-                ) : null}
-
-                {!isMonthly ? (
-                  appliedPromo ? (
-                    <View style={styles.priceRow}>
-                      <Text style={styles.priceLabel} numberOfLines={1}>
-                        {`${appliedPromo.code} · ${
-                          appliedPromo.discountType === "percent"
-                            ? `${appliedPromo.discountValue}% off`
-                            : `€${(appliedPromo.discountValue / 100).toFixed(2)} off`
-                        }`}
-                      </Text>
-                      <View style={styles.promoAppliedEnd}>
-                        <Text style={styles.priceValueGreen}>
-                          −€{(pricing.discountCents / 100).toFixed(2)}
-                        </Text>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="Remove promo code"
-                          hitSlop={8}
-                          onPress={() => {
-                            setAppliedPromo(null);
-                            setPromoError(null);
-                            setPromoExpanded(false);
-                          }}
-                        >
-                          <CircleX size={15} color={SUBTLE} strokeWidth={2.1} />
-                        </Pressable>
-                      </View>
-                    </View>
-                  ) : promoExpanded ? (
-                    <View style={styles.promoInputRow}>
-                      <TextInput
-                        style={styles.promoInput}
-                        value={promoInput}
-                        onChangeText={(value) => {
-                          setPromoInput(value);
-                          if (promoError) setPromoError(null);
-                        }}
-                        placeholder="Promo code"
-                        placeholderTextColor={SUBTLE}
-                        autoCapitalize="characters"
-                        autoCorrect={false}
-                        autoFocus
-                        returnKeyType="done"
-                        onSubmitEditing={() => void applyPromo()}
-                        editable={!promoBusy}
-                      />
-                      <Pressable
-                        accessibilityRole="button"
-                        style={[
-                          styles.promoApplyBtn,
-                          (!promoInput.trim() || promoBusy) && styles.promoApplyBtnDisabled,
-                        ]}
-                        disabled={!promoInput.trim() || promoBusy}
-                        onPress={() => void applyPromo()}
-                      >
-                        <Text style={styles.promoApplyText}>{promoBusy ? "…" : "Apply"}</Text>
-                      </Pressable>
-                    </View>
-                  ) : (
-                    <Pressable
-                      style={styles.priceRow}
-                      accessibilityRole="button"
-                      onPress={() => setPromoExpanded(true)}
-                    >
-                      <Text style={styles.priceLabel}>Promo code</Text>
-                      <Text style={styles.priceValueGreen}>Add</Text>
-                    </Pressable>
-                  )
-                ) : null}
-                {!isMonthly && promoError ? (
-                  <Text style={styles.promoErrorText}>{promoError}</Text>
-                ) : null}
-
-                <View style={styles.tileHairline} />
-                <View style={styles.priceRow}>
-                  <Text style={styles.totalLabel}>Total</Text>
-                  {/* Ink, not green: green on the total competes with the CTA
-                      and reads as a discount. */}
-                  <Text style={styles.totalValue}>€{pricing.finalPrice.toFixed(2)}</Text>
-                </View>
-              </Tile>
-
-              {/* ── Pay with ── */}
-              <Section title="Pay with" />
-              {/* Stripe's Payment Sheet owns method entry and the saved-card
-                  list, so there is nothing to list here yet — one row that opens
-                  it, rather than a fake selected-card state. */}
-              <View style={styles.tileFlush}>
-                <Pressable
-                  style={styles.methodRow}
-                  accessibilityRole="button"
-                  disabled={bookingBusy || bookingConfirmed}
-                  onPress={handlePayment}
-                >
-                  <View style={styles.methodTile}>
-                    <Plus size={14} color={FG} strokeWidth={2.2} />
-                  </View>
-                  <Text style={styles.methodLabel}>Add a payment method</Text>
-                  <ChevronRight size={16} color={colors.textDisabled} strokeWidth={2.4} />
-                </Pressable>
-              </View>
-
-              {/* ── Trust + legal, straight on the ground ── */}
-              <View style={styles.trustBlock}>
-                <View style={styles.trustLine}>
-                  <ShieldCheck size={15} color={GREEN} strokeWidth={2.1} />
-                  <Text style={styles.trustText}>
-                    Payments handled by Stripe. Free cancellation up to 2 hours before arrival.
-                  </Text>
-                </View>
-                <Text style={styles.legalText}>
-                  By confirming you agree to the FreeSpace{" "}
-                  <Text style={styles.legalLink} onPress={() => navigation.navigate("Legal")}>
-                    terms and liability policy
-                  </Text>
-                  .
-                </Text>
-              </View>
-            </View>
-          </ScrollView>
         ) : (
           <View style={styles.centered}>
             <Text style={styles.muted}>Listing not found.</Text>
           </View>
         )}
       </KeyboardAvoidingView>
-
-      {listing && user ? (
-        <View
-          style={[styles.footerBar, { paddingBottom: 14 + insets.bottom }]}
-          onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
-        >
-          <Pressable
-            accessibilityRole="button"
-            // The amount is a separate Text for layout, so fold it into the
-            // accessible name — otherwise the button announces as "Confirm and
-            // pay" with no price attached.
-            accessibilityLabel={
-              selectedTimeUnavailable || confirmingBooking
-                ? ctaLabel
-                : `${ctaLabel} €${pricing.finalPrice.toFixed(2)}`
-            }
-            disabled={ctaDisabled}
-            onPress={
-              selectedTimeUnavailable
-                ? isMonthly
-                  ? () => goBackOrFallback(navigation, fallbackRoutes.search)
-                  : () => openPicker("start")
-                : handlePayment
-            }
-            style={({ pressed }) => [
-              styles.ctaBar,
-              ctaDisabled && styles.ctaBarDisabled,
-              pressed && !ctaDisabled && styles.ctaBarPressed,
-            ]}
-          >
-            {bookingBusy && !confirmingBooking ? (
-              <ActivityIndicator size="small" color={colors.textInverse} />
-            ) : (
-              <>
-                <Text style={styles.ctaLabel}>{ctaLabel}</Text>
-                {!selectedTimeUnavailable && !confirmingBooking ? (
-                  <Text style={styles.ctaAmount}>€{pricing.finalPrice.toFixed(2)}</Text>
-                ) : null}
-              </>
-            )}
-          </Pressable>
-          <View style={styles.footerMarks}>
-            {(["visa", "mastercard", platformWallet] as const).map((brand) => (
-              <PaymentBrandMark key={brand} brand={brand} height={22} />
-            ))}
-            <Text style={styles.footerStripeText}>Powered by Stripe</Text>
-          </View>
-        </View>
-      ) : null}
 
       <ModernTimePickerSheet
         visible={pickerVisible}
@@ -1242,7 +900,6 @@ const GROUND   = colors.ground;   // page tint + in-tile hairlines
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.appBg },
   flex: { flex: 1 },
-  scrollBody: { flex: 1, backgroundColor: GROUND },
 
   // ── Skeleton ─────────────────────────────────────────────────
   skeletonContent: { paddingHorizontal: 16, paddingTop: 13 },
@@ -1251,334 +908,44 @@ const styles = StyleSheet.create({
   // Back button sits inline with the title rather than stacked above it, so the
   // header costs one row instead of three.
   // White panel; the ground below does the separating.
-  sheetBlock: { backgroundColor: colors.appBg, paddingHorizontal: 16 },
 
   // ── Fact stack ───────────────────────────────────────────────
   // 2a: gap 12, 15 vertical padding, icon nudged 1 to sit on the first line.
   // flex-start rather than centre because this row stacks a name, an address
   // and a note — the icon aligns to the first line, not to the block.
-  subjectRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 15 },
-  subjectIcon: { flexShrink: 0, alignItems: "center", paddingTop: 1 },
-  subjectCopy: { flex: 1, minWidth: 0 },
   // The booking window is the fact people re-read most on this screen, so it
   // gets a step of its own above the rest of the stack.
-  factTitle: {
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 18, lineHeight: 23, letterSpacing: -0.4, color: FG,
-  },
   // The space's own name leads; the street sits under it in grey, the way the
   // confirm screen presents it.
-  spaceName: {
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 18, lineHeight: 23, letterSpacing: -0.4, color: FG,
-  },
-  spaceAddress: {
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 14, lineHeight: 19, color: MUTED, marginTop: 2,
-  },
   // 2a: 12px #7C8383, 2 under the line it qualifies.
-  factMeta: {
-    fontFamily: "PlusJakartaSans-Regular", fontSize: 12, color: SUBTLE, marginTop: 2,
-  },
 
   // ── When: arriving / leaving ─────────────────────────────────
   // Same edge and radius as `tile` (payment details) — every card on the ground
   // shares one border treatment.
-  whenCard: {
-    backgroundColor: colors.appBg,
-    borderWidth: 1, borderColor: EDGE, borderRadius: 8,
-    overflow: "hidden",
-    marginHorizontal: 16, marginBottom: 20,
-  },
-  monthlyCard: {
-    flexDirection: "row", alignItems: "flex-start", gap: 12,
-    backgroundColor: colors.appBg,
-    borderWidth: 1, borderColor: EDGE, borderRadius: 8,
-    marginHorizontal: 16, marginBottom: 20,
-    padding: 14,
-  },
-  whenCols: { flexDirection: "row", alignItems: "stretch" },
   // 2a: 14 / 16 / 15.
-  whenCol: { flex: 1, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 15 },
   // Inset top and bottom rather than full height, so the rule separates the two
   // fields without touching the card's own edges.
-  whenColDivider: { width: 1, backgroundColor: colors.divider, marginVertical: 16 },
   // 2a: 7px dots, filled for arrival and 1.5px-outlined for departure.
-  whenLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  whenDotFilled: { width: 7, height: 7, borderRadius: 4, backgroundColor: GREEN },
-  whenDotHollow: {
-    width: 7, height: 7, borderRadius: 4,
-    borderWidth: 1.5, borderColor: GREEN,
-  },
-  whenLabel: {
-    fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 11, letterSpacing: 0.8, textTransform: "uppercase", color: GREEN,
-  },
-  whenValueRow: { flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 6 },
   // 2a: 27/29, 800, -1.1.
-  whenTime: {
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 27, lineHeight: 29, letterSpacing: -1.1, color: FG,
-  },
-  whenDay: { fontFamily: "PlusJakartaSans-Regular", fontSize: 13, color: SUBTLE, marginTop: 3 },
-  whenFooter: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderTopWidth: 1, borderTopColor: colors.divider,
-    backgroundColor: colors.groundSoft,
-  },
-  whenDuration: { flex: 1, fontFamily: "PlusJakartaSans-Bold", fontSize: 13, color: FG },
-  whenInstant: { fontFamily: "PlusJakartaSans-Regular", fontSize: 13, color: SUBTLE },
-
-  // ── Vehicle ──────────────────────────────────────────────────
-  // 2a gives the vehicle tile radius 8 — a notch tighter than the 12 used by
-  // the section cards, so the plate inside it doesn't read as a card-in-a-card.
-  vehicleCard: {
-    backgroundColor: colors.appBg,
-    borderWidth: 1, borderColor: EDGE, borderRadius: 8,
-    marginHorizontal: 16, marginBottom: 20,
-    paddingHorizontal: 16, paddingTop: 14,
-  },
-  vehicleRow: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    paddingBottom: 12,
-  },
-  vehicleName: {
-    flex: 1, minWidth: 0,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 14, lineHeight: 19, color: FG,
-  },
-
-  // ── Irish number plate ───────────────────────────────────────
-  // #3D6FB6 is the EU plate band blue — a real-world constant rather than a
-  // brand colour, so it stays literal instead of moving into the theme.
-  plate: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    // 2a: 44 tall, 30 band, radius 6, 12 above.
-    marginTop: 12,
-    marginBottom: 14,
-    height: 44,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: "#3D6FB6",
-    overflow: "hidden",
-    backgroundColor: colors.cardBg,
-  },
-  plateEuBadge: {
-    width: 30,
-    backgroundColor: "#3D6FB6",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    paddingBottom: 4,
-  },
-  plateEuText: {
-    fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 9,
-    lineHeight: 11,
-    color: "#FFFFFF",
-    letterSpacing: 0.3,
-  },
-  plateBody: {
-    flex: 1,
-    paddingHorizontal: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // 2a renders 24/700 at 2px tracking. The design doc substitutes a monospace
-  // fallback because UKNumberPlate isn't available in a browser — here the real
-  // plate font is loaded, so it stays.
-  plateNumber: {
-    fontFamily: "UKNumberPlate",
-    fontSize: 26,
-    color: colors.text,
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    includeFontPadding: false,
-    textAlign: "center",
-  },
-  platePlaceholder: {
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 15,
-    lineHeight: 22,
-    color: SUBTLE,
-    letterSpacing: 0,
-    textTransform: "none",
-  },
 
   // ── Ground ───────────────────────────────────────────────────
   // Hairline where the white blocks meet the tint, matching the listing page —
   // without it the two surfaces fade into each other.
-  ground: {
-    backgroundColor: GROUND, paddingTop: 16,
-    borderTopWidth: 1, borderTopColor: EDGE,
-  },
-  regHint: {
-    fontFamily: "PlusJakartaSans-Regular", fontSize: 13, lineHeight: 19,
-    color: colors.warning,
-    paddingHorizontal: 16, paddingBottom: 14,
-  },
 
   // Tiles — sharper than the mock's 8: a 4px corner over a 1px `border` grey
   // reads crisp on the tint instead of soft.
-  tileFlush: {
-    backgroundColor: colors.appBg,
-    borderWidth: 1, borderColor: EDGE, borderRadius: 8,
-    marginHorizontal: 16, marginBottom: 16,
-    overflow: "hidden",
-  },
-  tileHairline: { height: 1, backgroundColor: GROUND, marginVertical: 6 },
 
   // ── Price rows ───────────────────────────────────────────────
-  priceRow: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "baseline",
-    gap: 12, paddingVertical: 6,
-  },
-  priceLabel: {
-    fontFamily: "PlusJakartaSans-Regular", fontSize: 13, color: MUTED, flexShrink: 1,
-  },
-  priceValueStrong: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 13, color: FG },
-  priceValueGreen: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 13, color: GREEN },
-  promoAppliedEnd: { flexDirection: "row", alignItems: "center", gap: 8 },
-  serviceFeeInfoText: {
-    fontFamily: "PlusJakartaSans-Regular", fontSize: 12, lineHeight: 17,
-    color: MUTED, paddingBottom: 6,
-  },
-  totalLabel: { fontFamily: "PlusJakartaSans-Bold", fontSize: 13, color: FG },
-  totalValue: {
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 20, letterSpacing: -0.5, color: FG,
-  },
 
   // ── Promo ────────────────────────────────────────────────────
-  promoInputRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6 },
-  promoInput: {
-    flex: 1,
-    borderRadius: 8,
-    borderWidth: 1, borderColor: EDGE,
-    backgroundColor: GROUND,
-    paddingHorizontal: 12, paddingVertical: 10,
-    fontFamily: "PlusJakartaSans-SemiBold", fontSize: 13, color: FG,
-  },
-  promoApplyBtn: {
-    borderRadius: 8, backgroundColor: FG,
-    minWidth: 68, alignItems: "center",
-    paddingHorizontal: 14, paddingVertical: 10,
-  },
-  promoApplyBtnDisabled: { opacity: 0.4 },
-  promoApplyText: {
-    fontFamily: "PlusJakartaSans-SemiBold", fontSize: 13, color: colors.textInverse,
-  },
-  promoErrorText: {
-    fontFamily: "PlusJakartaSans-SemiBold", fontSize: 12, color: colors.danger, paddingBottom: 6,
-  },
 
   // ── Pay with ─────────────────────────────────────────────────
-  methodRow: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    paddingHorizontal: 14, paddingVertical: 12,
-  },
-  methodTile: {
-    width: 34, height: 22, borderRadius: 3,
-    backgroundColor: GROUND,
-    alignItems: "center", justifyContent: "center", flexShrink: 0,
-  },
-  methodLabel: {
-    flex: 1, minWidth: 0,
-    fontFamily: "PlusJakartaSans-SemiBold", fontSize: 14, color: FG,
-  },
 
   // ── Notices ──────────────────────────────────────────────────
-  noticeCard: {
-    flexDirection: "row", alignItems: "flex-start", gap: 10,
-    marginHorizontal: 16, marginBottom: 16,
-    borderRadius: 8, borderWidth: 1,
-    borderColor: colors.status.canceled.border,
-    backgroundColor: colors.status.canceled.background,
-    padding: 12,
-  },
-  noticeCopy: { flex: 1, minWidth: 0 },
-  noticeTitle: {
-    fontFamily: "PlusJakartaSans-Bold", fontSize: 13, lineHeight: 18, color: colors.danger,
-  },
-  noticeBody: {
-    fontFamily: "PlusJakartaSans-Regular", fontSize: 13, lineHeight: 18,
-    color: MUTED, marginTop: 2,
-  },
-  recoveryCard: {
-    flexDirection: "row", alignItems: "flex-start", gap: 12,
-    marginHorizontal: 16, marginBottom: 16,
-    borderRadius: 8, borderWidth: 1,
-    borderColor: colors.accent,
-    backgroundColor: colors.accentSoft,
-    padding: 14,
-  },
-  recoveryIconWrap: {
-    width: 34, height: 34, borderRadius: 10,
-    backgroundColor: colors.cardBg,
-    alignItems: "center", justifyContent: "center", flexShrink: 0,
-  },
-  recoveryCopy: { flex: 1, minWidth: 0 },
-  recoveryTitle: {
-    fontFamily: "PlusJakartaSans-Bold", fontSize: 13, lineHeight: 18, color: FG, marginBottom: 3,
-  },
-  recoveryBody: {
-    fontFamily: "PlusJakartaSans-Regular", fontSize: 13, lineHeight: 18, color: MUTED,
-  },
-  recoveryButton: {
-    alignSelf: "flex-start", marginTop: 10,
-    borderRadius: radius.pill, backgroundColor: GREEN,
-    paddingHorizontal: 14, paddingVertical: 8,
-  },
-  recoveryButtonText: {
-    fontFamily: "PlusJakartaSans-SemiBold", fontSize: 13, color: colors.textInverse,
-  },
 
   // ── Trust + legal ────────────────────────────────────────────
-  trustBlock: { paddingHorizontal: 16, paddingBottom: 20 },
-  trustLine: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  trustText: {
-    flex: 1,
-    fontFamily: "PlusJakartaSans-Regular", fontSize: 12, lineHeight: 17, color: MUTED,
-  },
-  legalText: {
-    fontFamily: "PlusJakartaSans-Regular", fontSize: 11, lineHeight: 16,
-    color: SUBTLE, marginTop: 10,
-  },
-  legalLink: { fontFamily: "PlusJakartaSans-SemiBold", color: GREEN },
 
   // ── Sticky dock — the one elevated surface ───────────────────
-  footerBar: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    backgroundColor: colors.appBg,
-    borderTopWidth: 1, borderTopColor: colors.divider,
-    paddingHorizontal: 16, paddingTop: 10,
-    shadowColor: colors.shadow, shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.06, shadowRadius: 18, elevation: 12,
-  },
-  ctaBar: {
-    height: 50, borderRadius: 12,
-    backgroundColor: GREEN,
-    paddingHorizontal: 18,
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12,
-  },
-  ctaBarPressed: { backgroundColor: colors.brandDark },
-  ctaBarDisabled: { backgroundColor: colors.border },
-  ctaLabel: {
-    fontFamily: "PlusJakartaSans-Bold", fontSize: 15, letterSpacing: -0.2,
-    color: colors.textInverse,
-  },
-  ctaAmount: {
-    fontFamily: "PlusJakartaSans-ExtraBold", fontSize: 15, letterSpacing: -0.3,
-    color: colors.textInverse,
-  },
-  footerMarks: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, marginTop: 10,
-  },
-  footerStripeText: {
-    fontFamily: "PlusJakartaSans-Regular", fontSize: 11, color: SUBTLE,
-  },
 
   // ── Empty / auth states ─────────────────────────────────────
   centered: { alignItems: "center", flex: 1, justifyContent: "center", paddingHorizontal: 24 },

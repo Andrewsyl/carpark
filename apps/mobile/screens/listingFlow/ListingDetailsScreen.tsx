@@ -4,16 +4,22 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Building2,
-  CircleCheck,
   CircleParking,
   House,
   Minus,
   Plus,
   Signpost,
   Warehouse,
+  type LucideIcon,
 } from "lucide-react-native";
+import hatchbackArt from "../../assets/vehicles/hatchback.png";
+import saloonArt from "../../assets/vehicles/sedan.png";
+import suvArt from "../../assets/vehicles/suv.png";
+import vanArt from "../../assets/vehicles/van.png";
 import { useListingFlow } from "./context";
 import { FlowHeader } from "./FlowHeader";
+import { ChoiceGrid, ChoiceRow, ChoiceSummary, ChoiceTile } from "./ChoiceTile";
+import { StepQuestion, StepRule, StepSection } from "./StepQuestion";
 import { hostFlowColors } from "./hostFlowTheme";
 import { FlowFooter } from "./FlowFooter";
 
@@ -25,26 +31,23 @@ type FlowStackParamList = {
 
 type Props = NativeStackScreenProps<FlowStackParamList, "ListingDetails">;
 
-const ACCENT = hostFlowColors.accent;
 const FG = hostFlowColors.text;
 const MUTED = hostFlowColors.textMuted;
-const SOFT = hostFlowColors.textSoft;
-const CARD_SHADOW = {
-  shadowColor: "#2d1a0e",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.09,
-  shadowRadius: 12,
-  elevation: 4,
-} as const;
+// No card shadow: the system separates with a rule and white space.
 
 const spaceTypes = ["Private Driveway", "Garage", "Apartment / underground", "Car park", "Private road"];
+// Bundled, not hotlinked. These were fetched from img.icons8.com at render time,
+// which made a required step show four blank boxes whenever the host was offline
+// and put a third-party request on their device. Same artwork, shipped with the
+// app.
 const vehicleSizeOptions = [
-  { value: "small",  label: "Hatchback",  example: "Small & city cars",            image: "https://img.icons8.com/color/96/hatchback.png" },
-  { value: "medium", label: "Saloon",     example: "Saloons & family cars",        image: "https://img.icons8.com/color/96/sedan.png" },
-  { value: "large",  label: "SUV / Jeep", example: "SUVs, jeeps & 4x4s",          image: "https://img.icons8.com/color/96/suv.png" },
-  { value: "van",    label: "Van",        example: "Vans, minibuses & campervans", image: "https://img.icons8.com/color/96/van.png" },
+  { value: "small",  label: "Hatchback",  example: "Small & city cars",            image: hatchbackArt },
+  { value: "medium", label: "Saloon",     example: "Saloons & family cars",        image: saloonArt },
+  { value: "large",  label: "SUV / Jeep", example: "SUVs, jeeps & 4x4s",           image: suvArt },
+  { value: "van",    label: "Van",        example: "Vans, minibuses & campervans", image: vanArt },
 ];
 
+/** Which section of the step is open. Each one unlocks the next. */
 type DetailStep = "type" | "count" | "vehicle";
 
 const MIN_SPACE_COUNT = 1;
@@ -56,16 +59,14 @@ function parseSpaceCount(value: string) {
   return Math.min(parsed, MAX_SPACE_COUNT);
 }
 
-function SpaceTypeIcon({ type, active }: { type: string; active: boolean }) {
-  const color = active ? ACCENT : FG;
-  const size = 20;
-  const strokeWidth = 1.8;
+// The tile draws its own glyph at 24/1.7 in ink, so this only picks which one.
+function spaceTypeIcon(type: string): LucideIcon {
   switch (type) {
-    case "Private Driveway":        return <House size={size} color={color} strokeWidth={strokeWidth} />;
-    case "Garage":                  return <Warehouse size={size} color={color} strokeWidth={strokeWidth} />;
-    case "Apartment / underground": return <Building2 size={size} color={color} strokeWidth={strokeWidth} />;
-    case "Car park":                return <CircleParking size={size} color={color} strokeWidth={strokeWidth} />;
-    default:                        return <Signpost size={size} color={color} strokeWidth={strokeWidth} />;
+    case "Private Driveway":        return House;
+    case "Garage":                  return Warehouse;
+    case "Apartment / underground": return Building2;
+    case "Car park":                return CircleParking;
+    default:                        return Signpost;
   }
 }
 
@@ -73,6 +74,8 @@ export function ListingDetailsScreen({ navigation, route }: Props) {
   const { draft, setDraft } = useListingFlow();
   const fromReview = route.params?.fromReview ?? false;
   const insets = useSafeAreaInsets();
+  // Resuming a part-finished draft opens at the first unanswered question
+  // rather than back at the top.
   const [openStep, setOpenStep] = useState<DetailStep>(() => {
     if (!draft.spaceType) return "type";
     if (!draft.spaceCount) return "count";
@@ -86,12 +89,6 @@ export function ListingDetailsScreen({ navigation, route }: Props) {
   const canContinue = Boolean(draft.spaceType) && Boolean(draft.spaceCount) && Boolean(draft.vehicleSize);
   const confirmedSpaceCount = parseSpaceCount(draft.spaceCount);
   const hasConfirmedCount = confirmedSpaceCount !== null && confirmedSpaceCount > 0;
-
-  useEffect(() => {
-    if (!draft.spaceType) { setOpenStep("type"); return; }
-    if (!draft.spaceCount) { setOpenStep("count"); return; }
-    if (!draft.vehicleSize) { setOpenStep("vehicle"); return; }
-  }, [draft.spaceCount, draft.spaceType, draft.vehicleSize]);
 
   useEffect(() => {
     if (confirmedSpaceCount !== null && confirmedSpaceCount > 0) {
@@ -108,10 +105,18 @@ export function ListingDetailsScreen({ navigation, route }: Props) {
     setOpenStep(next > 0 ? "vehicle" : "count");
   };
 
-  const showTypeSection  = !draft.spaceType || openStep === "type";
-  const showTypeRow      = draft.spaceType && openStep !== "type";
-  const showCountSection = Boolean(draft.spaceType);
-  const showVehicleSection = draft.spaceType && hasConfirmedCount;
+  const chooseSpaceType = (type: string) => {
+    setDraft((prev) => ({ ...prev, spaceType: type }));
+    // Collapse to the summary row and hand the step to the next question. The
+    // host can reopen it from "Change".
+    setOpenStep(hasConfirmedCount ? "vehicle" : "count");
+  };
+
+  // The type grid is open until it is answered; after that it is a one-line
+  // summary the host can reopen. Count follows type, vehicle follows count.
+  const typeOpen = !draft.spaceType || openStep === "type";
+  const showCount = Boolean(draft.spaceType) && !typeOpen;
+  const showVehicle = showCount && hasConfirmedCount;
 
   const exitFlow = () => {
     const parent = navigation.getParent();
@@ -120,153 +125,116 @@ export function ListingDetailsScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      <FlowHeader current={3} total={9} onClose={exitFlow} />
+      <FlowHeader current={3} onClose={exitFlow} />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: 104 + Math.max(insets.bottom, 0) }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header card */}
-        <View style={styles.headerCard}>
-          <View style={styles.headerCardTop}>
-            <Text style={styles.headerKicker}>Step 3 · Space details</Text>
-            <Text style={styles.headerTitle}>Tell us about your space</Text>
-          </View>
-        </View>
+        {/* One question at a time. Answering a section collapses it to a
+            one-line summary and reveals the next, so the step never presents
+            three unanswered questions at once. Every answered section stays
+            reopenable from "Change" — disclosure hides what is settled, it
+            does not lock it. */}
+        <StepQuestion
+          title="Which of these best describes your space?"
+          hint="Pick the option that matches it most closely."
+        />
 
-        {/* ── Space type card ── */}
-        <View style={styles.card}>
-          <Text style={styles.cardHeader}>Space type</Text>
-          <View style={styles.cardBody}>
-            {showTypeSection && (
-              <>
-                <Text style={styles.cardPrompt}>Pick the option that best matches your space</Text>
-                <View style={styles.typeGrid}>
-                  {spaceTypes.map((type) => {
-                    const active = draft.spaceType === type;
-                    return (
-                      <Pressable
-                        key={type}
-                        style={[styles.typeCard, active && styles.typeCardActive]}
-                        onPress={() => {
-                          setDraft((prev) => ({
-                            ...prev,
-                            spaceType: type,
-                          }));
-                          setOpenStep("count");
-                        }}
-                      >
-                        <View style={styles.typeCardTop}>
-                          <View style={[styles.typeIconWrap, active && styles.typeIconWrapActive]}>
-                            <SpaceTypeIcon type={type} active={active} />
-                          </View>
-                          {active && (
-                            <CircleCheck size={18} color={ACCENT} strokeWidth={2.5} />
-                          )}
-                        </View>
-                        <Text style={[styles.typeLabel, active && styles.typeLabelActive]}>{type}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                {draft.spaceType === "Private road" ? (
-                  <Text style={styles.typeNote}>
-                    Only list a private road you own or have the owner's permission to rent.
-                  </Text>
-                ) : null}
-              </>
-            )}
-
-            {showTypeRow && (
-              <Pressable
-                style={styles.selectedTypeRow}
-                onPress={() => setOpenStep("type")}
-              >
-                <View style={[styles.typeIconWrap, styles.typeIconWrapActive]}>
-                  <SpaceTypeIcon type={draft.spaceType} active />
-                </View>
-                <Text style={styles.selectedTypeLabel}>{draft.spaceType}</Text>
-                <CircleCheck size={18} color={ACCENT} strokeWidth={2.5} />
-              </Pressable>
-            )}
-          </View>
-        </View>
-
-        {/* ── Space count card ── */}
-        {showCountSection && (
-          <View style={styles.card}>
-            <Text style={styles.cardHeader}>Number of spaces</Text>
-            <View style={styles.cardBody}>
-              <Text style={styles.cardPrompt}>
-                The number of individual spaces you're making available to rent.
+        {typeOpen ? (
+          <View style={styles.gridWrap}>
+            <ChoiceGrid>
+              {spaceTypes.map((type) => (
+                <ChoiceTile
+                  key={type}
+                  icon={spaceTypeIcon(type)}
+                  label={type}
+                  selected={draft.spaceType === type}
+                  onPress={() => chooseSpaceType(type)}
+                />
+              ))}
+            </ChoiceGrid>
+            {draft.spaceType === "Private road" ? (
+              <Text style={styles.typeNote}>
+                Only list a private road you own or have the owner&apos;s permission to rent.
               </Text>
-              <View style={styles.counterRow}>
+            ) : null}
+          </View>
+        ) : (
+          <View style={styles.summaryWrap}>
+            <ChoiceSummary
+              label={draft.spaceType}
+              onPress={() => setOpenStep("type")}
+              accessibilityLabel={`Space type: ${draft.spaceType}. Change`}
+            />
+          </View>
+        )}
+
+        {showCount ? (
+          <>
+            <StepRule />
+
+            <View style={styles.counterRowWrap}>
+              <View style={styles.counterCopy}>
+                <StepSection title="Spaces" hint="How many can be booked at once" />
+              </View>
+              <View style={styles.counterControls}>
                 <Pressable
-                  style={[styles.counterButton, spaceCountInput <= 0 && styles.counterButtonDisabled]}
+                  style={[styles.counterButton, spaceCountInput <= 1 && styles.counterButtonDisabled]}
                   onPress={() => adjustSpaceCount(-1)}
-                  disabled={spaceCountInput <= 0}
+                  disabled={spaceCountInput <= 1}
+                  accessibilityRole="button"
+                  accessibilityLabel="Fewer spaces"
                 >
-                  <Minus size={20} color={FG} strokeWidth={2.5} />
+                  <Minus size={16} color={MUTED} strokeWidth={2} />
                 </Pressable>
-                <View style={styles.counterValueBox}>
-                  <Text style={styles.counterValueText}>{spaceCountInput}</Text>
-                </View>
+                <Text style={styles.counterValueText}>{spaceCountInput}</Text>
                 <Pressable
-                  style={[styles.counterButton, spaceCountInput >= MAX_SPACE_COUNT && styles.counterButtonDisabled]}
+                  style={[
+                    styles.counterButton,
+                    styles.counterButtonActive,
+                    spaceCountInput >= MAX_SPACE_COUNT && styles.counterButtonDisabled,
+                  ]}
                   onPress={() => adjustSpaceCount(1)}
                   disabled={spaceCountInput >= MAX_SPACE_COUNT}
+                  accessibilityRole="button"
+                  accessibilityLabel="More spaces"
                 >
-                  <Plus size={20} color={FG} strokeWidth={2.5} />
+                  <Plus size={16} color={FG} strokeWidth={2} />
                 </Pressable>
               </View>
             </View>
-          </View>
-        )}
+          </>
+        ) : null}
 
-        {/* ── Vehicle fit card ── */}
-        {showVehicleSection && (
-          <View style={styles.card}>
-            <Text style={styles.cardHeader}>Vehicle fit</Text>
-            <View style={styles.cardBody}>
-              <Text style={styles.cardPrompt}>What's the largest vehicle that fits comfortably?</Text>
-              <View style={styles.vehicleList}>
-                {vehicleSizeOptions.map((option) => {
-                  const active = draft.vehicleSize === option.value;
-                  return (
-                    <Pressable
-                      key={option.value}
-                      style={[styles.vehicleCard, active && styles.vehicleCardActive]}
-                      onPress={() => {
-                        setDraft((prev) => ({ ...prev, vehicleSize: option.value }));
-                      }}
-                    >
-                      <View style={styles.vehicleTextWrap}>
-                        <Text style={[styles.vehicleTitle, active && styles.vehicleTitleActive]}>
-                          {option.label}
-                        </Text>
-                        <Text style={styles.vehicleExample}>{option.example}</Text>
-                      </View>
-                      <View style={styles.vehicleArtWrap}>
-                        <Image
-                          source={{ uri: option.image }}
-                          style={styles.vehicleArtImage}
-                          resizeMode="contain"
-                        />
-                      </View>
-                      {active && (
-                        <View style={styles.vehicleCheckBadge}>
-                          <CircleCheck size={18} color={ACCENT} strokeWidth={2.4} />
-                        </View>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </View>
+        {showVehicle ? (
+          <>
+            <StepRule />
+
+            <StepSection title="Largest vehicle that fits" />
+            <View style={styles.vehicleList}>
+              {vehicleSizeOptions.map((option) => (
+                <ChoiceRow
+                  key={option.value}
+                  title={option.label}
+                  hint={option.example}
+                  selected={draft.vehicleSize === option.value}
+                  onPress={() => setDraft((prev) => ({ ...prev, vehicleSize: option.value }))}
+                  trailing={
+                    <Image
+                      source={option.image}
+                      style={styles.vehicleArtImage}
+                      resizeMode="contain"
+                    />
+                  }
+                />
+              ))}
             </View>
-          </View>
-        )}
+          </>
+        ) : null}
       </ScrollView>
 
       <FlowFooter
+        current={3}
         onBack={() => (fromReview ? navigation.navigate("ListingReview") : navigation.goBack())}
         primaryLabel={fromReview ? "Save changes" : "Continue"}
         onPrimary={() => navigation.navigate(fromReview ? "ListingReview" : "ListingFeatures")}
@@ -277,272 +245,46 @@ export function ListingDetailsScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  // No inset of its own — the 24px gutter belongs to the step's content.
+  gridWrap: { paddingTop: 10 },
+  typeNote: {
+    fontFamily: "PlusJakartaSans-Regular",
+    fontSize: 15,
+    lineHeight: 21,
+    color: hostFlowColors.textMuted,
+    marginTop: 12,
+  },
+
+  counterRowWrap: { flexDirection: "row", alignItems: "center", gap: 16 },
+  counterCopy: { flex: 1, minWidth: 0 },
+  counterControls: {
+    flexDirection: "row", alignItems: "center", gap: 14,
+    flexShrink: 0, paddingRight: 24,
+  },
+  // 38px circles: outlined grey when it steps down, ink when it steps up.
+  counterButton: {
+    width: 38, height: 38, borderRadius: 999,
+    borderWidth: 1, borderColor: hostFlowColors.border,
+    alignItems: "center", justifyContent: "center",
+  },
+  counterButtonActive: { borderColor: hostFlowColors.text },
+  counterButtonDisabled: { opacity: 0.4 },
+  counterValueText: {
+    fontFamily: "PlusJakartaSans-SemiBold", fontSize: 17,
+    color: hostFlowColors.text, minWidth: 16, textAlign: "center",
+  },
+
+  vehicleList: { paddingTop: 8, gap: 12 },
+  vehicleArtImage: { width: 64, height: 40, flexShrink: 0 },
+  summaryWrap: { paddingTop: 10 },
+
   container: {
     backgroundColor: hostFlowColors.bg,
     flex: 1,
   },
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: 24,
+    paddingTop: 28,
     gap: 14,
-  },
-
-  // ── Header card (matches location screen style) ──────────────
-  headerCard: {
-    backgroundColor: hostFlowColors.cardBg,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  headerCardTop: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 14,
-  },
-  headerKicker: {
-    color: ACCENT,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 10,
-    letterSpacing: 1.4,
-    marginBottom: 2,
-    textTransform: "uppercase",
-  },
-  headerTitle: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 18,
-    letterSpacing: -0.5,
-    lineHeight: 24,
-  },
-
-  // ── Cards ────────────────────────────────────────────────────
-  card: {
-    backgroundColor: hostFlowColors.cardBg,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  cardHeader: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 15,
-    letterSpacing: -0.3,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: hostFlowColors.border,
-  },
-  cardBody: {
-    padding: 16,
-  },
-  cardPrompt: {
-    color: MUTED,
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 13,
-    lineHeight: 19,
-    marginBottom: 14,
-  },
-
-  // ── Space type grid ──────────────────────────────────────────
-  typeGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  typeCard: {
-    backgroundColor: hostFlowColors.bg,
-    borderColor: hostFlowColors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    minHeight: 100,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    width: "48%",
-  },
-  typeCardActive: {
-    borderColor: ACCENT,
-    backgroundColor: hostFlowColors.accentSoft,
-  },
-  typeCardTop: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
-  typeIconWrap: {
-    alignItems: "center",
-    backgroundColor: hostFlowColors.accentSoft,
-    borderRadius: 8,
-    height: 34,
-    justifyContent: "center",
-    width: 34,
-  },
-  typeIconWrapActive: {
-    backgroundColor: hostFlowColors.accentSoftBorder,
-  },
-  typeLabel: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 14,
-    letterSpacing: -0.2,
-    lineHeight: 20,
-  },
-  typeLabelActive: {
-    color: ACCENT,
-  },
-  typeNote: {
-    color: MUTED,
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 10,
-  },
-
-  // ── Selected type row ────────────────────────────────────────
-  selectedTypeRow: {
-    alignItems: "center",
-    backgroundColor: hostFlowColors.accentSoft,
-    borderColor: ACCENT,
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  selectedTypeLabel: {
-    color: FG,
-    flex: 1,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 15,
-    letterSpacing: -0.2,
-  },
-
-  // ── Counter ──────────────────────────────────────────────────
-  counterRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 16,
-    marginTop: 4,
-  },
-  counterButton: {
-    alignItems: "center",
-    backgroundColor: hostFlowColors.bg,
-    borderColor: hostFlowColors.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: "center",
-    width: 44,
-  },
-  counterButtonDisabled: {
-    opacity: 0.35,
-  },
-  counterValueBox: {
-    alignItems: "center",
-    backgroundColor: hostFlowColors.bg,
-    borderColor: hostFlowColors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    height: 56,
-    justifyContent: "center",
-    width: 72,
-  },
-  counterValueText: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 24,
-    letterSpacing: -0.5,
-  },
-
-  // ── Vehicle size cards ───────────────────────────────────────
-  vehicleList: {
-    gap: 10,
-  },
-  vehicleCard: {
-    alignItems: "center",
-    backgroundColor: hostFlowColors.bg,
-    borderColor: hostFlowColors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    flexDirection: "row",
-    minHeight: 72,
-    overflow: "hidden",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    position: "relative",
-  },
-  vehicleCardActive: {
-    borderColor: ACCENT,
-    backgroundColor: hostFlowColors.accentSoft,
-  },
-  vehicleTextWrap: {
-    flex: 1,
-    justifyContent: "center",
-    paddingRight: 8,
-  },
-  vehicleTitle: {
-    color: FG,
-    fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 15,
-    letterSpacing: -0.2,
-    lineHeight: 20,
-  },
-  vehicleTitleActive: {
-    color: ACCENT,
-  },
-  vehicleExample: {
-    color: SOFT,
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 2,
-  },
-  vehicleArtWrap: {
-    alignItems: "flex-end",
-    flexShrink: 0,
-    justifyContent: "center",
-    width: 80,
-  },
-  vehicleArtImage: {
-    height: 44,
-    width: 80,
-  },
-  vehicleCheckBadge: {
-    position: "absolute",
-    right: 14,
-    top: 12,
-  },
-
-  // ── Tips card ────────────────────────────────────────────────
-  tipsCard: {
-    backgroundColor: hostFlowColors.accentSoft,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: hostFlowColors.accentSoftBorder,
-    padding: 16,
-  },
-  tipsRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 6,
-  },
-  tipsTitle: {
-    color: ACCENT,
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 13,
-    letterSpacing: -0.1,
-  },
-  tipsBody: {
-    color: MUTED,
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 13,
-    lineHeight: 19,
   },
 });

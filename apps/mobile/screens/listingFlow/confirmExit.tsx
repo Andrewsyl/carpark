@@ -146,7 +146,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   iconWrapSave: {
-    backgroundColor: hostFlowColors.accentSoft,
     borderColor: hostFlowColors.accentSoftBorder,
   },
   iconWrapWarn: {
