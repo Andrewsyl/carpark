@@ -45,8 +45,8 @@ function MapPricePinBase({ price, selected = false, soldOut = false }: MapPriceP
   // Unselected: pure white, ink price — the whitest, crispest objects on the
   // map. Selected: near-black owns the moment of choice — Airbnb's exact map
   // marker treatment. Sold out: recedes — smaller, quieter, barely shadowed.
-  const fill      = soldOut ? "#F7F8F9" : selected ? "#222222" : "#FFFFFF";
-  const textColor = soldOut ? "#98A2AD" : selected ? "#FFFFFF" : "#222222";
+  const fill      = soldOut ? "#F7F8F9" : selected ? "#101414" : "#FFFFFF";
+  const textColor = soldOut ? "#98A2AD" : selected ? "#FFFFFF" : "#101414";
 
   const { width, pillHeight, viewBoxWidth, viewBoxHeight } = useMemo(
     () => getPinDimensions(priceText, selected, soldOut),

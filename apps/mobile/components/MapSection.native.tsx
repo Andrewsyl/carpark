@@ -31,7 +31,10 @@ type ListingResult = {
 type ViewShotRef = InstanceType<typeof ViewShot>;
 
 type MapRegion = Region;
-const PIN_STYLE_VERSION = "v30";
+// Bumped with every visual change to MapPricePin: pins ship as captured
+// bitmaps keyed by this string, so a pin drawn under the old style would be
+// served from cache forever without it.
+const PIN_STYLE_VERSION = "v31";
 const formatPinPrice = (value: number) => {
   return formatPriceValue(value);
 };

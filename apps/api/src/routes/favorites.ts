@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { addFavorite, getListingById, listFavoritesByUser, removeFavorite } from "../lib/db.js";
+import { stripEircode } from "../lib/address.js";
 import { requireAuth } from "../middleware/auth.js";
 import { enforceBlockedList } from "../middleware/fraud.js";
 import { createRateLimiter } from "../middleware/rateLimit.js";
@@ -23,7 +24,14 @@ router.get("/", requireAuth, enforceBlockedList, favoritesLimiter, async (req, r
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     const favorites = await listFavoritesByUser(userId);
-    res.json({ favorites });
+    // Saving a space is not booking it: a favourite is still a pre-booking
+    // read, so it carries the same address the listing page shows.
+    res.json({
+      favorites: favorites.map((favorite) => ({
+        ...favorite,
+        address: stripEircode(favorite.address),
+      })),
+    });
   } catch (error) {
     next(error);
   }

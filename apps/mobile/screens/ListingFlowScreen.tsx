@@ -150,7 +150,9 @@ export function ListingFlowScreen({ route }: Props) {
       setLoading(true);
       setError(null);
       try {
-        const listing = await getListing(listingId);
+        // With the token: this is the host editing their own space, and the
+        // access code comes back redacted for anyone who can't prove that.
+        const listing = await getListing(listingId, token ? { token } : undefined);
         if (!active) return;
         setDraft((prev) => ({
           ...prev,

@@ -131,7 +131,9 @@ const HistoryPane = memo(function HistoryPane({
         }}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
-        ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
+        // 16 between cards, per the design — the extra 2 is what stops a
+        // list of bordered cards reading as one ruled block.
+        ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
         ListFooterComponent={
           paneTab === "past" && hasMorePast ? (
             <Pressable style={styles.loadMoreButton} onPress={onLoadMore}>
@@ -870,16 +872,16 @@ const styles = StyleSheet.create({
   // ── Header ───────────────────────────────────────────────────
   header: {
     backgroundColor: BG,
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingTop: 10,
     paddingBottom: 12,
   },
   // Large ink title matching the Favourites header (TGTG-style reference,
   // user-approved 2026-07-09).
   title: {
     fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 32,
-    lineHeight: 38,
+    fontSize: 30,
+    lineHeight: 36,
     color: FG,
     letterSpacing: -0.8,
   },
@@ -931,15 +933,15 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: "row",
     backgroundColor: BG,
-    paddingHorizontal: 16,
-    paddingTop: 2,
+    paddingHorizontal: 20,
+    paddingTop: 6,
     borderBottomWidth: 1,
     borderBottomColor: LINE,
   },
   tab: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   tabLabelRow: {
     flexDirection: "row",
@@ -952,8 +954,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 0.1,
   },
+  // Bold as well as green: colour alone left the selected tab reading the
+  // same weight as the two beside it.
   tabTextActive: {
     color: ACCENT,
+    fontFamily: "PlusJakartaSans-Bold",
   },
   tabDot: {
     width: 7,
@@ -968,23 +973,22 @@ const styles = StyleSheet.create({
     width: "33.33%",
     height: 2,
     backgroundColor: ACCENT,
-    borderTopLeftRadius: radius.pill,
-    borderTopRightRadius: radius.pill,
+    borderRadius: radius.pill,
   },
 
   // ── Content ──────────────────────────────────────────────────
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
+    paddingHorizontal: 20,
+    paddingTop: 0,
   },
   monthLabel: {
-    fontFamily: "PlusJakartaSans-SemiBold",
+    fontFamily: "PlusJakartaSans-Bold",
     color: SUBTLE,
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 1,
     textTransform: "uppercase",
-    marginTop: 4,
-    marginBottom: 10,
+    marginTop: 16,
+    marginBottom: 8,
   },
 
   // ── Skeleton ─────────────────────────────────────────────────

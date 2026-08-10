@@ -122,10 +122,14 @@ export type ListingSummary = {
   rating_count?: number | null;
   availability_text?: string | null;
   amenities?: string[] | null;
+  // Present only for the listing's own host — the detail endpoint redacts both
+  // for everyone else. Read the `has*` booleans to know a code exists.
   access_code?: string | null;
   accessCode?: string | null;
   arrival_instructions?: string | null;
   arrivalInstructions?: string | null;
+  hasAccessCode?: boolean | null;
+  hasArrivalInstructions?: boolean | null;
   latitude?: number | null;
   longitude?: number | null;
   distance_m?: number | null;

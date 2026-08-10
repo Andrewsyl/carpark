@@ -182,8 +182,9 @@ export function MapBottomCard({
     [amenities]
   );
 
-  // "€12.50 total" → bold amount, quiet suffix. The number is the decision;
-  // the word is just context.
+  // "€12.50/mo" → bold amount, quiet suffix. Only the monthly search sends a
+  // suffix now; an hourly price is the number alone, since the card's price is
+  // always the whole window and the word "total" was restating that.
   const [priceAmount, priceSuffix] = useMemo(() => {
     const m = price.match(/^(\S+)\s+(.+)$/);
     return m ? [m[1], m[2]] : [price, ""];

@@ -8,7 +8,7 @@ import { useAuth } from "../../auth";
 import type { RootStackParamList } from "../../types";
 import { useListingFlow } from "./context";
 import { StepProgress } from "./StepProgress";
-import { cardShadow, colors, radius, spacing, textStyles } from "../../styles/theme";
+import { cardShadow, colors, radius, spacing } from "../../styles/theme";
 import { buildStreetViewImageUrl } from "../../utils/streetView";
 
 type FlowStackParamList = {
@@ -148,11 +148,13 @@ export function ListingReviewScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.kicker}>
-          {listingId ? "Review & update" : "Review & publish"}
-        </Text>
+        {/* Same ask and same words as the native step. The kicker went with
+            the rebuild — no step in the flow opens with one — and the title
+            now matches so the two targets don't name the screen differently. */}
         <StepProgress current={9} total={9} />
-        <Text style={styles.title}>Double-check your details</Text>
+        <Text style={styles.title}>
+          {listingId ? "Review your changes" : "Here's your listing"}
+        </Text>
         <Text style={styles.subtitle}>
           {listingId ? "Confirm everything looks right." : "You can edit anything after publishing."}
         </Text>
@@ -247,11 +249,12 @@ const styles = StyleSheet.create({
     padding: spacing.screenX,
     paddingBottom: 160,
   },
-  kicker: textStyles.kicker,
   title: {
     color: colors.text,
-    fontSize: 22,
-    fontWeight: "600",
+    fontFamily: "PlusJakartaSans-Bold",
+    fontSize: 26,
+    lineHeight: 31,
+    letterSpacing: -0.3,
     marginTop: 6,
   },
   subtitle: {

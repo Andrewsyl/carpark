@@ -35,6 +35,7 @@ import { RollingSwap } from "../components/RollingSwap";
 import { PulseDots } from "../components/PulseDots";
 import { LIGHT_MAP_STYLE } from "../components/mapStyles";
 import { applyServiceFee, calculateListingTotal, formatPriceValue, getMonthlyGrossEuro } from "../utils/pricing";
+import { publicAddress } from "../utils/address";
 import { useGlobalLoading } from "../components/GlobalLoading";
 import { getListing, searchListings } from "../api";
 import { trackEvent } from "../analytics";
@@ -666,7 +667,7 @@ export function SearchScreen({ navigation }: Props) {
   const [coveredParking, setCoveredParking] = useState(false);
   const [evCharging, setEvCharging] = useState(false);
   const [instantBook, setInstantBook] = useState(false);
-  // Hourly (short-term booking) vs Monthly (enquiry-based) search. Monthly maps
+  // Hourly (short-term booking) vs Monthly (one month, paid up front) search. Monthly maps
   // to the API's `mode=monthly`, which filters to listings that carry a monthly
   // price. The map is the only monthly surface for now — see monthly roadmap.
   const [searchMode, setSearchMode] = useState<"hourly" | "monthly">("hourly");
@@ -2201,7 +2202,7 @@ export function SearchScreen({ navigation }: Props) {
                   accessibilityRole="button"
                   accessibilityLabel={`Filter: ${label}`}
                 >
-                  <Text style={styles.chipText}>{label}</Text>
+                  <Text style={[styles.chipText, styles.chipTextActive]}>{label}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -2293,7 +2294,7 @@ export function SearchScreen({ navigation }: Props) {
             price={
               searchMode === "monthly"
                 ? `€${formatPriceValue(priceForListing(visibleSelectedListing))}/mo`
-                : `€${formatPriceValue(priceForListing(visibleSelectedListing))} total`
+                : `€${formatPriceValue(priceForListing(visibleSelectedListing))}`
             }
             amenities={selectedCardAmenities ?? visibleSelectedListing.amenities ?? null}
             isAvailable={visibleSelectedListing.is_available !== false}
@@ -2624,7 +2625,7 @@ export function SearchScreen({ navigation }: Props) {
                                 )}
                                 <View style={styles.searchRowCopy}>
                                   <Text style={styles.searchRowTitle} numberOfLines={1}>{getListingDisplayTitle(item)}</Text>
-                                  <Text style={styles.searchRowSub} numberOfLines={1}>{item.address}</Text>
+                                  <Text style={styles.searchRowSub} numberOfLines={1}>{publicAddress(item.address)}</Text>
                                 </View>
                                 <ChevronRight size={16} color={colors.textMuted} strokeWidth={2.2} />
                               </Pressable>
@@ -2808,7 +2809,7 @@ export function SearchScreen({ navigation }: Props) {
                         {getListingDisplayTitle(listing)}
                       </Text>
                       <Text style={styles.overlappingItemAddress} numberOfLines={1}>
-                        {listing.address}
+                        {publicAddress(listing.address)}
                       </Text>
                     </View>
                     <Text style={styles.overlappingItemPrice}>
@@ -2942,28 +2943,28 @@ const styles = StyleSheet.create({
   // its 16pt gutter, so the first and last chip aren't clipped mid-shadow.
   chipRow: { marginHorizontal: -16, marginTop: 10 },
   chipRowContent: { paddingHorizontal: 16, gap: 8, paddingVertical: 2 },
+  // A bordered pill, not a shadowed one. The search pill above casts the only
+  // shadow over the map; four more under the chips turned the row into a second
+  // floating surface competing with it.
   chip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    gap: 6,
+    height: 34,
+    paddingHorizontal: 13,
     backgroundColor: colors.cardBg,
+    borderWidth: 1,
+    borderColor: colors.divider,
     borderRadius: radius.pill,
-    shadowColor: "#0B1220",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
   },
-  chipActive: { borderWidth: 1.5, borderColor: colors.primary },
+  chipActive: { borderColor: colors.primary, backgroundColor: colors.accentSoft },
   chipPressed: { opacity: 0.7 },
   chipText: {
     fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 14,
+    fontSize: 13,
     color: colors.text,
-    letterSpacing: -0.2,
   },
+  chipTextActive: { color: colors.primary },
   // Filters live inside the search surface (Airbnb pattern) — one floating
   // object instead of a card plus a trailing chip row.
   filterBtnBadge: {

@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     color: FG,
     fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 21,
     minHeight: 72,
     paddingHorizontal: 12,

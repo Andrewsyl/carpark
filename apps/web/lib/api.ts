@@ -555,8 +555,12 @@ export type ListingDetail = {
   longitude?: number;
   hostId?: string;
   hostStripeAccountId?: string | null;
+  // Redacted to null unless the caller is the listing's host — the detail
+  // endpoint used to hand these to anyone. Read the booleans for presence.
   accessCode?: string | null;
   arrivalInstructions?: string | null;
+  hasAccessCode?: boolean;
+  hasArrivalInstructions?: boolean;
   permissionDeclared?: boolean;
   description?: string | null;
 };

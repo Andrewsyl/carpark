@@ -1,9 +1,9 @@
 /**
- * 16a's wizard header: two outlined pills, nothing else.
+ * The wizard header: two outlined pills, nothing else.
  *
  * No close X and no progress bar here — progress moved to three phase segments
- * sitting directly above the footer, which is where 16a puts it. The header's
- * only job is the two escape hatches.
+ * sitting directly above the footer, which is where the design puts it. The
+ * header's only job is the escape hatches.
  */
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,9 +20,14 @@ type Props = {
   /** Only used to decide whether leaving should offer to save the draft. */
   current: number;
   onClose: () => void;
+  /**
+   * Off on the review step, which the design gives "Save & exit" alone —
+   * by then the host has read every question the help pill exists to answer.
+   */
+  showHelp?: boolean;
 };
 
-export function FlowHeader({ current, onClose }: Props) {
+export function FlowHeader({ current, onClose, showHelp = true }: Props) {
   const insets = useSafeAreaInsets();
   const { draft, listingId } = useListingFlow();
   const { showSuccess } = useGlobalToast();
@@ -62,9 +67,11 @@ export function FlowHeader({ current, onClose }: Props) {
         <Pressable style={styles.pill} onPress={handleClose} accessibilityRole="button">
           <Text style={styles.pillText}>Save &amp; exit</Text>
         </Pressable>
-        <Pressable style={styles.pill} onPress={handleQuestions} accessibilityRole="button">
-          <Text style={styles.pillText}>Questions?</Text>
-        </Pressable>
+        {showHelp ? (
+          <Pressable style={styles.pill} onPress={handleQuestions} accessibilityRole="button">
+            <Text style={styles.pillText}>Questions?</Text>
+          </Pressable>
+        ) : null}
       </View>
       {exitConfirmModal}
     </>

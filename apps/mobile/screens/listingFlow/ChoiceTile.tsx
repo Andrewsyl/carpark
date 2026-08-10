@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 16,
   },
-  // Border weight alone. 16a never fills or ticks a selected tile, and the
+  // Border weight alone. The design never fills or ticks a selected tile, and the
   // grey wash this used to add made unpicked tiles look disabled by contrast.
   tileSelected: {
     borderWidth: 2,
@@ -227,12 +227,13 @@ const styles = StyleSheet.create({
     paddingVertical: 23,
     paddingHorizontal: 15,
   },
-  // 17, not the 19 of 16a's place-type grid: our labels are phrases rather than
-  // single words ("Apartment / underground"), and at 19 they broke mid-word.
+  // 15/Medium, and the smaller step is what lets a phrase label
+  // ("Apartment / underground") sit on two lines inside a 48% tile instead of
+  // breaking mid-word, which it did at 19.
   tileLabel: {
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 17,
-    lineHeight: 22,
+    fontFamily: "PlusJakartaSans-Medium",
+    fontSize: 15,
+    lineHeight: 20,
     color: hostFlowColors.text,
   },
   /**
@@ -297,13 +298,13 @@ const styles = StyleSheet.create({
   },
   optionBadgeLabel: {
     fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 18,
+    fontSize: 17,
     color: hostFlowColors.text,
   },
   optionCopy: { flex: 1, minWidth: 0 },
   optionTitle: {
     fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 16,
+    fontSize: 15,
     color: hostFlowColors.text,
   },
   optionHint: {
@@ -360,21 +361,21 @@ const styles = StyleSheet.create({
   },
   summaryChange: {
     fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 13,
+    fontSize: 14,
     color: hostFlowColors.accent,
   },
 
   rowCopy: { flex: 1, minWidth: 0 },
   rowTitle: {
     fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 16,
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 20,
     color: hostFlowColors.text,
   },
   rowHint: {
     fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 15,
-    lineHeight: 21,
+    fontSize: 14,
+    lineHeight: 19,
     color: hostFlowColors.textMuted,
   },
 });

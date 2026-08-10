@@ -642,7 +642,7 @@ function MainTabs() {
     borderTopWidth: 0,
     shadowOpacity: 0,
     elevation: 0,
-    paddingTop: 4,
+    paddingTop: 8,
     paddingBottom: bottomPadding,
     height: 58 + bottomPadding,
   };
@@ -652,12 +652,11 @@ function MainTabs() {
     color: string,
     Icon: typeof Compass | typeof CalendarDays | typeof Heart | typeof UserRound
   ) => (
-    <View style={[styles.navIconShell, focused && styles.navIconShellActive]}>
-      <Icon
-        size={focused ? 18 : 20}
-        color={focused ? "#FFFFFF" : color}
-        strokeWidth={focused ? 2.3 : 2}
-      />
+    // One size, one weight, tinted. The active tab used to sit in a filled
+    // green disc, which made it the heaviest object on every screen it
+    // appeared over — the colour alone is the state.
+    <View style={styles.navIconShell}>
+      <Icon size={21} color={color} strokeWidth={2} />
     </View>
   );
 
@@ -683,7 +682,7 @@ function MainTabs() {
         freezeOnBlur: false,
         tabBarShowLabel: true,
         tabBarActiveTintColor: "#0a8050",
-        tabBarInactiveTintColor: "#98A2AD",
+        tabBarInactiveTintColor: "#8A9292",
         tabBarStyle: baseTabBarStyle,
         tabBarBackground: () => <View style={styles.tabBarChrome} />,
         tabBarLabelStyle: styles.tabBarLabel,
@@ -877,16 +876,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FCFCFB",
   },
+  // A rule, not a shadow. The bar sits under content rather than floating over
+  // it, and the shadow was the only thing suggesting otherwise.
   tabBarChrome: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: "#edf0f2",
-    shadowColor: "#15232b",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.035,
-    shadowRadius: 8,
-    elevation: 6,
+    borderTopColor: "#E3E8E7",
   },
   tabBarItem: {
     paddingTop: 0,
@@ -899,19 +895,9 @@ const styles = StyleSheet.create({
     letterSpacing: -0.1,
   },
   navIconShell: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    height: 24,
     alignItems: "center",
     justifyContent: "center",
-  },
-  navIconShellActive: {
-    backgroundColor: "#0a8050",
-    shadowColor: "#0a8050",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
   },
   legalActions: {
     flexDirection: "row",

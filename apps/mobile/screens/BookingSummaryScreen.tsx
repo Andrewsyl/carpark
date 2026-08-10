@@ -51,6 +51,7 @@ import { colors, radius } from "../styles/theme";
 import { isMobileE2EActive } from "../e2e/testMode";
 import { trackEvent } from "../analytics";
 import type { ListingDetail, RootStackParamList } from "../types";
+import { publicAddress } from "../utils/address";
 import { formatDateLabel, formatTimeLabel } from "../utils/dateFormat";
 import {
   calculateListingTotal,
@@ -264,12 +265,15 @@ export function BookingSummaryScreen({ navigation, route }: Props) {
   // and shortens "Dublin 8" to "D8". The exact address is only shared after
   // booking, so this is deliberately street-level.
   const addressLine = useMemo(() => {
-    const parts = (listing?.address ?? "").split(",").map((p) => p.trim()).filter(Boolean);
-    const isEircode = (value: string) => /^[A-Z]\d{2}\s*[A-Z0-9]{4}$/i.test(value);
-    const isCountry = (value: string) => /^ireland$/i.test(value);
+    // Eircode and country come off in `publicAddress`, which is the one rule
+    // for it — the local test here only caught a code that sat in its own
+    // comma-separated part, so "Dublin 8 D08 X2Y3" as one part slipped past.
+    const parts = publicAddress(listing?.address)
+      .split(",")
+      .map((p: string) => p.trim())
+      .filter(Boolean);
     const trimmed = parts
-      .filter((part) => !isEircode(part) && !isCountry(part))
-      .map((part) =>
+      .map((part: string) =>
         part.replace(/^Dublin\s*(\d+)$/i, (_, n) => `D${n}`).replace(/^Co\.?\s+/i, "")
       );
     if (!trimmed.length) return "";

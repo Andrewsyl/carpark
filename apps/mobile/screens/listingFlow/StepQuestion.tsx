@@ -1,8 +1,8 @@
 /**
  * The question at the top of every wizard step.
  *
- * 16a gives each step exactly one 29px ask, optionally with a line of support
- * under it. No kicker, no icon, no card — the question IS the header.
+ * The design gives each step exactly one 26px ask, optionally with a line of
+ * support under it. No kicker, no icon, no card — the question IS the header.
  */
 import { StyleSheet, Text, View } from "react-native";
 import { hostFlowColors } from "./hostFlowTheme";
@@ -32,40 +32,40 @@ export function StepSection({ title, hint }: { title: string; hint?: string }) {
 }
 
 const styles = StyleSheet.create({
-  // No gutter of its own. In 16a the 24px inset belongs to the step's content
+  // No gutter of its own. The 24px inset belongs to the step's content
   // container, so everything in the step shares one left edge; when this owned
   // its own padding the question sat 24px further in than the options under it.
   wrap: {},
   title: {
     fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 29,
-    lineHeight: 35,
-    letterSpacing: -0.6,
+    fontSize: 26,
+    lineHeight: 31,
+    letterSpacing: -0.3,
     color: hostFlowColors.text,
   },
   hint: {
     fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     color: hostFlowColors.textMuted,
-    marginTop: 10,
+    marginTop: 8,
   },
   rule: {
     height: 1,
     backgroundColor: hostFlowColors.border,
-    marginVertical: 28,
+    marginVertical: 20,
   },
   section: {},
   sectionTitle: {
     fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 18,
-    lineHeight: 23,
+    fontSize: 17,
+    lineHeight: 22,
     color: hostFlowColors.text,
   },
   sectionHint: {
     fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 15,
-    lineHeight: 21,
+    fontSize: 14,
+    lineHeight: 19,
     color: hostFlowColors.textMuted,
     marginTop: 2,
   },

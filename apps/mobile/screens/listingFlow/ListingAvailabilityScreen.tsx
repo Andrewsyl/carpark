@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
   customEditLink: {
     color: ACCENT,
     fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 13,
+    fontSize: 14,
     marginTop: 8,
   },
   warningText: {
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     color: colors.text,
-    fontSize: 20,
+    fontSize: 17,
     fontFamily: "PlusJakartaSans-ExtraBold",
     paddingHorizontal: 8,
     letterSpacing: -0.5,
@@ -746,7 +746,7 @@ const styles = StyleSheet.create({
   },
   timePillValue: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: "PlusJakartaSans-ExtraBold",
     marginTop: 3,
     letterSpacing: -0.3,

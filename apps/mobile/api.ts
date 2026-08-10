@@ -141,6 +141,13 @@ export async function getListing(
   params?: {
     from?: string;
     to?: string;
+    /**
+     * Send the caller's token when the caller might be the listing's host. The
+     * endpoint redacts `accessCode` and `arrivalInstructions` for everyone
+     * else, so the host's own edit form has to identify itself or it prefills
+     * blanks over real values and saves them.
+     */
+    token?: string;
   }
 ) {
   const e2eState = getMobileE2EState();
@@ -154,7 +161,10 @@ export async function getListing(
   const url = queryString
     ? `${baseUrl}/api/listings/${id}?${queryString}`
     : `${baseUrl}/api/listings/${id}`;
-  const response = await fetchWithTimeout(url);
+  const response = await fetchWithTimeout(
+    url,
+    params?.token ? { headers: { Authorization: `Bearer ${params.token}` } } : undefined
+  );
   if (!response.ok) {
     throw new Error(await readErrorMessage(response, "Listing failed"));
   }
@@ -175,6 +185,12 @@ export async function getListing(
     access_code: listing.access_code ?? listing.accessCode ?? null,
     arrival_instructions:
       listing.arrival_instructions ?? listing.arrivalInstructions ?? null,
+    // Redacted to null for anyone who isn't the host, so presence has to come
+    // off the booleans rather than the values.
+    hasAccessCode: listing.hasAccessCode ?? Boolean(listing.access_code ?? listing.accessCode),
+    hasArrivalInstructions:
+      listing.hasArrivalInstructions ??
+      Boolean(listing.arrival_instructions ?? listing.arrivalInstructions),
     permission_declared:
       listing.permission_declared ?? listing.permissionDeclared ?? null,
     image_urls: listing.image_urls ?? listing.imageUrls ?? null,

@@ -28,6 +28,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { SignInWall } from "../components/SignInWall";
+import { publicAddress } from "../utils/address";
 import { fallbackRoutes, resetToSafeRoute } from "../navigation/safeNavigation";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Favorites">;
@@ -142,7 +143,7 @@ function FavoriteCard({
             accessibilityLabel={saved ? "Remove from favourites" : "Save to favourites"}
           >
             <Heart
-              size={22}
+              size={20}
               color={colors.primary}
               fill={saved ? colors.primary : "transparent"}
               strokeWidth={2}
@@ -150,7 +151,7 @@ function FavoriteCard({
           </Pressable>
         </View>
 
-        <Text style={styles.addr} numberOfLines={1}>{item.address}</Text>
+        <Text style={styles.addr} numberOfLines={1}>{publicAddress(item.address)}</Text>
         {item.availability_text || distanceKm ? (
           <View style={styles.metaRow}>
             {item.availability_text ? (
@@ -373,10 +374,10 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
     backgroundColor: colors.cardBg,
   },
-  navTitle: { fontFamily: "PlusJakartaSans-ExtraBold", fontSize: 32, lineHeight: 38, color: colors.text, letterSpacing: -0.8 },
+  navTitle: { fontFamily: "PlusJakartaSans-ExtraBold", fontSize: 30, lineHeight: 36, color: colors.text, letterSpacing: -0.8 },
 
   content: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 28,
   },
@@ -401,14 +402,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 14,
-    elevation: 4,
   },
   imageWrap: {
-    height: 170,
+    height: 150,
     borderTopLeftRadius: 15,
     borderTopRightRadius: 15,
     overflow: "hidden",
@@ -427,7 +423,7 @@ const styles = StyleSheet.create({
   ratingPillText: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 12, color: colors.text, letterSpacing: -0.1 },
   body: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, gap: 5 },
   titleRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
-  title: { flex: 1, fontSize: 17, fontFamily: "PlusJakartaSans-Bold", color: colors.text, letterSpacing: -0.3 },
+  title: { flex: 1, fontSize: 16, fontFamily: "PlusJakartaSans-Bold", color: colors.text, letterSpacing: -0.3 },
   addr: { fontSize: 13, fontFamily: "PlusJakartaSans-Regular", color: colors.textMuted },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   meta: { fontSize: 13, fontFamily: "PlusJakartaSans-Regular", color: colors.textMuted },
@@ -436,9 +432,9 @@ const styles = StyleSheet.create({
   featureRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   featureIcon: { alignItems: "center", justifyContent: "center" },
   dashedDividerClip: { height: 1, overflow: "hidden", marginTop: 10, marginBottom: 8 },
-  dashedDivider: { height: 2, borderWidth: 1, borderColor: colors.divider, borderStyle: "dashed" },
+  dashedDivider: { height: 3, borderWidth: 1.5, borderColor: colors.divider, borderStyle: "dashed" },
   priceRow: { flexDirection: "row", alignItems: "center" },
-  price: { fontFamily: "PlusJakartaSans-ExtraBold", fontSize: 20, color: colors.text, letterSpacing: -0.4, marginLeft: "auto" },
+  price: { fontFamily: "PlusJakartaSans-ExtraBold", fontSize: 19, color: colors.text, letterSpacing: -0.4, marginLeft: "auto" },
   priceUnit: { fontFamily: "PlusJakartaSans-SemiBold", fontSize: 13, color: colors.textMuted },
 
   // Skeleton

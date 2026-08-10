@@ -128,6 +128,10 @@ export function BookingReviewBody({
           titleOpacity={header.titleOpacity}
           insetLeft={64}
           insetRight={64}
+          // The back arrow is 24 tall at insets.top + 8, so its centre line is
+          // 20 — not the bar's own 28, which left the title riding high beside
+          // it.
+          titleCentre={20}
         />
 
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -139,7 +143,22 @@ export function BookingReviewBody({
           >
             <ArrowLeft size={19} color={INK} strokeWidth={2} />
           </Pressable>
-          <Text style={styles.headerLabel}>Checkout</Text>
+          {/* "Checkout" and the bar's "Confirm and pay" occupy the same line,
+              so they cross-fade rather than stack: this label was still on
+              screen when the scrolled title arrived on top of it. */}
+          <Animated.Text
+            style={[
+              styles.headerLabel,
+              {
+                opacity: header.titleOpacity.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 0],
+                }),
+              },
+            ]}
+          >
+            Checkout
+          </Animated.Text>
         </View>
 
         <Animated.ScrollView
@@ -206,7 +225,13 @@ export function BookingReviewBody({
             <View style={[styles.editRow, styles.editRowLast, hasPlate && styles.editRowWithPlate]}>
               <View style={styles.editCopy}>
                 <Text style={styles.editLabel}>Vehicle</Text>
-                <Text style={styles.editValue}>{vehicleLine || "Not added yet"}</Text>
+                {/* The marque rides with the car's own line rather than the
+                    plate below it: a real plate carries no badge, and putting
+                    one inside would stop it reading as the thing it is. */}
+                <View style={styles.vehicleLine}>
+                  <VehicleBrandLogo make={vehicleMake} size={18} />
+                  <Text style={styles.editValue}>{vehicleLine || "Not added yet"}</Text>
+                </View>
               </View>
               <Pressable onPress={onChangeVehicle} accessibilityRole="button">
                 <Text style={styles.editAction}>
@@ -391,6 +416,9 @@ const styles = StyleSheet.create({
     fontFamily: "PlusJakartaSans-Regular", fontSize: 15, lineHeight: 21,
     color: MUTED, marginTop: 2,
   },
+  // The logo is 18 against a 21 line box, so `center` lands it on the line's
+  // optical middle without a nudge.
+  vehicleLine: { flexDirection: "row", alignItems: "center", gap: 8 },
   editAction: {
     flexShrink: 0, fontFamily: "PlusJakartaSans-SemiBold", fontSize: 15,
     color: INK, textDecorationLine: "underline",

@@ -2,20 +2,18 @@ import { CommonActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { SquircleBtn } from "../../components/SquircleBtn";
 import { PhoneVerifyModal } from "../../components/PhoneVerifyModal";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LottieView from "lottie-react-native";
 import {
   Check,
-  ChevronRight,
   MapPin,
   Clock,
-  Tag,
+  Euro,
+  House,
   Camera,
   KeyRound,
   ListChecks,
-  Pencil,
 } from "lucide-react-native";
 import {
   createAvailabilityEntry,
@@ -30,7 +28,7 @@ import type { RootStackParamList } from "../../types";
 import { useListingFlow } from "./context";
 import { generateListingDescription } from "./generateDescription";
 import { FlowHeader } from "./FlowHeader";
-import { StepSection } from "./StepQuestion";
+import { StepQuestion, StepSection } from "./StepQuestion";
 import { colors, spacing } from "../../styles/theme";
 import { hostFlowColors } from "./hostFlowTheme";
 import { clearHostListingDraft, saveHostListingDraft } from "./draftStorage";
@@ -108,22 +106,6 @@ export function ListingReviewScreen({ navigation }: Props) {
       return `€${draft.pricePerHour}/hr`;
     return `€${draft.pricePerDay || "0"}/day`;
   })();
-
-  // The single price drivers glance at first, shown over the cover. The full
-  // multi-rate breakdown still lives in the Pricing edit row below.
-  const heroPrice = (() => {
-    // Mirror the listing's pricing mode — a monthly-only space carries a default
-    // daily value in the draft, so keying off pricePerDay first would show a
-    // "/day" rate the host never set.
-    if (requiresShortStay) {
-      if (draft.pricePerDay.trim().length > 0) return `€${draft.pricePerDay}/day`;
-      if (draft.pricePerHour.trim().length > 0) return `€${draft.pricePerHour}/hr`;
-    }
-    if (requiresMonthly && draft.pricePerMonth.trim().length > 0) return `€${draft.pricePerMonth}/mo`;
-    return null;
-  })();
-
-  const photoCount = useMemo(() => draft.photos.filter((p) => p?.trim()).length, [draft.photos]);
 
   // The exact cover a driver will see: the framed Street View leads (matching
   // publish), otherwise the first uploaded photo.
@@ -430,7 +412,7 @@ export function ListingReviewScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      <FlowHeader current={9} onClose={exitFlow} />
+      <FlowHeader current={9} onClose={exitFlow} showHelp={false} />
 
       <KeyboardAvoidingView
         style={styles.kav}
@@ -441,10 +423,10 @@ export function ListingReviewScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Page header ── */}
-        <View style={styles.pageHeader}>
-          <Text style={styles.kicker}>{listingId ? "Review & update" : "Final step"}</Text>
-          <Text style={styles.title}>{listingId ? "Review your changes" : "Here's your listing"}</Text>
+        {/* The step's one ask, in the same 26/31 every other step uses. The
+            kicker above it went with the rebuild — no other step has one. */}
+        <View style={styles.stepBlock}>
+          <StepQuestion title={listingId ? "Review your changes" : "Here's your listing"} />
         </View>
 
         {/* ── Hero: exactly what drivers will see (tap to edit photos) ── */}
@@ -461,28 +443,17 @@ export function ListingReviewScreen({ navigation }: Props) {
                 <Text style={styles.heroPlaceholderText}>Add photos of your space</Text>
               </View>
             )}
-            <View style={styles.heroEditChip}>
-              <Pencil size={11} color={FG} strokeWidth={2.2} />
-              <Text style={styles.heroEditChipText}>
-                {photoCount > 0 ? `${photoCount} photo${photoCount !== 1 ? "s" : ""}` : "Add"}
-              </Text>
-            </View>
-            {heroPrice ? (
-              <View style={styles.heroPricePill}>
-                <Text style={styles.heroPriceText}>{heroPrice}</Text>
-              </View>
-            ) : null}
           </View>
+          {/* No count chip and no price pill over the photo: the design puts
+              the card's whole job in the two lines under it, and the rows
+              below already state the rate. */}
           <View style={styles.heroMeta}>
             <Text style={styles.heroTitle} numberOfLines={1}>
               {publishTitle}
             </Text>
-            <View style={styles.heroAddressRow}>
-              <MapPin size={12} color={SOFT} strokeWidth={2} />
-              <Text style={styles.heroAddress} numberOfLines={1}>
-                {draft.location.address || "Location not set"}
-              </Text>
-            </View>
+            <Text style={styles.heroAddress} numberOfLines={1}>
+              {draft.location.address || "Location not set"}
+            </Text>
           </View>
         </Pressable>
 
@@ -527,46 +498,42 @@ export function ListingReviewScreen({ navigation }: Props) {
 
         {/* ── Review & edit (only what isn't already shown above) ── */}
         <View style={styles.section}>
-          <View style={styles.reviewHeaderRow}>
-            <StepSection title="Review &amp; edit" />
-            <Text style={styles.reviewHeaderHint}>Tap to change</Text>
-          </View>
           <DetailRow
-            icon={<MapPin size={15} color={ACCENT} strokeWidth={2} />}
+            icon={<MapPin size={18} color={FG} strokeWidth={1.8} />}
             label="Location"
             value={draft.location.address || "Not set"}
             status={draft.location.address.trim().length > 0 ? "ok" : "warn"}
             onPress={() => navigation.navigate("ListingLocation", { fromReview: true })}
           />
           <DetailRow
-            icon={<Tag size={15} color={ACCENT} strokeWidth={2} />}
+            icon={<House size={18} color={FG} strokeWidth={1.8} />}
             label="Space"
             value={spaceTypeValue}
             status={draft.spaceType.trim().length > 0 ? "ok" : "warn"}
             onPress={() => navigation.navigate("ListingDetails", { fromReview: true })}
           />
           <DetailRow
-            icon={<Tag size={15} color={ACCENT} strokeWidth={2} />}
-            label="Price"
+            icon={<Euro size={18} color={FG} strokeWidth={1.8} />}
+            label="Rates"
             value={priceLabel}
             status={pricingOk}
             onPress={() => navigation.navigate("ListingPrice", { fromReview: true })}
           />
           <DetailRow
-            icon={<Clock size={15} color={ACCENT} strokeWidth={2} />}
+            icon={<Clock size={18} color={FG} strokeWidth={1.8} />}
             label="Availability"
             value={draft.availability.detail || "Not set"}
             status={draft.availability.detail.trim().length > 0 ? "ok" : "warn"}
             onPress={() => navigation.navigate("ListingAvailability", { fromReview: true })}
           />
           <DetailRow
-            icon={<ListChecks size={15} color={ACCENT} strokeWidth={2} />}
+            icon={<ListChecks size={18} color={FG} strokeWidth={1.8} />}
             label="Features"
             value={featureSummary}
             onPress={() => navigation.navigate("ListingFeatures", { fromReview: true })}
           />
           <DetailRow
-            icon={<KeyRound size={15} color={ACCENT} strokeWidth={2} />}
+            icon={<KeyRound size={18} color={FG} strokeWidth={1.8} />}
             label="Access"
             value={accessSummary}
             onPress={() => navigation.navigate("ListingAccess", { fromReview: true })}
@@ -620,13 +587,25 @@ export function ListingReviewScreen({ navigation }: Props) {
         {publishHint && !submitting ? (
           <Text style={styles.publishHint}>{publishHint}</Text>
         ) : null}
-        <SquircleBtn
-          label={submitting ? "Saving…" : listingId ? "Update listing" : "Publish space"}
+        {/* The flow's own primary: a dark ink rect at radius 12, the same
+            button every other step ends with. This was a green pill, which
+            made the first and last screens of the wizard the two that broke
+            the rule the middle seven state. */}
+        <Pressable
+          style={[styles.publishButton, (!canPublish || submitting || published) && styles.publishButtonDisabled]}
           onPress={handlePublish}
           disabled={!canPublish || submitting || published}
-          loading={submitting}
-          fullWidth
-        />
+          accessibilityRole="button"
+        >
+          <Text
+            style={[
+              styles.publishButtonText,
+              (!canPublish || submitting || published) && styles.publishButtonTextDisabled,
+            ]}
+          >
+            {submitting ? "Saving…" : listingId ? "Update listing" : "Publish space"}
+          </Text>
+        </Pressable>
         {/* Only offered when the host genuinely can't publish yet (missing fields
             or unverified email) — for a completable listing it was a standing
             invitation to defer at the moment of commitment. The header's
@@ -714,6 +693,8 @@ function DetailRow({
         pressed && styles.editRowPressed,
       ]}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Edit ${label.toLowerCase()}`}
     >
       <View style={styles.detailIconWrap}>{icon}</View>
       <View style={styles.detailBody}>
@@ -725,14 +706,10 @@ function DetailRow({
           {value}
         </Text>
       </View>
-      {status === "ok" ? (
-        <View style={styles.statusOk}>
-          <Check size={11} color={colors.textInverse} strokeWidth={3} />
-        </View>
-      ) : status === "warn" ? (
-        <View style={styles.statusWarn} />
-      ) : null}
-      <ChevronRight size={18} color={SOFT} strokeWidth={2.2} />
+      {/* The word, not a chevron and not a tick. A row that is complete needs
+          no badge saying so — the value is the confirmation — and "Edit" says
+          what the tap does, which an arrow only implies. */}
+      <Text style={styles.detailEdit}>Edit</Text>
     </Pressable>
   );
 }
@@ -745,38 +722,21 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: hostFlowColors.bg },
   kav: { flex: 1 },
 
-  scroll: { paddingTop: 28, paddingHorizontal: 24, gap: 14 },
+  scroll: { paddingTop: 24, gap: 0 },
 
   // ── Page header ──────────────────────────────────────────────
-  pageHeader: { paddingTop: 10, paddingBottom: 2 },
-  kicker: {
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 11,
-    color: ACCENT,
-    letterSpacing: 1.6,
-    textTransform: "uppercase",
-    marginBottom: 8,
-  },
-  title: {
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    fontSize: 26,
-    color: FG,
-    letterSpacing: -0.8,
-    lineHeight: 32,
-    marginBottom: 6,
-  },
+  stepBlock: { paddingHorizontal: 24 },
 
   // ── Hero (the listing as drivers see it) ─────────────────────
+  // 1px rule, 12 corner, no shadow: on a white ground the border is the
+  // whole edge, and a shadow under it read as a floating card.
   heroCard: {
-    backgroundColor: CARD,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: hostFlowColors.border,
+    marginTop: 20, marginHorizontal: 24,
+    backgroundColor: CARD, borderRadius: 12,
+    borderWidth: 1, borderColor: hostFlowColors.border,
     overflow: "hidden",
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
   },
-  heroMedia: { height: 200, backgroundColor: hostFlowColors.cardBgMuted, position: "relative" },
+  heroMedia: { aspectRatio: 1.6, backgroundColor: hostFlowColors.cardBgMuted },
   heroImage: { width: "100%", height: "100%" },
   heroPlaceholder: {
     flex: 1,
@@ -790,62 +750,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: SOFT,
   },
-  heroEditChip: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(255,255,255,0.94)",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  heroEditChipText: {
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 12,
-    color: FG,
-    letterSpacing: -0.1,
-  },
-  heroPricePill: {
-    position: "absolute",
-    bottom: 12,
-    left: 12,
-    backgroundColor: "rgba(15, 23, 42, 0.86)",
-    borderRadius: 999,
-    paddingHorizontal: 13,
-    paddingVertical: 7,
-  },
-  heroPriceText: {
-    fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 14,
-    color: colors.textInverse,
-    letterSpacing: -0.2,
-  },
-  heroMeta: { paddingHorizontal: 16, paddingTop: 13, paddingBottom: 14 },
+  heroMeta: { paddingHorizontal: 16, paddingVertical: 14 },
   heroTitle: {
-    fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 18,
+    fontFamily: "PlusJakartaSans-SemiBold",
+    fontSize: 16,
     color: FG,
-    letterSpacing: -0.4,
-    marginBottom: 4,
   },
-  heroAddressRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   heroAddress: {
     fontFamily: "PlusJakartaSans-Regular",
     fontSize: 13,
     color: MUTED,
-    flex: 1,
+    marginTop: 3,
   },
 
   // ── Cards ────────────────────────────────────────────────────
-  section: { paddingTop: 24 },
+  section: { paddingHorizontal: 24, paddingTop: 8 },
 
   // ── Description (lighter than the surrounding cards) ─────────
   descCard: {
+    marginTop: 20,
+    marginHorizontal: 24,
     backgroundColor: CARD,
-    borderRadius: 18,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: BORDER,
     paddingHorizontal: 16,
@@ -902,74 +828,43 @@ const styles = StyleSheet.create({
   },
 
   // ── Review list header ───────────────────────────────────────
-  reviewHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 6,
-  },
-  reviewHeaderHint: {
-    fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 12,
-    color: SOFT,
-    letterSpacing: -0.1,
-  },
 
   // ── Detail rows ──────────────────────────────────────────────
   detailRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    gap: 12,
+    gap: 14,
+    paddingVertical: 14,
   },
   detailRowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: hostFlowColors.border,
   },
-  detailIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  detailBody: { flex: 1 },
+  detailIconWrap: { flexShrink: 0 },
+  detailBody: { flex: 1, minWidth: 0 },
+  // Uppercase 12 over a 15: the label names the field and the value answers
+  // it, so they read as one fact rather than a heading and a caption.
   detailLabel: {
-    fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 11,
-    color: SOFT,
-    letterSpacing: 0.2,
-    marginBottom: 3,
+    fontFamily: "PlusJakartaSans-SemiBold",
+    fontSize: 12,
+    letterSpacing: 0.5,
     textTransform: "uppercase",
+    color: MUTED,
   },
   detailValue: {
     fontFamily: "PlusJakartaSans-SemiBold",
+    fontSize: 15,
+    color: FG,
+    marginTop: 2,
+  },
+  detailEdit: {
+    flexShrink: 0,
+    fontFamily: "PlusJakartaSans-SemiBold",
     fontSize: 14,
     color: FG,
-    letterSpacing: -0.1,
-    lineHeight: 20,
+    textDecorationLine: "underline",
   },
   valueWarning: { color: colors.status.pending.text },
-  statusOk: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: ACCENT,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  statusWarn: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.warning,
-    flexShrink: 0,
-  },
 
   // ── Edit rows ────────────────────────────────────────────────
   editRowPressed: { backgroundColor: hostFlowColors.bg },
@@ -991,12 +886,13 @@ const styles = StyleSheet.create({
 
   // ── Publish panel (the conclusion) ───────────────────────────
   publishPanel: {
+    marginTop: 24,
+    marginHorizontal: 24,
     backgroundColor: hostFlowColors.accentSoft,
-    borderRadius: 20,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: hostFlowColors.accentSoftBorder,
     padding: 18,
-    marginTop: 4,
   },
   publishTitle: {
     fontFamily: "PlusJakartaSans-ExtraBold",
@@ -1079,13 +975,26 @@ const styles = StyleSheet.create({
 
   // ── Footer ───────────────────────────────────────────────────
   footer: {
-    backgroundColor: hostFlowColors.cardBg,
     borderTopWidth: 1,
-    borderTopColor: BORDER,
-    paddingHorizontal: spacing.screenX,
-    paddingTop: 12,
-    gap: 8,
+    borderTopColor: hostFlowColors.border,
+    backgroundColor: CARD,
+    paddingHorizontal: 24,
+    paddingTop: 16,
   },
+  publishButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: FG,
+  },
+  publishButtonDisabled: { backgroundColor: hostFlowColors.disabledBg },
+  publishButtonText: {
+    fontFamily: "PlusJakartaSans-SemiBold",
+    fontSize: 17,
+    color: colors.textInverse,
+  },
+  publishButtonTextDisabled: { color: hostFlowColors.disabledText },
   publishHint: {
     fontFamily: "PlusJakartaSans-Regular",
     fontSize: 12.5,
@@ -1127,7 +1036,7 @@ const styles = StyleSheet.create({
   successAnimation: { height: 130, width: 130 },
   successTitle: {
     fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 20,
+    fontSize: 17,
     color: FG,
     letterSpacing: -0.4,
     marginTop: 8,

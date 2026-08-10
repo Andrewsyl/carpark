@@ -14,7 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { CalendarDays, CalendarRange, Clock } from "lucide-react-native";
 import { ChoiceOptionRow } from "./ChoiceTile";
 import { useListingFlow } from "./context";
-import { applyServiceFee } from "../../utils/pricing";
+import { applyServiceFee, getMonthlyGrossEuro } from "../../utils/pricing";
 import { suggestPrices } from "../../utils/priceSuggestions";
 import { FlowHeader } from "./FlowHeader";
 import { StepQuestion, StepSection } from "./StepQuestion";
@@ -47,7 +47,7 @@ const PRICING_MODES = [
   {
     key: "monthly",
     label: "Monthly",
-    sub: "Long-term parking — drivers enquire to arrange a monthly space.",
+    sub: "Long-term parking — drivers book and pay for a month up front.",
     icon: CalendarDays,
   },
   {
@@ -186,7 +186,7 @@ const fieldStyles = StyleSheet.create({
   },
   input: {
     fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 18,
+    fontSize: 17,
     color: FG,
     textAlign: "right",
     minWidth: 64,
@@ -259,6 +259,7 @@ export function ListingPriceScreen({ navigation, route }: Props) {
 
   const hourlyVal = parse(hourly) ?? 0;
   const dailyVal  = parse(daily)  ?? 0;
+  const monthlyVal = parse(monthly) ?? 0;
 
   const dailyRatio = useMemo(() => {
     if (hourlyVal <= 0 || dailyVal <= 0) return null;
@@ -276,15 +277,23 @@ export function ListingPriceScreen({ navigation, route }: Props) {
 
   // Driver-facing preview uses the same cent-level fee rounding as the API
   // (utils/pricing mirrors calculateListingChargeCents), so the numbers shown
-  // here are exactly what drivers will see. Monthly is enquiry-based, so no
-  // driver price is claimed for it.
+  // here are exactly what drivers will see.
+  //
+  // Monthly is included: it used to be left out because a monthly space was an
+  // enquiry rather than a booking, but the API has taken `mode: "monthly"` on
+  // both booking create and payment intent since then, and it charges the same
+  // way. Its gross rounds to a whole euro where hourly and daily keep cents —
+  // `getMonthlyGrossEuro` is the client mirror of `monthlyGrossFromParkingCents`,
+  // and quoting anything else here would disagree with the checkout.
   const driverPreview = useMemo(() => {
-    if (!showHourlyDaily) return null;
     const parts: string[] = [];
-    if (hourlyVal > 0) parts.push(`€${fmt(applyServiceFee(hourlyVal))}/hr`);
-    if (dailyVal > 0) parts.push(`€${fmt(applyServiceFee(dailyVal))}/day`);
+    if (showHourlyDaily && hourlyVal > 0) parts.push(`€${fmt(applyServiceFee(hourlyVal))}/hr`);
+    if (showHourlyDaily && dailyVal > 0) parts.push(`€${fmt(applyServiceFee(dailyVal))}/day`);
+    if (showMonthly && monthlyVal > 0) {
+      parts.push(`€${fmt(getMonthlyGrossEuro(monthlyVal))}/month`);
+    }
     return parts.length ? parts.join(" · ") : null;
-  }, [dailyVal, hourlyVal, showHourlyDaily]);
+  }, [dailyVal, hourlyVal, monthlyVal, showHourlyDaily, showMonthly]);
 
   useEffect(() => {
     setDraft((p) => ({ ...p, pricePerHour: hourly, pricePerDay: daily, pricePerMonth: monthly }));

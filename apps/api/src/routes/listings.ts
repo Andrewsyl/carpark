@@ -20,6 +20,7 @@ import { geocodeAddress } from "../lib/geocode.js";
 import { generateListingDescription } from "../lib/generateDescription.js";
 import { setListingDescription } from "../lib/db.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
+import { stripEircode } from "../lib/address.js";
 import { enforceBlockedList, getFraudSettings, getUserRiskProfile, shouldEnforceFraud } from "../middleware/fraud.js";
 import { createRateLimiter } from "../middleware/rateLimit.js";
 import { env } from "../env.js";
@@ -310,13 +311,28 @@ router.get("/search", searchLimiter, optionalAuth, async (req, res, next) => {
     const results = query.includeUnavailable
       ? await findSpacesWithAvailability({ ...query, excludeHostId })
       : await findAvailableSpaces({ ...query, excludeHostId });
-    res.json({ spaces: results });
+    // Search is the widest public read in the app. An Eircode here would give
+    // the exact address of every space in a radius to an unauthenticated
+    // caller, which is the opposite of what the rounded coordinates are for.
+    res.json({
+      spaces: results.map((space) => ({ ...space, address: stripEircode(space.address) })),
+    });
   } catch (error) {
     next(error);
   }
 });
 
-router.get("/:id", listingReadLimiter, async (req, res, next) => {
+/**
+ * Public listing detail.
+ *
+ * `optionalAuth` is here for one reason: the row carries the host's access code
+ * and arrival instructions, and this route has no auth of its own. Until
+ * 2026-08-10 it returned both to anyone who asked, so every gate code on the
+ * platform was readable with an unauthenticated GET. They are now redacted for
+ * everyone except the listing's own host, and non-owners get booleans instead —
+ * the driver-facing page only ever needed to know *whether* a code exists.
+ */
+router.get("/:id", listingReadLimiter, optionalAuth, async (req, res, next) => {
   try {
     const listingId = z.string().uuid().parse(req.params.id);
     const query = z
@@ -342,9 +358,23 @@ router.get("/:id", listingReadLimiter, async (req, res, next) => {
     if (!listing) return res.status(404).json({ message: "Listing not found" });
     const availability = await listAvailability(listingId);
     const availabilitySchedule = availability.filter((entry) => entry.kind === "open");
+    const isOwner = Boolean(req.user?.userId && req.user.userId === listing.hostId);
+    const hasAccessCode = Boolean(listing.accessCode?.trim());
+    const hasArrivalInstructions = Boolean(listing.arrivalInstructions?.trim());
     res.json({
       listing: {
         ...listing,
+        // The host editing their own space still needs the real values to
+        // prefill the form; nobody else ever does before they have booked.
+        accessCode: isOwner ? listing.accessCode : null,
+        arrivalInstructions: isOwner ? listing.arrivalInstructions : null,
+        // Same rule for the Eircode: it names one property, so it is part of
+        // the exact address this page withholds until a booking exists. The
+        // booking snapshots the full address at creation, so a confirmed
+        // driver still gets it.
+        address: isOwner ? listing.address : stripEircode(listing.address),
+        hasAccessCode,
+        hasArrivalInstructions,
         availabilitySchedule,
       },
     });

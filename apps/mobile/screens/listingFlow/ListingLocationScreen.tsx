@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
   mapPlaceholderTitle: {
     color: FG,
     fontFamily: "PlusJakartaSans-SemiBold",
-    fontSize: 16,
+    fontSize: 15,
     textAlign: "center",
   },
   mapPlaceholderText: {

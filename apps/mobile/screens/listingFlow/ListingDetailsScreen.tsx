@@ -249,8 +249,8 @@ const styles = StyleSheet.create({
   gridWrap: { paddingTop: 10 },
   typeNote: {
     fontFamily: "PlusJakartaSans-Regular",
-    fontSize: 15,
-    lineHeight: 21,
+    fontSize: 14,
+    lineHeight: 19,
     color: hostFlowColors.textMuted,
     marginTop: 12,
   },

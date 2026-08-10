@@ -70,6 +70,7 @@ import {
   getMonthlyGrossEuro,
 } from "../utils/pricing";
 import { humanizeAmenity } from "../utils/amenities";
+import { publicAddress } from "../utils/address";
 import { CANCELLATION_FREE_CUTOFF_MS } from "../utils/cancellationPolicy";
 import { formatDateLabel, formatTimeLabel, formatReviewDate } from "../utils/dateFormat";
 
@@ -352,11 +353,13 @@ export function ListingScreen({ navigation, route }: Props) {
   // address like "Ranelagh, Dublin, Ireland" and left the useless "Dublin,
   // Ireland".
   const areaLabel = useMemo(() => {
-    const parts = (listing?.address ?? "")
+    // `publicAddress` drops the Eircode before anything else looks at the
+    // string: an Eircode names one property, and this page promises the exact
+    // address only after booking.
+    const parts = publicAddress(listing?.address)
       .split(",")
       .map((part) => part.trim())
-      .filter(Boolean)
-      .filter((part) => !/^(ireland|éire|eire)$/i.test(part));
+      .filter(Boolean);
     // Drop a leading house number + street only when something is left after
     // it, so a one-line address still says where it is.
     const hasStreetNumber = /^\d/.test(parts[0] ?? "");
@@ -410,18 +413,11 @@ export function ListingScreen({ navigation, route }: Props) {
    * nothing beyond the address, which is the one part that is always true.
    */
   const accessLines = useMemo(() => {
-    const source = listing as
-      | {
-          access_code?: string | null;
-          accessCode?: string | null;
-          arrival_instructions?: string | null;
-          arrivalInstructions?: string | null;
-        }
-      | null;
-    const hasCode = Boolean((source?.access_code ?? source?.accessCode ?? "").trim());
-    const hasInstructions = Boolean(
-      (source?.arrival_instructions ?? source?.arrivalInstructions ?? "").trim()
-    );
+    // Booleans, not the values: the detail endpoint redacts the host's code and
+    // instructions for everyone who isn't the host, which is the whole point of
+    // it. A driver's page only ever needed to know that a code exists.
+    const hasCode = Boolean(listing?.hasAccessCode);
+    const hasInstructions = Boolean(listing?.hasArrivalInstructions);
     const lines = ["The exact address is shared the moment you book."];
     if (hasCode && hasInstructions) {
       lines.push("This host has left an access code and arrival instructions.");
